@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSavedRouteImport } from './routes/_authenticated/saved'
 import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated/messages'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSavedRoute = AuthenticatedSavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMessagesRoute = AuthenticatedMessagesRouteImport.update({
   id: '/messages',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/feed': typeof AuthenticatedFeedRoute
   '/messages': typeof AuthenticatedMessagesRouteWithChildren
+  '/saved': typeof AuthenticatedSavedRoute
   '/courses/$id': typeof AuthenticatedCoursesIdRoute
   '/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/posts/$id': typeof AuthenticatedPostsIdRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/feed': typeof AuthenticatedFeedRoute
   '/messages': typeof AuthenticatedMessagesRouteWithChildren
+  '/saved': typeof AuthenticatedSavedRoute
   '/courses/$id': typeof AuthenticatedCoursesIdRoute
   '/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/posts/$id': typeof AuthenticatedPostsIdRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/_authenticated/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
   '/_authenticated/messages': typeof AuthenticatedMessagesRouteWithChildren
+  '/_authenticated/saved': typeof AuthenticatedSavedRoute
   '/_authenticated/courses/$id': typeof AuthenticatedCoursesIdRoute
   '/_authenticated/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/_authenticated/posts/$id': typeof AuthenticatedPostsIdRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/feed'
     | '/messages'
+    | '/saved'
     | '/courses/$id'
     | '/messages/$id'
     | '/posts/$id'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/courses'
     | '/feed'
     | '/messages'
+    | '/saved'
     | '/courses/$id'
     | '/messages/$id'
     | '/posts/$id'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/_authenticated/courses'
     | '/_authenticated/feed'
     | '/_authenticated/messages'
+    | '/_authenticated/saved'
     | '/_authenticated/courses/$id'
     | '/_authenticated/messages/$id'
     | '/_authenticated/posts/$id'
@@ -183,6 +195,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/saved': {
+      id: '/_authenticated/saved'
+      path: '/saved'
+      fullPath: '/saved'
+      preLoaderRoute: typeof AuthenticatedSavedRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/messages': {
       id: '/_authenticated/messages'
@@ -272,6 +291,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRouteWithChildren
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
   AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRouteWithChildren
+  AuthenticatedSavedRoute: typeof AuthenticatedSavedRoute
   AuthenticatedPostsIdRoute: typeof AuthenticatedPostsIdRoute
   AuthenticatedProfileIdRoute: typeof AuthenticatedProfileIdRoute
 }
@@ -281,6 +301,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCoursesRoute: AuthenticatedCoursesRouteWithChildren,
   AuthenticatedFeedRoute: AuthenticatedFeedRoute,
   AuthenticatedMessagesRoute: AuthenticatedMessagesRouteWithChildren,
+  AuthenticatedSavedRoute: AuthenticatedSavedRoute,
   AuthenticatedPostsIdRoute: AuthenticatedPostsIdRoute,
   AuthenticatedProfileIdRoute: AuthenticatedProfileIdRoute,
 }
