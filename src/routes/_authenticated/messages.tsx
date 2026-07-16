@@ -30,7 +30,7 @@ function MessagesPage() {
   const { data: conversations, isLoading } = useQuery({
     queryKey: ["conversations", user?.id],
     enabled: !!user,
-    queryFn: async () => {
+    queryFn: async (): Promise<(ConvRow & { other: { full_name: string; university_number: string } | null })[]> => {
       if (!user) return [];
       const { data: mem } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", user.id);
       const ids = (mem ?? []).map((m: { conversation_id: string }) => m.conversation_id);
@@ -38,8 +38,6 @@ function MessagesPage() {
       const { data: convs } = await supabase.from("conversations").select("*").in("id", ids).order("updated_at", { ascending: false });
       const convList = (convs ?? []) as ConvRow[];
 
-      // For 1-1 conversations, fetch the other user's profile
-      const oneOnOne = convList.filter((c) => !c.is_group);
       const enriched = await Promise.all(convList.map(async (c) => {
         if (!c.is_group) {
           const { data: members } = await supabase.from("conversation_members").select("user_id").eq("conversation_id", c.id);
@@ -47,16 +45,16 @@ function MessagesPage() {
           let other: { full_name: string; university_number: string } | null = null;
           if (otherId) {
             const { data: p } = await supabase.from("profiles").select("full_name, university_number").eq("id", otherId).maybeSingle();
-            other = p as typeof other;
+            if (p) other = { full_name: (p as { full_name: string }).full_name, university_number: (p as { university_number: string }).university_number };
           }
           return { ...c, other };
         }
-        return { ...c, other: null };
+        return { ...c, other: null as { full_name: string; university_number: string } | null };
       }));
-      void oneOnOne;
       return enriched;
     },
   });
+
 
   return (
     <div className="space-y-4">
