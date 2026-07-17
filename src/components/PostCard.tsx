@@ -7,8 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { REACTIONS, majorLabel, type ReactionType } from "@/lib/college";
-import { Bookmark, MessageCircle, Share2 } from "lucide-react";
+import { Bookmark, Flag, MessageCircle, MoreHorizontal, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -33,10 +36,19 @@ export interface PostWithMeta {
   saved: boolean;
 }
 
+const REPORT_REASONS = [
+  "محتوى غير لائق أو مسيء",
+  "تنمّر أو تحرّش",
+  "معلومات مضللة",
+  "بريد مزعج / إعلان",
+  "أخرى",
+];
+
 export function PostCard({ post }: { post: PostWithMeta }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [openReact, setOpenReact] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const reactMut = useMutation({
     mutationFn: async (type: ReactionType | null) => {
@@ -76,10 +88,7 @@ export function PostCard({ post }: { post: PostWithMeta }) {
     const url = `${window.location.origin}/posts/${post.id}`;
     try {
       if (navigator.share) await navigator.share({ url, text: post.content.slice(0, 100) });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast.success("تم نسخ الرابط");
-      }
+      else { await navigator.clipboard.writeText(url); toast.success("تم نسخ الرابط"); }
     } catch {/* ignore */}
   }
 
@@ -92,9 +101,7 @@ export function PostCard({ post }: { post: PostWithMeta }) {
           <Link to="/profile/$id" params={{ id: post.author_id }}>
             <Avatar className="w-10 h-10">
               <AvatarImage src={post.author?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {authorName.slice(0, 2)}
-              </AvatarFallback>
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">{authorName.slice(0, 2)}</AvatarFallback>
             </Avatar>
           </Link>
           <div className="flex-1 min-w-0">
@@ -102,14 +109,24 @@ export function PostCard({ post }: { post: PostWithMeta }) {
               <Link to="/profile/$id" params={{ id: post.author_id }} className="font-semibold hover:underline">
                 {authorName}
               </Link>
-              {post.author?.major && (
-                <span className="text-xs text-muted-foreground">• {majorLabel(post.author.major)}</span>
-              )}
+              {post.author?.major && (<span className="text-xs text-muted-foreground">• {majorLabel(post.author.major)}</span>)}
             </div>
             <div className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ar })}
             </div>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="w-4 h-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {user && user.id !== post.author_id && (
+                <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive">
+                  <Flag className="w-4 h-4" /> بلاغ
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <Link to="/posts/$id" params={{ id: post.id }}>
@@ -130,60 +147,85 @@ export function PostCard({ post }: { post: PostWithMeta }) {
           <Popover open={openReact} onOpenChange={setOpenReact}>
             <PopoverTrigger asChild>
               <Button
-                variant="ghost"
-                size="sm"
+                variant="ghost" size="sm"
                 className={cn("flex-1 gap-1", post.myReaction && "text-primary")}
-                onClick={() => {
-                  if (post.myReaction) reactMut.mutate(null);
-                  else reactMut.mutate("like");
-                }}
+                onClick={() => post.myReaction ? reactMut.mutate(null) : reactMut.mutate("like")}
               >
                 {post.myReaction ? (
-                  <>
-                    <span>{REACTIONS.find((r) => r.type === post.myReaction)?.emoji}</span>
-                    {REACTIONS.find((r) => r.type === post.myReaction)?.label}
-                  </>
-                ) : (
-                  <>👍 إعجاب</>
-                )}
+                  <><span>{REACTIONS.find((r) => r.type === post.myReaction)?.emoji}</span>{REACTIONS.find((r) => r.type === post.myReaction)?.label}</>
+                ) : (<>👍 إعجاب</>)}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-1" side="top">
               <div className="flex gap-1">
                 {REACTIONS.map((r) => (
-                  <button
-                    key={r.type}
-                    onClick={() => { reactMut.mutate(r.type); setOpenReact(false); }}
-                    className="text-2xl hover:scale-125 transition-transform p-1"
-                    title={r.label}
-                  >
-                    {r.emoji}
-                  </button>
+                  <button key={r.type} onClick={() => { reactMut.mutate(r.type); setOpenReact(false); }}
+                    className="text-2xl hover:scale-125 transition-transform p-1" title={r.label}>{r.emoji}</button>
                 ))}
               </div>
             </PopoverContent>
           </Popover>
 
           <Button variant="ghost" size="sm" className="flex-1 gap-1" asChild>
-            <Link to="/posts/$id" params={{ id: post.id }}>
-              <MessageCircle className="w-4 h-4" /> تعليق
-            </Link>
+            <Link to="/posts/$id" params={{ id: post.id }}><MessageCircle className="w-4 h-4" /> تعليق</Link>
           </Button>
 
           <Button variant="ghost" size="sm" className="flex-1 gap-1" onClick={share}>
             <Share2 className="w-4 h-4" /> مشاركة
           </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("gap-1", post.saved && "text-primary")}
-            onClick={() => saveMut.mutate()}
-          >
+          <Button variant="ghost" size="sm" className={cn("gap-1", post.saved && "text-primary")} onClick={() => saveMut.mutate()}>
             <Bookmark className={cn("w-4 h-4", post.saved && "fill-current")} />
           </Button>
         </div>
       </CardContent>
+
+      <ReportDialog open={reportOpen} onOpenChange={setReportOpen} postId={post.id} />
     </Card>
+  );
+}
+
+function ReportDialog({ open, onOpenChange, postId }: { open: boolean; onOpenChange: (v: boolean) => void; postId: string }) {
+  const { user } = useAuth();
+  const [reason, setReason] = useState(REPORT_REASONS[0]);
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit() {
+    if (!user) return;
+    setLoading(true);
+    const fullReason = note.trim() ? `${reason} — ${note.trim()}` : reason;
+    const { error } = await supabase.from("post_reports").insert({ post_id: postId, reporter_id: user.id, reason: fullReason });
+    setLoading(false);
+    if (error) {
+      if (error.code === "23505") toast.info("لقد أبلغت عن هذا المنشور مسبقًا");
+      else toast.error(error.message);
+      return;
+    }
+    toast.success("تم إرسال البلاغ، سيراجعه المشرفون");
+    onOpenChange(false); setNote("");
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Flag className="w-4 h-4" /> بلاغ عن منشور</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-2">
+            {REPORT_REASONS.map((r) => (
+              <label key={r} className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="radio" name="reason" checked={reason === r} onChange={() => setReason(r)} />
+                {r}
+              </label>
+            ))}
+          </div>
+          <Textarea placeholder="تفاصيل إضافية (اختياري)" value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={300} />
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>إلغاء</Button>
+          <Button onClick={submit} disabled={loading} variant="destructive">إرسال البلاغ</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

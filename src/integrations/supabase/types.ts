@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      banned_words: {
+        Row: {
+          created_at: string
+          id: string
+          word: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          word: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          word?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           author_id: string
@@ -247,6 +265,41 @@ export type Database = {
           },
         ]
       }
+      post_reports: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          reason: string
+          reporter_id: string
+          status: Database["public"]["Enums"]["report_status"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          reason: string
+          reporter_id: string
+          status?: Database["public"]["Enums"]["report_status"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          reason?: string
+          reporter_id?: string
+          status?: Database["public"]["Enums"]["report_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           author_id: string
@@ -279,10 +332,12 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          email: string | null
           full_name: string
           id: string
           major: Database["public"]["Enums"]["major_code"] | null
           must_change_password: boolean
+          points: number
           university_number: string
           updated_at: string
           year: number | null
@@ -291,10 +346,12 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          email?: string | null
           full_name: string
           id: string
           major?: Database["public"]["Enums"]["major_code"] | null
           must_change_password?: boolean
+          points?: number
           university_number: string
           updated_at?: string
           year?: number | null
@@ -303,10 +360,12 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string
           id?: string
           major?: Database["public"]["Enums"]["major_code"] | null
           must_change_password?: boolean
+          points?: number
           university_number?: string
           updated_at?: string
           year?: number | null
@@ -365,6 +424,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_points: {
+        Args: { _delta: number; _user: string }
+        Returns: number
+      }
+      award_points: {
+        Args: { _delta: number; _user: string }
+        Returns: undefined
+      }
+      compute_rank: {
+        Args: { _points: number }
+        Returns: Database["public"]["Enums"]["rank_tier"]
+      }
+      create_dm: { Args: { _other: string }; Returns: string }
+      create_group: {
+        Args: { _members: string[]; _name: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -380,7 +456,9 @@ export type Database = {
     Enums: {
       app_role: "student" | "teacher" | "admin"
       major_code: "it" | "is" | "se"
+      rank_tier: "bronze" | "silver" | "gold" | "platinum" | "diamond"
       reaction_type: "like" | "love" | "haha" | "wow" | "sad"
+      report_status: "pending" | "confirmed" | "dismissed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -510,7 +588,9 @@ export const Constants = {
     Enums: {
       app_role: ["student", "teacher", "admin"],
       major_code: ["it", "is", "se"],
+      rank_tier: ["bronze", "silver", "gold", "platinum", "diamond"],
       reaction_type: ["like", "love", "haha", "wow", "sad"],
+      report_status: ["pending", "confirmed", "dismissed"],
     },
   },
 } as const
