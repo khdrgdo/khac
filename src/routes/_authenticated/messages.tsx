@@ -133,41 +133,22 @@ function NewConversationDialog() {
 
   const create = useMutation({
     mutationFn: async () => {
-      if (!user) return;
+      if (!user) throw new Error("جلسة غير صالحة");
       const isGroup = tab === "group";
       if (isGroup) {
         if (!groupName.trim() || selected.size === 0) throw new Error("أدخل اسم المجموعة واختر أعضاء");
-        const { data: conv, error } = await supabase.from("conversations").insert({
-          is_group: true, name: groupName.trim(), created_by: user.id,
-        }).select().single();
+        const { data, error } = await supabase.rpc("create_group", {
+          _name: groupName.trim(),
+          _members: Array.from(selected),
+        });
         if (error) throw error;
-        const members = [user.id, ...Array.from(selected)].map((uid) => ({ conversation_id: conv.id, user_id: uid }));
-        await supabase.from("conversation_members").insert(members);
-        return conv.id;
+        return data as string;
       } else {
         if (selected.size !== 1) throw new Error("اختر شخصًا واحدًا");
         const otherId = Array.from(selected)[0];
-        // Check existing 1-1
-        const { data: mine } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", user.id);
-        const myConvs = (mine ?? []).map((m: { conversation_id: string }) => m.conversation_id);
-        if (myConvs.length) {
-          const { data: theirs } = await supabase
-            .from("conversation_members")
-            .select("conversation_id, conversations!inner(is_group)")
-            .in("conversation_id", myConvs)
-            .eq("user_id", otherId);
-          const existing = (theirs ?? []).find((t: { conversations: { is_group: boolean } }) => !t.conversations.is_group);
-          if (existing) return (existing as { conversation_id: string }).conversation_id;
-        }
-        const { data: conv, error } = await supabase.from("conversations").insert({
-          is_group: false, created_by: user.id,
-        }).select().single();
+        const { data, error } = await supabase.rpc("create_dm", { _other: otherId });
         if (error) throw error;
-        await supabase.from("conversation_members").insert([
-          { conversation_id: conv.id, user_id: user.id },
-          { conversation_id: conv.id, user_id: otherId },
-        ]);
-        return conv.id;
+        return data as string;
       }
     },
     onSuccess: (convId) => {
@@ -175,7 +156,7 @@ function NewConversationDialog() {
       qc.invalidateQueries({ queryKey: ["conversations"] });
       if (convId) navigate({ to: "/messages/$id", params: { id: convId } });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || "تعذّر إنشاء المحادثة"),
   });
 
   function toggle(uid: string) {
