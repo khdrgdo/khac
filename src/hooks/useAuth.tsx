@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 
 export type AppRole = "student" | "teacher" | "admin";
+export type RankTier = "bronze" | "silver" | "gold" | "platinum" | "diamond";
 
 export interface Profile {
   id: string;
@@ -13,6 +14,16 @@ export interface Profile {
   avatar_url: string | null;
   bio: string | null;
   must_change_password: boolean;
+  points: number;
+  email: string | null;
+}
+
+export function computeRank(points: number): RankTier {
+  if (points >= 1000) return "diamond";
+  if (points >= 400) return "platinum";
+  if (points >= 150) return "gold";
+  if (points >= 50) return "silver";
+  return "bronze";
 }
 
 export function useAuth() {
@@ -52,7 +63,7 @@ export function useAuth() {
         supabase.from("user_roles").select("role").eq("user_id", uid),
       ]);
       if (!mounted) return;
-      setProfile(p as Profile | null);
+      setProfile((p as Profile | null) ?? null);
       setRoles((r ?? []).map((x: { role: AppRole }) => x.role));
       setLoading(false);
     }
@@ -65,6 +76,7 @@ export function useAuth() {
 
   const isAdmin = roles.includes("admin");
   const isTeacher = roles.includes("teacher");
+  const rank = profile ? computeRank(profile.points ?? 0) : "bronze";
 
-  return { session, user, profile, roles, isAdmin, isTeacher, loading };
+  return { session, user, profile, roles, isAdmin, isTeacher, rank, loading };
 }
