@@ -96,6 +96,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="text-xs text-muted-foreground font-normal" dir="ltr">
                   {profile?.university_number}
                 </div>
+                {profile && <div className="mt-1.5"><RankBadge points={profile.points ?? 0} /></div>}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {profile && (
