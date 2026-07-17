@@ -1,4 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Home, BookOpen, MessageCircle, Bookmark, Shield, LogOut, User as UserIcon, GraduationCap, KeyRound } from "lucide-react";
@@ -8,12 +9,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { RankBadge } from "@/components/RankBadge";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { profile, isAdmin } = useAuth();
+  const { profile, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
+
+  // Redirect Google/incomplete users to complete-profile
+  useEffect(() => {
+    if (loading || !profile) return;
+    if (path.startsWith("/complete-profile")) return;
+    const needs = !profile.major || !profile.year || (profile.university_number?.startsWith("U") ?? false);
+    if (needs) navigate({ to: "/complete-profile", replace: true });
+  }, [loading, profile, path, navigate]);
 
   async function signOut() {
     await queryClient.cancelQueries();
