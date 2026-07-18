@@ -45,13 +45,14 @@ function CompleteProfilePage() {
       major: major as "it"|"is"|"se",
       year: Number(year),
     }).eq("id", user.id);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error(error.message.includes("duplicate") ? "الرقم الجامعي مستخدم" : error.message);
       return;
     }
     toast.success("تم الحفظ");
-    navigate({ to: "/feed", replace: true });
+    // Hard reload so useAuth refetches profile & AppLayout guard doesn't bounce us back
+    window.location.href = "/feed";
   }
 
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
