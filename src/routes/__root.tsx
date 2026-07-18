@@ -123,6 +123,11 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    // Init theme on mount
+    const saved = (localStorage.getItem("theme") as "light" | "dark" | null);
+    const t = saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", t === "dark");
+
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         router.invalidate();

@@ -41,7 +41,7 @@ export function PostList({ authorId, savedByUserId }: Props) {
       const authorIds = Array.from(new Set(list.map((r) => r.author_id)));
 
       const [{ data: authors }, { data: reactions }, { data: comments }] = await Promise.all([
-        supabase.from("profiles").select("id, full_name, university_number, avatar_url, major").in("id", authorIds),
+        supabase.from("profiles").select("id, full_name, university_number, avatar_url, major, points").in("id", authorIds),
         supabase.from("post_reactions").select("post_id, user_id, reaction").in("post_id", ids),
         supabase.from("comments").select("post_id").in("post_id", ids),
       ]);

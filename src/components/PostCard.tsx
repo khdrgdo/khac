@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { REACTIONS, majorLabel, type ReactionType } from "@/lib/college";
 import { Bookmark, Flag, MessageCircle, MoreHorizontal, Share2 } from "lucide-react";
+import { RankBadge } from "@/components/RankBadge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -29,6 +30,7 @@ export interface PostWithMeta {
     university_number: string;
     avatar_url: string | null;
     major: string | null;
+    points?: number | null;
   } | undefined;
   reactions: { post_id: string; user_id: string; reaction: ReactionType }[];
   commentCount: number;
@@ -105,10 +107,11 @@ export function PostCard({ post }: { post: PostWithMeta }) {
             </Avatar>
           </Link>
           <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <Link to="/profile/$id" params={{ id: post.author_id }} className="font-semibold hover:underline">
                 {authorName}
               </Link>
+              <RankBadge points={post.author?.points ?? 0} size="xs" />
               {post.author?.major && (<span className="text-xs text-muted-foreground">• {majorLabel(post.author.major)}</span>)}
             </div>
             <div className="text-xs text-muted-foreground">

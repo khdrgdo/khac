@@ -10,6 +10,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { RankBadge } from "@/components/RankBadge";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, isAdmin, loading } = useAuth();
@@ -83,13 +84,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </nav>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger className="outline-none">
-              <Avatar className="w-9 h-9 ring-2 ring-transparent hover:ring-primary/30 transition">
-                <AvatarImage src={profile?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
-              </Avatar>
-            </DropdownMenuTrigger>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger className="outline-none">
+                <Avatar className="w-9 h-9 ring-2 ring-transparent hover:ring-primary/30 transition">
+                  <AvatarImage src={profile?.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="font-semibold">{profile?.full_name}</div>
@@ -118,6 +121,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
 
         {/* Mobile nav */}

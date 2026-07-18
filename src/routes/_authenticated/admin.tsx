@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Shield, UserPlus, Loader2, Flag, Users, TrendingUp, MessageSquare, FileText, Plus, Minus, Check, X, Trash2 } from "lucide-react";
+import { Shield, UserPlus, Loader2, Flag, Users, MessageSquare, FileText, Plus, Minus, Check, X, Trash2, Eye, Calendar } from "lucide-react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { majorLabel } from "@/lib/college";
 import { RankBadge } from "@/components/RankBadge";
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 interface ProfileRow {
   id: string; university_number: string; full_name: string;
   major: string | null; year: number | null; points: number;
+  email?: string | null; created_at?: string | null;
 }
 
 function AdminPage() {
@@ -191,6 +193,8 @@ function ReportsTab() {
 function UsersTable() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [detailsFor, setDetailsFor] = useState<ProfileRow & { roles: string[] } | null>(null);
+
   const { data } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
@@ -250,10 +254,13 @@ function UsersTable() {
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => setDetailsFor(u)}>
+                <Eye className="w-3 h-3" /> التفاصيل
+              </Button>
               <div className="flex items-center gap-1 border rounded-md p-1">
                 <Button size="sm" variant="ghost" onClick={() => adjust.mutate({ uid: u.id, delta: -10 })}><Minus className="w-3 h-3" />10</Button>
                 <Button size="sm" variant="ghost" onClick={() => adjust.mutate({ uid: u.id, delta: -50 })}><Minus className="w-3 h-3" />50</Button>
-                <span className="text-xs text-muted-foreground px-2">تعديل نقاط</span>
+                <span className="text-xs text-muted-foreground px-2">نقاط</span>
                 <Button size="sm" variant="ghost" onClick={() => adjust.mutate({ uid: u.id, delta: 10 })}><Plus className="w-3 h-3" />10</Button>
                 <Button size="sm" variant="ghost" onClick={() => adjust.mutate({ uid: u.id, delta: 50 })}><Plus className="w-3 h-3" />50</Button>
               </div>
@@ -265,7 +272,128 @@ function UsersTable() {
           </CardContent>
         </Card>
       ))}
+      <UserDetailsDialog user={detailsFor} onOpenChange={(o) => !o && setDetailsFor(null)} />
     </div>
+  );
+}
+
+function UserDetailsDialog({ user, onOpenChange }: { user: (ProfileRow & { roles: string[] }) | null; onOpenChange: (o: boolean) => void }) {
+  const qc = useQueryClient();
+  const [customDelta, setCustomDelta] = useState("");
+  const { data } = useQuery({
+    queryKey: ["user-details", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      if (!user) return null;
+      const [{ count: posts }, { count: comments }, { count: reports }, { data: recentPosts }] = await Promise.all([
+        supabase.from("posts").select("*", { count: "exact", head: true }).eq("author_id", user.id),
+        supabase.from("comments").select("*", { count: "exact", head: true }).eq("author_id", user.id),
+        supabase.from("post_reports").select("*", { count: "exact", head: true }).eq("status", "confirmed"),
+        supabase.from("posts").select("id, content, created_at").eq("author_id", user.id).order("created_at", { ascending: false }).limit(5),
+      ]);
+      return { posts: posts ?? 0, comments: comments ?? 0, reports: reports ?? 0, recentPosts: recentPosts ?? [] };
+    },
+  });
+
+  const adjust = useMutation({
+    mutationFn: async (delta: number) => {
+      if (!user) return;
+      const { error } = await supabase.rpc("admin_adjust_points", { _user: user.id, _delta: delta });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("تم التحديث"); qc.invalidateQueries({ queryKey: ["admin-users"] }); qc.invalidateQueries({ queryKey: ["user-details"] }); setCustomDelta(""); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={!!user} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        {user && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                {user.full_name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="bg-muted/50 rounded p-2">
+                  <div className="text-xs text-muted-foreground">الرقم الجامعي</div>
+                  <div className="font-medium" dir="ltr">{user.university_number}</div>
+                </div>
+                <div className="bg-muted/50 rounded p-2">
+                  <div className="text-xs text-muted-foreground">البريد</div>
+                  <div className="font-medium truncate" dir="ltr">{user.email ?? "—"}</div>
+                </div>
+                <div className="bg-muted/50 rounded p-2">
+                  <div className="text-xs text-muted-foreground">التخصص / السنة</div>
+                  <div className="font-medium">{majorLabel(user.major)} · {user.year ?? "—"}</div>
+                </div>
+                <div className="bg-muted/50 rounded p-2 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">انضم في</div>
+                    <div className="font-medium">{user.created_at ? format(new Date(user.created_at), "yyyy/MM/dd") : "—"}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="border rounded p-2 text-center">
+                  <div className="text-xs text-muted-foreground">النقاط</div>
+                  <div className="font-bold text-lg">{user.points ?? 0}</div>
+                </div>
+                <div className="border rounded p-2 text-center">
+                  <div className="text-xs text-muted-foreground">منشورات</div>
+                  <div className="font-bold text-lg">{data?.posts ?? 0}</div>
+                </div>
+                <div className="border rounded p-2 text-center">
+                  <div className="text-xs text-muted-foreground">تعليقات</div>
+                  <div className="font-bold text-lg">{data?.comments ?? 0}</div>
+                </div>
+              </div>
+
+              <div className="border rounded p-2 space-y-2">
+                <div className="text-xs font-semibold">تعديل النقاط بقيمة مخصصة</div>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder="مثال: 25 أو -30"
+                    value={customDelta}
+                    onChange={(e) => setCustomDelta(e.target.value)}
+                    dir="ltr"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!customDelta || adjust.isPending}
+                    onClick={() => { const n = Number(customDelta); if (Number.isFinite(n) && n !== 0) adjust.mutate(n); }}
+                  >
+                    تطبيق
+                  </Button>
+                </div>
+              </div>
+
+              {(data?.recentPosts ?? []).length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold">آخر المنشورات</div>
+                  <div className="space-y-1 max-h-40 overflow-auto">
+                    {(data?.recentPosts ?? []).map((p) => (
+                      <div key={p.id} className="text-xs bg-muted/40 rounded p-2">
+                        <div className="line-clamp-2 whitespace-pre-wrap">{p.content}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                          {format(new Date(p.created_at), "yyyy/MM/dd HH:mm")}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
