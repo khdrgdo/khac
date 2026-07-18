@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -21,7 +21,6 @@ interface ConvRow {
 export function MessagesShell({ activeId, children }: { activeId?: string; children?: ReactNode }) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
-  const path = useRouterState({ select: (s) => s.location.pathname });
   const inChat = !!activeId;
 
   const { data: conversations, isLoading } = useQuery({
