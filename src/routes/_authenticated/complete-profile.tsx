@@ -39,20 +39,27 @@ function CompleteProfilePage() {
     if (!name.trim()) { toast.error("أدخل الاسم"); return; }
     if (!major || !year) { toast.error("اختر التخصص والسنة"); return; }
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({
-      university_number: univ.trim(),
-      full_name: name.trim(),
-      major: major as "it"|"is"|"se",
-      year: Number(year),
-    }).eq("id", user.id);
-    if (error) {
+    try {
+      const { error } = await supabase.from("profiles").update({
+        university_number: univ.trim(),
+        full_name: name.trim(),
+        major: major as "it"|"is"|"se",
+        year: Number(year),
+      }).eq("id", user.id);
+      if (error) {
+        toast.error(error.message.includes("duplicate") ? "الرقم الجامعي مستخدم" : error.message);
+        setSaving(false);
+        return;
+      }
+      toast.success("تم الحفظ");
+      // Force hard reload — most reliable across preview/iframe/dev
+      setTimeout(() => { window.location.replace("/feed"); }, 300);
+      // Fallback if replace is blocked
+      setTimeout(() => { navigate({ to: "/feed", replace: true }); }, 800);
+    } catch (e) {
+      toast.error((e as Error).message);
       setSaving(false);
-      toast.error(error.message.includes("duplicate") ? "الرقم الجامعي مستخدم" : error.message);
-      return;
     }
-    toast.success("تم الحفظ");
-    // Hard reload so useAuth refetches profile & AppLayout guard doesn't bounce us back
-    window.location.href = "/feed";
   }
 
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
