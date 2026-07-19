@@ -70,7 +70,7 @@ function CourseDetailPage() {
         </TabsList>
         <TabsContent value="links" className="pt-3"><LinksTab courseId={id} canEdit={canEdit} /></TabsContent>
         <TabsContent value="files" className="pt-3"><FilesTab courseId={id} canEdit={canEdit} /></TabsContent>
-        <TabsContent value="schedule" className="pt-3"><ScheduleTab course={course} canEdit={canEdit} onSaved={() => qc.invalidateQueries({ queryKey: ["course", id] })} /></TabsContent>
+        <TabsContent value="schedule" className="pt-3"><ScheduleTab course={{ id: course.id, schedule: (course.schedule as unknown as ScheduleEntry[] | null) }} canEdit={canEdit} onSaved={() => qc.invalidateQueries({ queryKey: ["course", id] })} /></TabsContent>
         <TabsContent value="updates" className="pt-3"><UpdatesTab courseId={id} canEdit={canEdit} /></TabsContent>
       </Tabs>
     </div>
@@ -240,7 +240,7 @@ function ScheduleTab({ course, canEdit, onSaved }: { course: { id: string; sched
 
   async function save() {
     setSaving(true);
-    const { error } = await supabase.from("courses").update({ schedule: entries }).eq("id", course.id);
+    const { error } = await supabase.from("courses").update({ schedule: entries as unknown as never }).eq("id", course.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("تم حفظ الجدول");
