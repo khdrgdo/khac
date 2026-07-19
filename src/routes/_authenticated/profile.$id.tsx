@@ -33,29 +33,14 @@ function ProfilePage() {
   const startChat = useMutation({
     mutationFn: async () => {
       if (!user || user.id === id) return null;
-      const { data: mine } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", user.id);
-      const myConvs = (mine ?? []).map((m: { conversation_id: string }) => m.conversation_id);
-      if (myConvs.length) {
-        const { data: theirs } = await supabase
-          .from("conversation_members")
-          .select("conversation_id, conversations!inner(is_group)")
-          .in("conversation_id", myConvs)
-          .eq("user_id", id);
-        const existing = (theirs ?? []).find((t: { conversations: { is_group: boolean } }) => !t.conversations.is_group);
-        if (existing) return (existing as { conversation_id: string }).conversation_id;
-      }
-      const { data: conv, error } = await supabase.from("conversations").insert({ is_group: false, created_by: user.id }).select().single();
+      const { data, error } = await supabase.rpc("create_dm", { _other: id });
       if (error) throw error;
-      await supabase.from("conversation_members").insert([
-        { conversation_id: conv.id, user_id: user.id },
-        { conversation_id: conv.id, user_id: id },
-      ]);
-      return conv.id;
+      return data as string;
     },
     onSuccess: (convId) => {
       if (convId) { qc.invalidateQueries({ queryKey: ["conversations"] }); navigate({ to: "/messages/$id", params: { id: convId } }); }
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || "تعذّر بدء المحادثة"),
   });
 
   if (!p) return <div className="text-center py-10 text-sm text-muted-foreground">جارِ التحميل...</div>;

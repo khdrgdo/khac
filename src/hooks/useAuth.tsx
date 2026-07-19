@@ -16,6 +16,16 @@ export interface Profile {
   must_change_password: boolean;
   points: number;
   email: string | null;
+  warning_count: number;
+  suspended_until: string | null;
+  banned: boolean;
+}
+
+export function isSuspended(p: Profile | null): boolean {
+  if (!p) return false;
+  if (p.banned) return true;
+  if (p.suspended_until && new Date(p.suspended_until) > new Date()) return true;
+  return false;
 }
 
 export function computeRank(points: number): RankTier {
