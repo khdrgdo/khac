@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       banned_words: {
         Row: {
           created_at: string
@@ -165,6 +192,41 @@ export type Database = {
           },
         ]
       }
+      course_updates: {
+        Row: {
+          author_id: string
+          content: string
+          course_id: string
+          created_at: string
+          id: string
+          image_paths: string[]
+        }
+        Insert: {
+          author_id: string
+          content: string
+          course_id: string
+          created_at?: string
+          id?: string
+          image_paths?: string[]
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          image_paths?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_updates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           created_at: string
@@ -173,6 +235,7 @@ export type Database = {
           id: string
           major: Database["public"]["Enums"]["major_code"]
           name: string
+          schedule: Json | null
           semester: number
           teacher_id: string | null
           updated_at: string
@@ -185,6 +248,7 @@ export type Database = {
           id?: string
           major: Database["public"]["Enums"]["major_code"]
           name: string
+          schedule?: Json | null
           semester: number
           teacher_id?: string | null
           updated_at?: string
@@ -197,6 +261,7 @@ export type Database = {
           id?: string
           major?: Database["public"]["Enums"]["major_code"]
           name?: string
+          schedule?: Json | null
           semester?: number
           teacher_id?: string | null
           updated_at?: string
@@ -306,6 +371,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_paths: string[]
           images: string[] | null
           updated_at: string
         }
@@ -314,6 +380,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          image_paths?: string[]
           images?: string[] | null
           updated_at?: string
         }
@@ -322,6 +389,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_paths?: string[]
           images?: string[] | null
           updated_at?: string
         }
@@ -330,6 +398,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          banned: boolean
           bio: string | null
           created_at: string
           email: string | null
@@ -338,12 +407,15 @@ export type Database = {
           major: Database["public"]["Enums"]["major_code"] | null
           must_change_password: boolean
           points: number
+          suspended_until: string | null
           university_number: string
           updated_at: string
+          warning_count: number
           year: number | null
         }
         Insert: {
           avatar_url?: string | null
+          banned?: boolean
           bio?: string | null
           created_at?: string
           email?: string | null
@@ -352,12 +424,15 @@ export type Database = {
           major?: Database["public"]["Enums"]["major_code"] | null
           must_change_password?: boolean
           points?: number
+          suspended_until?: string | null
           university_number: string
           updated_at?: string
+          warning_count?: number
           year?: number | null
         }
         Update: {
           avatar_url?: string | null
+          banned?: boolean
           bio?: string | null
           created_at?: string
           email?: string | null
@@ -366,8 +441,10 @@ export type Database = {
           major?: Database["public"]["Enums"]["major_code"] | null
           must_change_password?: boolean
           points?: number
+          suspended_until?: string | null
           university_number?: string
           updated_at?: string
+          warning_count?: number
           year?: number | null
         }
         Relationships: []
@@ -419,6 +496,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_warnings: {
+        Row: {
+          created_at: string
+          id: string
+          issued_by: string | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issued_by?: string | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issued_by?: string | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -428,6 +529,21 @@ export type Database = {
         Args: { _delta: number; _user: string }
         Returns: number
       }
+      admin_ban: {
+        Args: { _reason: string; _user: string }
+        Returns: undefined
+      }
+      admin_delete_user: { Args: { _user: string }; Returns: undefined }
+      admin_set_year: {
+        Args: { _user: string; _year: number }
+        Returns: undefined
+      }
+      admin_suspend: {
+        Args: { _days: number; _reason: string; _user: string }
+        Returns: undefined
+      }
+      admin_unban: { Args: { _user: string }; Returns: undefined }
+      admin_warn: { Args: { _reason: string; _user: string }; Returns: number }
       award_points: {
         Args: { _delta: number; _user: string }
         Returns: undefined
