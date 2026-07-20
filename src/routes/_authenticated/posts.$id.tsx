@@ -27,7 +27,8 @@ interface Comment {
 
 function PostDetailPage() {
   const { id } = useParams({ from: "/_authenticated/posts/$id" });
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, profile } = useAuth();
+  const suspended = isSuspended(profile);
   const qc = useQueryClient();
 
   const { data: post } = useQuery({
