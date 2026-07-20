@@ -47,7 +47,18 @@ function ProfilePage() {
       } else {
         avatarSigned = avatarUrl;
       }
-      return { ...data, avatar_signed: avatarSigned, roles: (roles ?? []).map((r: { role: string }) => r.role) };
+      return { ...(data as Record<string, unknown>), avatar_signed: avatarSigned, roles: (roles ?? []).map((r: { role: string }) => r.role) } as {
+        full_name: string;
+        university_number: string;
+        major: "it" | "is" | "se" | null;
+        year: number | null;
+        points: number;
+        bio: string | null;
+        banned?: boolean;
+        suspended_until?: string | null;
+        avatar_signed: string | null;
+        roles: string[];
+      };
     },
   });
 
