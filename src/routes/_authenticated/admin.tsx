@@ -56,10 +56,12 @@ import {
   ShieldOff,
   ScrollText,
   Clock,
+  BadgeCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { majorLabel } from "@/lib/college";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { RankBadge } from "@/components/RankBadge";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -688,6 +690,21 @@ function UsersTable() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const setVerified = useMutation({
+    mutationFn: async ({ uid, verified }: { uid: string; verified: boolean }) => {
+      const { error } = await supabase.rpc("admin_set_verified", {
+        _user: uid,
+        _verified: verified,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_, v) => {
+      toast.success(v.verified ? "تم توثيق الحساب" : "تم إلغاء التوثيق");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const deleteUser = useMutation({
     mutationFn: async (uid: string) => {
       const { error } = await supabase.rpc("admin_delete_user", { _user: uid });
@@ -728,6 +745,7 @@ function UsersTable() {
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold truncate flex items-center gap-2">
                     {u.full_name}
+                    {u.verified && <VerifiedBadge />}
                     <StatusBadge status={status} />
                   </div>
                   <div className="text-xs text-muted-foreground" dir="ltr">
@@ -809,6 +827,15 @@ function UsersTable() {
                   }
                 >
                   {u.roles.includes("admin") ? "إزالة الإشراف" : "جعل مشرفًا"}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant={u.verified ? "outline" : "outline"}
+                  className={u.verified ? "text-primary" : ""}
+                  onClick={() => setVerified.mutate({ uid: u.id, verified: !u.verified })}
+                >
+                  <BadgeCheck className="w-3 h-3" /> {u.verified ? "إلغاء التوثيق" : "توثيق"}
                 </Button>
 
                 {status === "active" && (
@@ -1010,6 +1037,7 @@ function UserDetailsDialog({
               <DialogTitle className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-primary" />
                 {user.full_name}
+                {user.verified && <VerifiedBadge size="md" />}
                 <StatusBadge status={userStatus(user)} />
               </DialogTitle>
             </DialogHeader>
@@ -1171,6 +1199,8 @@ function ActivityLogTab() {
     unban: "إلغاء حظر/إيقاف",
     delete_user: "حذف مستخدم",
     set_year: "تغيير السنة",
+    verify: "توثيق الحساب",
+    unverify: "إلغاء التوثيق",
   };
 
   return (

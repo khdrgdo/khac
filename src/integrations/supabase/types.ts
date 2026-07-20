@@ -410,6 +410,7 @@ export type Database = {
           suspended_until: string | null
           university_number: string
           updated_at: string
+          verified: boolean
           warning_count: number
           year: number | null
         }
@@ -427,6 +428,7 @@ export type Database = {
           suspended_until?: string | null
           university_number: string
           updated_at?: string
+          verified?: boolean
           warning_count?: number
           year?: number | null
         }
@@ -444,6 +446,7 @@ export type Database = {
           suspended_until?: string | null
           university_number?: string
           updated_at?: string
+          verified?: boolean
           warning_count?: number
           year?: number | null
         }
@@ -534,6 +537,10 @@ export type Database = {
         Returns: undefined
       }
       admin_delete_user: { Args: { _user: string }; Returns: undefined }
+      admin_set_verified: {
+        Args: { _user: string; _verified: boolean }
+        Returns: undefined
+      }
       admin_set_year: {
         Args: { _user: string; _year: number }
         Returns: undefined
@@ -567,6 +574,7 @@ export type Database = {
           major: Database["public"]["Enums"]["major_code"]
           points: number
           university_number: string
+          verified: boolean
           year: number
         }[]
       }
