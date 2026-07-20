@@ -37,6 +37,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Shield,
   UserPlus,
   Loader2,
@@ -57,6 +65,7 @@ import {
   ScrollText,
   Clock,
   BadgeCheck,
+  MoreVertical,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -554,6 +563,15 @@ function UsersTable() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [detailsFor, setDetailsFor] = useState<(ProfileRow & { roles: string[] }) | null>(null);
+  const [yearDialogFor, setYearDialogFor] = useState<(ProfileRow & { roles: string[] }) | null>(
+    null,
+  );
+  const [actionFor, setActionFor] = useState<{
+    user: ProfileRow & { roles: string[] };
+    type: "suspend" | "ban" | "delete";
+  } | null>(null);
+  const [actionReason, setActionReason] = useState("");
+  const [actionDays, setActionDays] = useState("3");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -740,35 +758,107 @@ function UsersTable() {
         const status = userStatus(u);
         return (
           <Card key={u.id}>
-            <CardContent className="p-3 space-y-2">
-              <div className="flex items-center gap-3 flex-wrap">
+            <CardContent className="p-3 space-y-1">
+              <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate flex items-center gap-2">
+                  <div className="font-semibold truncate flex items-center gap-2 flex-wrap">
                     {u.full_name}
                     {u.verified && <VerifiedBadge />}
                     <StatusBadge status={status} />
+                    {u.roles.includes("admin") && <Badge variant="default">مشرف</Badge>}
+                    {u.roles.includes("teacher") && <Badge variant="secondary">أستاذ</Badge>}
                   </div>
                   <div className="text-xs text-muted-foreground" dir="ltr">
                     {u.university_number}
                   </div>
                 </div>
                 <RankBadge points={u.points ?? 0} />
-                <div className="flex gap-1 flex-wrap">
-                  {u.major && <Badge variant="outline">{majorLabel(u.major)}</Badge>}
-                  {u.year && <Badge variant="outline">س{u.year}</Badge>}
-                  {u.warning_count > 0 && (
-                    <Badge variant="outline" className="text-amber-600">
-                      {u.warning_count} إنذار
-                    </Badge>
-                  )}
-                  {u.roles.map((r: string) => (
-                    <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>
-                      {r === "admin" ? "مشرف" : r === "teacher" ? "أستاذ" : "طالب"}
-                    </Badge>
-                  ))}
-                </div>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0">
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => setDetailsFor(u)}>
+                      <Eye className="w-4 h-4" /> التفاصيل الكاملة
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      النقاط والصلاحيات
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => adjust.mutate({ uid: u.id, delta: 10 })}>
+                      <Plus className="w-4 h-4" /> +10 نقاط
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => adjust.mutate({ uid: u.id, delta: -10 })}>
+                      <Minus className="w-4 h-4" /> -10 نقاط
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setYearDialogFor(u)}>
+                      <Calendar className="w-4 h-4" /> تغيير السنة الدراسية
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        toggleAdmin.mutate({ uid: u.id, isAdmin: u.roles.includes("admin") })
+                      }
+                    >
+                      <Shield className="w-4 h-4" />
+                      {u.roles.includes("admin") ? "إزالة الإشراف" : "جعل مشرفًا"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setVerified.mutate({ uid: u.id, verified: !u.verified })}
+                    >
+                      <BadgeCheck className="w-4 h-4" />
+                      {u.verified ? "إلغاء التوثيق" : "توثيق الحساب"}
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      إجراءات الإشراف
+                    </DropdownMenuLabel>
+                    {status === "active" && (
+                      <DropdownMenuItem
+                        onClick={() => setActionFor({ user: u, type: "suspend" })}
+                        className="text-amber-600 focus:text-amber-600"
+                      >
+                        <Clock className="w-4 h-4" /> إيقاف مؤقت
+                      </DropdownMenuItem>
+                    )}
+                    {status !== "banned" && (
+                      <DropdownMenuItem
+                        onClick={() => setActionFor({ user: u, type: "ban" })}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Ban className="w-4 h-4" /> حظر نهائي
+                      </DropdownMenuItem>
+                    )}
+                    {status !== "active" && (
+                      <DropdownMenuItem
+                        onClick={() => unban.mutate(u.id)}
+                        className="text-emerald-600 focus:text-emerald-600"
+                      >
+                        <ShieldOff className="w-4 h-4" /> إلغاء الإيقاف/الحظر
+                      </DropdownMenuItem>
+                    )}
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setActionFor({ user: u, type: "delete" })}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" /> حذف الحساب نهائيًا
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <div className="text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+
+              <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+                {u.major && <span>{majorLabel(u.major)}</span>}
+                {u.year && <span>السنة {u.year}</span>}
+                {u.warning_count > 0 && (
+                  <span className="text-amber-600">{u.warning_count} إنذار</span>
+                )}
                 <span>
                   انضم: {u.created_at ? format(new Date(u.created_at), "yyyy/MM/dd") : "—"}
                 </span>
@@ -779,189 +869,109 @@ function UsersTable() {
                     : "لا يوجد نشاط بعد"}
                 </span>
               </div>
-
-              <div className="flex gap-2 flex-wrap items-center">
-                <Button size="sm" variant="outline" onClick={() => setDetailsFor(u)}>
-                  <Eye className="w-3 h-3" /> التفاصيل
-                </Button>
-
-                <div className="flex items-center gap-1 border rounded-md p-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => adjust.mutate({ uid: u.id, delta: -10 })}
-                  >
-                    <Minus className="w-3 h-3" />
-                    10
-                  </Button>
-                  <span className="text-xs text-muted-foreground px-1">نقاط</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => adjust.mutate({ uid: u.id, delta: 10 })}
-                  >
-                    <Plus className="w-3 h-3" />
-                    10
-                  </Button>
-                </div>
-
-                <Select
-                  value={u.year ? String(u.year) : undefined}
-                  onValueChange={(v) => setYear.mutate({ uid: u.id, year: Number(v) })}
-                >
-                  <SelectTrigger className="h-8 w-28 text-xs">
-                    <SelectValue placeholder="السنة" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4].map((y) => (
-                      <SelectItem key={y} value={String(y)}>{`السنة ${y}`}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Button
-                  size="sm"
-                  variant={u.roles.includes("admin") ? "destructive" : "outline"}
-                  onClick={() =>
-                    toggleAdmin.mutate({ uid: u.id, isAdmin: u.roles.includes("admin") })
-                  }
-                >
-                  {u.roles.includes("admin") ? "إزالة الإشراف" : "جعل مشرفًا"}
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant={u.verified ? "outline" : "outline"}
-                  className={u.verified ? "text-primary" : ""}
-                  onClick={() => setVerified.mutate({ uid: u.id, verified: !u.verified })}
-                >
-                  <BadgeCheck className="w-3 h-3" /> {u.verified ? "إلغاء التوثيق" : "توثيق"}
-                </Button>
-
-                {status === "active" && (
-                  <ConfirmActionButton
-                    label="إيقاف"
-                    icon={Clock}
-                    variant="outline"
-                    className="text-amber-600"
-                    confirmTitle={`إيقاف ${u.full_name} مؤقتًا؟`}
-                    needsReason
-                    needsDays
-                    onConfirm={(reason, days) =>
-                      suspend.mutate({ uid: u.id, days: days ?? 3, reason })
-                    }
-                  />
-                )}
-
-                {status !== "banned" && (
-                  <ConfirmActionButton
-                    label="حظر"
-                    icon={Ban}
-                    variant="destructive"
-                    confirmTitle={`حظر ${u.full_name} نهائيًا؟`}
-                    needsReason
-                    onConfirm={(reason) => ban.mutate({ uid: u.id, reason })}
-                  />
-                )}
-
-                {status !== "active" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-emerald-600"
-                    onClick={() => unban.mutate(u.id)}
-                  >
-                    <ShieldOff className="w-3 h-3" /> إلغاء الإيقاف/الحظر
-                  </Button>
-                )}
-
-                <ConfirmActionButton
-                  label="حذف"
-                  icon={Trash2}
-                  variant="ghost"
-                  className="text-destructive"
-                  confirmTitle={`حذف حساب ${u.full_name} نهائيًا؟`}
-                  confirmDescription="هذا الإجراء لا يمكن التراجع عنه — سيُحذف الحساب بالكامل."
-                  onConfirm={() => deleteUser.mutate(u.id)}
-                />
-              </div>
             </CardContent>
           </Card>
         );
       })}
-      <UserDetailsDialog user={detailsFor} onOpenChange={(o) => !o && setDetailsFor(null)} />
-    </div>
-  );
-}
 
-function ConfirmActionButton({
-  label,
-  icon: Icon,
-  variant,
-  className,
-  confirmTitle,
-  confirmDescription,
-  needsReason,
-  needsDays,
-  onConfirm,
-}: {
-  label: string;
-  icon: typeof Ban;
-  variant: "outline" | "destructive" | "ghost";
-  className?: string;
-  confirmTitle: string;
-  confirmDescription?: string;
-  needsReason?: boolean;
-  needsDays?: boolean;
-  onConfirm: (reason: string, days?: number) => void;
-}) {
-  const [reason, setReason] = useState("");
-  const [days, setDays] = useState("3");
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button size="sm" variant={variant} className={className}>
-          <Icon className="w-3 h-3" /> {label}
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
-          {confirmDescription && (
-            <AlertDialogDescription>{confirmDescription}</AlertDialogDescription>
-          )}
-        </AlertDialogHeader>
-        {needsReason && (
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>السبب</Label>
-              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} />
-            </div>
-            {needsDays && (
-              <div className="space-y-1.5">
-                <Label>عدد الأيام</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={days}
-                  onChange={(e) => setDays(e.target.value)}
-                  dir="ltr"
-                />
-              </div>
-            )}
-          </div>
-        )}
-        <AlertDialogFooter>
-          <AlertDialogCancel>إلغاء</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={needsReason && !reason.trim()}
-            onClick={() => onConfirm(reason.trim(), needsDays ? Number(days) || 3 : undefined)}
+      <UserDetailsDialog user={detailsFor} onOpenChange={(o) => !o && setDetailsFor(null)} />
+
+      <Dialog open={!!yearDialogFor} onOpenChange={(o) => !o && setYearDialogFor(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>تغيير السنة الدراسية — {yearDialogFor?.full_name}</DialogTitle>
+          </DialogHeader>
+          <Select
+            value={yearDialogFor?.year ? String(yearDialogFor.year) : undefined}
+            onValueChange={(v) => {
+              if (yearDialogFor) setYear.mutate({ uid: yearDialogFor.id, year: Number(v) });
+              setYearDialogFor(null);
+            }}
           >
-            تأكيد
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+            <SelectTrigger>
+              <SelectValue placeholder="اختر السنة" />
+            </SelectTrigger>
+            <SelectContent>
+              {[1, 2, 3, 4].map((y) => (
+                <SelectItem key={y} value={String(y)}>{`السنة ${y}`}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!actionFor} onOpenChange={(o) => !o && setActionFor(null)}>
+        <AlertDialogContent>
+          {actionFor && (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {actionFor.type === "suspend" && `إيقاف ${actionFor.user.full_name} مؤقتًا؟`}
+                  {actionFor.type === "ban" && `حظر ${actionFor.user.full_name} نهائيًا؟`}
+                  {actionFor.type === "delete" && `حذف حساب ${actionFor.user.full_name} نهائيًا؟`}
+                </AlertDialogTitle>
+                {actionFor.type === "delete" && (
+                  <AlertDialogDescription>
+                    هذا الإجراء لا يمكن التراجع عنه — سيُحذف الحساب بالكامل.
+                  </AlertDialogDescription>
+                )}
+              </AlertDialogHeader>
+              {(actionFor.type === "suspend" || actionFor.type === "ban") && (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label>السبب</Label>
+                    <Textarea
+                      value={actionReason}
+                      onChange={(e) => setActionReason(e.target.value)}
+                      rows={2}
+                    />
+                  </div>
+                  {actionFor.type === "suspend" && (
+                    <div className="space-y-1.5">
+                      <Label>عدد الأيام</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={actionDays}
+                        onChange={(e) => setActionDays(e.target.value)}
+                        dir="ltr"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setActionFor(null)}>إلغاء</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={
+                    (actionFor.type === "suspend" || actionFor.type === "ban") &&
+                    !actionReason.trim()
+                  }
+                  onClick={() => {
+                    if (actionFor.type === "suspend") {
+                      suspend.mutate({
+                        uid: actionFor.user.id,
+                        days: Number(actionDays) || 3,
+                        reason: actionReason.trim(),
+                      });
+                    } else if (actionFor.type === "ban") {
+                      ban.mutate({ uid: actionFor.user.id, reason: actionReason.trim() });
+                    } else if (actionFor.type === "delete") {
+                      deleteUser.mutate(actionFor.user.id);
+                    }
+                    setActionFor(null);
+                    setActionReason("");
+                    setActionDays("3");
+                  }}
+                >
+                  تأكيد
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
 
