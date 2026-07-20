@@ -49,7 +49,7 @@ function PostDetailPage() {
       const list = rows ?? [];
       if (list.length === 0) return [];
       const ids = Array.from(new Set(list.map((r: Comment) => r.author_id)));
-      const { data: authors } = await supabase.from("profiles").select("id, full_name, avatar_url").in("id", ids);
+      const { data: authors } = await supabase.rpc("get_public_profiles", { _ids: ids });
       const map = new Map((authors ?? []).map((a) => [a.id, a]));
       return list.map((c: Comment) => ({ ...c, author: (map.get(c.author_id) as { full_name: string; avatar_url: string | null }) ?? null }));
     },
