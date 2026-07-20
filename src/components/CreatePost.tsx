@@ -18,7 +18,7 @@ function findBannedWords(text: string, words: string[]): string[] {
 }
 
 export function CreatePost() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [content, setContent] = useState("");
   const [imagePaths, setImagePaths] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
