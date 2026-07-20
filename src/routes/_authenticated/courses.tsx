@@ -267,7 +267,7 @@ function CoursesPage() {
 
             return (
               <Card key={c.id} className="hover:border-primary/40 hover:shadow-md transition-all duration-300 group h-full flex flex-col justify-between overflow-hidden border border-muted/50">
-                <Link to="/courses/$id" params={{ id: c.id }} className="block flex-1">
+                <Link to="/courses/$id" params={{ id: c.id }} search={{ tab: undefined }} className="block flex-1">
                   <div className="p-5 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/5 text-primary flex items-center justify-center group-hover:bg-primary/10 transition">

@@ -75,10 +75,10 @@ function LeaderboardPage() {
       if (courseFilter !== "all" && courses) {
         const selectedCourse = courses.find((c) => c.id === courseFilter);
         if (selectedCourse) {
-          q = q.eq("major", selectedCourse.major).eq("year", selectedCourse.year);
+          q = q.eq("major", selectedCourse.major as "is" | "it" | "se").eq("year", selectedCourse.year);
         }
       } else {
-        if (majorFilter !== "all") q = q.eq("major", majorFilter);
+        if (majorFilter !== "all") q = q.eq("major", majorFilter as "is" | "it" | "se");
         if (yearFilter !== "all") q = q.eq("year", Number(yearFilter));
       }
 
