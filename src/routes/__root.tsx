@@ -50,9 +50,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           حدث خطأ أثناء تحميل الصفحة
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          حاول التحديث أو العودة للرئيسية.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">حاول التحديث أو العودة للرئيسية.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -81,22 +79,42 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "منصة الكلية — كورسات ومنشورات ومراسلة" },
-      { name: "description", content: "منصة كلية للطلاب والأساتذة: كورسات، منشورات، تفاعل، محادثات." },
+      {
+        name: "description",
+        content: "منصة كلية للطلاب والأساتذة: كورسات، منشورات، تفاعل، محادثات.",
+      },
       { property: "og:title", content: "منصة الكلية — كورسات ومنشورات ومراسلة" },
-      { property: "og:description", content: "منصة كلية للطلاب والأساتذة: كورسات، منشورات، تفاعل، محادثات." },
+      {
+        property: "og:description",
+        content: "منصة كلية للطلاب والأساتذة: كورسات، منشورات، تفاعل، محادثات.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "منصة الكلية — كورسات ومنشورات ومراسلة" },
-      { name: "twitter:description", content: "منصة كلية للطلاب والأساتذة: كورسات، منشورات، تفاعل، محادثات." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a3e1a435-1fb3-4df8-9b8b-3ee1d251625c/id-preview-8c6dd14f--54965025-d2a5-4ce1-a70c-c2a9030c6204.lovable.app-1784291266344.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a3e1a435-1fb3-4df8-9b8b-3ee1d251625c/id-preview-8c6dd14f--54965025-d2a5-4ce1-a70c-c2a9030c6204.lovable.app-1784291266344.png" },
+      {
+        name: "twitter:description",
+        content: "منصة كلية للطلاب والأساتذة: كورسات، منشورات، تفاعل، محادثات.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a3e1a435-1fb3-4df8-9b8b-3ee1d251625c/id-preview-8c6dd14f--54965025-d2a5-4ce1-a70c-c2a9030c6204.lovable.app-1784291266344.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a3e1a435-1fb3-4df8-9b8b-3ee1d251625c/id-preview-8c6dd14f--54965025-d2a5-4ce1-a70c-c2a9030c6204.lovable.app-1784291266344.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -125,8 +143,9 @@ function RootComponent() {
 
   useEffect(() => {
     // Init theme on mount
-    const saved = (localStorage.getItem("theme") as "light" | "dark" | null);
-    const t = saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const saved = localStorage.getItem("theme") as "light" | "dark" | null;
+    const t =
+      saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     document.documentElement.classList.toggle("dark", t === "dark");
 
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {

@@ -118,7 +118,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const rank = profile ? computeRank(profile.points ?? 0) : "bronze";
 
   const value: AuthContextValue = {
-    session, user, profile, roles, isAdmin, isTeacher, rank, loading, refreshProfile,
+    session,
+    user,
+    profile,
+    roles,
+    isAdmin,
+    isTeacher,
+    rank,
+    loading,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -127,7 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error("useAuth() must be used within <AuthProvider>. It is mounted once in src/routes/__root.tsx — if you're seeing this, a component is being rendered outside the router tree.");
+    throw new Error(
+      "useAuth() must be used within <AuthProvider>. It is mounted once in src/routes/__root.tsx — if you're seeing this, a component is being rendered outside the router tree.",
+    );
   }
   return ctx;
 }
