@@ -33,7 +33,7 @@ function ChatPage() {
       if (!data) return null;
       const { data: members } = await supabase.from("conversation_members").select("user_id").eq("conversation_id", id);
       const memberIds = (members ?? []).map((m: { user_id: string }) => m.user_id);
-      const { data: profs } = await supabase.from("profiles").select("id, full_name, university_number").in("id", memberIds);
+      const { data: profs } = await supabase.rpc("get_public_profiles", { _ids: memberIds });
       return { ...data, profiles: (profs ?? []) as Prof[] };
     },
   });

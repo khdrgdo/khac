@@ -27,12 +27,7 @@ export function NewConversationDialog({ trigger }: { trigger?: ReactElement }) {
     queryKey: ["profile-search", search],
     enabled: search.trim().length > 1,
     queryFn: async () => {
-      const like = `%${search.trim()}%`;
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, full_name, university_number")
-        .or(`full_name.ilike.${like},university_number.ilike.${like}`)
-        .limit(15);
+      const { data } = await supabase.rpc("search_public_profiles", { _q: search.trim() });
       return (data ?? []).filter((p: { id: string }) => p.id !== user?.id);
     },
   });

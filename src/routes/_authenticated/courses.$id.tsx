@@ -298,7 +298,7 @@ function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean 
       const rows = (data ?? []) as CourseUpdate[];
       const authorIds = Array.from(new Set(rows.map((r) => r.author_id)));
       if (!authorIds.length) return rows.map((r) => ({ ...r, author_name: "" }));
-      const { data: authors } = await supabase.from("profiles").select("id, full_name").in("id", authorIds);
+      const { data: authors } = await supabase.rpc("get_public_profiles", { _ids: authorIds });
       const m = new Map((authors ?? []).map((a: { id: string; full_name: string }) => [a.id, a.full_name]));
       return rows.map((r) => ({ ...r, author_name: m.get(r.author_id) ?? "" }));
     },

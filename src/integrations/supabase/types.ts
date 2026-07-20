@@ -557,6 +557,19 @@ export type Database = {
         Args: { _members: string[]; _name: string }
         Returns: string
       }
+      get_public_profiles: {
+        Args: { _ids: string[] }
+        Returns: {
+          avatar_url: string
+          bio: string
+          full_name: string
+          id: string
+          major: Database["public"]["Enums"]["major_code"]
+          points: number
+          university_number: string
+          year: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -567,6 +580,15 @@ export type Database = {
       is_conversation_member: {
         Args: { _conv: string; _user: string }
         Returns: boolean
+      }
+      search_public_profiles: {
+        Args: { _q: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+          university_number: string
+        }[]
       }
     }
     Enums: {
