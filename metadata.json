@@ -1,0 +1,6 @@
+{
+  "name": "KHAC Learn & Share",
+  "description": "A collaborative social and learning platform built with React, TanStack Router, and Supabase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

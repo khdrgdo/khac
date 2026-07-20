@@ -2,10 +2,26 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, BookOpen, MessageCircle, Bookmark, Shield, LogOut, User as UserIcon, GraduationCap, KeyRound } from "lucide-react";
+import {
+  Home,
+  BookOpen,
+  MessageCircle,
+  Bookmark,
+  Shield,
+  LogOut,
+  User as UserIcon,
+  GraduationCap,
+  KeyRound,
+  Trophy,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -22,7 +38,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading || !profile) return;
     if (path.startsWith("/complete-profile")) return;
-    const needs = !profile.major || !profile.year || (profile.university_number?.startsWith("U") ?? false);
+    const needs =
+      !profile.major || !profile.year || (profile.university_number?.startsWith("U") ?? false);
     if (needs) navigate({ to: "/complete-profile", replace: true });
   }, [loading, profile, path, navigate]);
 
@@ -38,6 +55,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { to: "/feed", label: "الرئيسية", icon: Home },
     { to: "/courses", label: "الكورسات", icon: BookOpen },
+    { to: "/leaderboard", label: "لوحة الصدارة", icon: Trophy },
     { to: "/messages", label: "المراسلة", icon: MessageCircle },
     { to: "/saved", label: "المحفوظات", icon: Bookmark },
   ];
@@ -62,7 +80,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   to={it.to}
                   className={cn(
                     "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors",
-                    active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   <it.icon className="w-4 h-4" />
@@ -75,7 +95,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 to="/admin"
                 className={cn(
                   "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors",
-                  path.startsWith("/admin") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted",
+                  path.startsWith("/admin")
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted",
                 )}
               >
                 <Shield className="w-4 h-4" />
@@ -90,37 +112,48 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger className="outline-none">
                 <Avatar className="w-9 h-9 ring-2 ring-transparent hover:ring-primary/30 transition">
                   <AvatarImage src={profile?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {initials}
+                  </AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="font-semibold">{profile?.full_name}</div>
-                <div className="text-xs text-muted-foreground font-normal" dir="ltr">
-                  {profile?.university_number}
-                </div>
-                {profile && <div className="mt-1.5"><RankBadge points={profile.points ?? 0} /></div>}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {profile && (
-                <DropdownMenuItem onClick={() => navigate({ to: "/profile/$id", params: { id: profile.id } })}>
-                  <UserIcon className="w-4 h-4" /> ملفي الشخصي
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="font-semibold">{profile?.full_name}</div>
+                  <div className="text-xs text-muted-foreground font-normal" dir="ltr">
+                    {profile?.university_number}
+                  </div>
+                  {profile && (
+                    <div className="mt-1.5">
+                      <RankBadge points={profile.points ?? 0} />
+                    </div>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {profile && (
+                  <DropdownMenuItem
+                    onClick={() => navigate({ to: "/profile/$id", params: { id: profile.id } })}
+                  >
+                    <UserIcon className="w-4 h-4" /> ملفي الشخصي
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => navigate({ to: "/change-password" })}>
+                  <KeyRound className="w-4 h-4" /> تغيير كلمة السر
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => navigate({ to: "/change-password" })}>
-                <KeyRound className="w-4 h-4" /> تغيير كلمة السر
-              </DropdownMenuItem>
-              {isAdmin && (
-                <DropdownMenuItem onClick={() => navigate({ to: "/admin" })}>
-                  <Shield className="w-4 h-4" /> لوحة الإدارة
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate({ to: "/admin" })}>
+                    <Shield className="w-4 h-4" /> لوحة الإدارة
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={signOut}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <LogOut className="w-4 h-4" /> تسجيل الخروج
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
-                <LogOut className="w-4 h-4" /> تسجيل الخروج
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -145,9 +178,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
 
-      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 pb-20 md:pb-8">
-        {children}
-      </main>
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 pb-20 md:pb-8">{children}</main>
     </div>
   );
 }

@@ -3,18 +3,27 @@ import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MessageCircle, Plus, Search, Users } from "lucide-react";
+import { MessageCircle, Plus, Search, Users, ShieldAlert } from "lucide-react";
 import { NewConversationDialog } from "@/components/NewConversationDialog";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 
 interface ConvRow {
-  id: string; is_group: boolean; name: string | null; updated_at: string;
-  other?: { id: string; full_name: string; university_number: string } | null;
+  id: string;
+  is_group: boolean;
+  name: string | null;
+  updated_at: string;
+  other?: {
+    id: string;
+    full_name: string;
+    university_number: string;
+    avatar_url?: string | null;
+  } | null;
   lastMessage?: { content: string; created_at: string; sender_id: string } | null;
 }
 
@@ -23,33 +32,81 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
   const [search, setSearch] = useState("");
   const inChat = !!activeId;
 
+  const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("blocked_users");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const handleStorage = () => {
+      try {
+        const stored = localStorage.getItem("blocked_users");
+        setBlockedUsers(stored ? JSON.parse(stored) : []);
+      } catch (e) {
+        console.warn(e);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    const interval = setInterval(handleStorage, 1000);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      clearInterval(interval);
+    };
+  }, []);
+
   const { data: conversations, isLoading } = useQuery({
     queryKey: ["conversations", user?.id],
     enabled: !!user,
     queryFn: async (): Promise<ConvRow[]> => {
       if (!user) return [];
-      const { data: mem } = await supabase.from("conversation_members").select("conversation_id").eq("user_id", user.id);
+      const { data: mem } = await supabase
+        .from("conversation_members")
+        .select("conversation_id")
+        .eq("user_id", user.id);
       const ids = (mem ?? []).map((m: { conversation_id: string }) => m.conversation_id);
       if (ids.length === 0) return [];
-      const { data: convs } = await supabase.from("conversations").select("*").in("id", ids).order("updated_at", { ascending: false });
+      const { data: convs } = await supabase
+        .from("conversations")
+        .select("*")
+        .in("id", ids)
+        .order("updated_at", { ascending: false });
       const list = (convs ?? []) as ConvRow[];
 
       // Fetch last messages + other members in parallel
-      const enriched = await Promise.all(list.map(async (c) => {
-        const [{ data: members }, { data: lastMsg }] = await Promise.all([
-          supabase.from("conversation_members").select("user_id").eq("conversation_id", c.id),
-          supabase.from("messages").select("content, created_at, sender_id").eq("conversation_id", c.id).order("created_at", { ascending: false }).limit(1),
-        ]);
-        let other: ConvRow["other"] = null;
-        if (!c.is_group) {
-          const otherId = (members ?? []).map((m: { user_id: string }) => m.user_id).find((uid: string) => uid !== user.id);
-          if (otherId) {
-            const { data: p } = await supabase.rpc("get_public_profiles", { _ids: [otherId] });
-            if (p && p[0]) other = { id: p[0].id, full_name: p[0].full_name, university_number: p[0].university_number } as ConvRow["other"];
+      const enriched = await Promise.all(
+        list.map(async (c) => {
+          const [{ data: members }, { data: lastMsg }] = await Promise.all([
+            supabase.from("conversation_members").select("user_id").eq("conversation_id", c.id),
+            supabase
+              .from("messages")
+              .select("content, created_at, sender_id")
+              .eq("conversation_id", c.id)
+              .order("created_at", { ascending: false })
+              .limit(1),
+          ]);
+          let other: ConvRow["other"] = null;
+          if (!c.is_group) {
+            const otherId = (members ?? [])
+              .map((m: { user_id: string }) => m.user_id)
+              .find((uid: string) => uid !== user.id);
+            if (otherId) {
+              const { data: p } = await supabase.rpc("get_public_profiles", { _ids: [otherId] });
+              if (p && p[0])
+                other = {
+                  id: p[0].id,
+                  full_name: p[0].full_name,
+                  university_number: p[0].university_number,
+                  avatar_url: p[0].avatar_url,
+                } as ConvRow["other"];
+            }
           }
-        }
-        return { ...c, other, lastMessage: (lastMsg && lastMsg[0]) ? lastMsg[0] : null };
-      }));
+          return { ...c, other, lastMessage: lastMsg && lastMsg[0] ? lastMsg[0] : null };
+        }),
+      );
       return enriched;
     },
   });
@@ -64,20 +121,30 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
   return (
     <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] flex rounded-xl overflow-hidden border bg-card shadow-sm">
       {/* Sidebar */}
-      <aside className={cn(
-        "flex flex-col w-full md:w-80 border-e",
-        inChat ? "hidden md:flex" : "flex",
-      )}>
+      <aside
+        className={cn("flex flex-col w-full md:w-80 border-e", inChat ? "hidden md:flex" : "flex")}
+      >
         <div className="p-3 border-b space-y-2">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-bold flex items-center gap-2">
               <MessageCircle className="w-5 h-5 text-primary" /> المحادثات
             </h1>
-            <NewConversationDialog trigger={<Button size="icon" className="rounded-full h-8 w-8"><Plus className="w-4 h-4" /></Button>} />
+            <NewConversationDialog
+              trigger={
+                <Button size="icon" className="rounded-full h-8 w-8">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              }
+            />
           </div>
           <div className="relative">
             <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ابحث في المحادثات" className="pr-8 h-9 bg-muted/50 border-0" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ابحث في المحادثات"
+              className="pr-8 h-9 bg-muted/50 border-0"
+            />
           </div>
         </div>
         <div className="flex-1 overflow-auto">
@@ -91,25 +158,52 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
             filtered.map((c) => {
               const title = c.is_group ? (c.name ?? "مجموعة") : (c.other?.full_name ?? "مستخدم");
               const isActive = c.id === activeId;
-              const preview = c.lastMessage?.content
-                ? (c.lastMessage.sender_id === user?.id ? "أنت: " : "") + c.lastMessage.content.slice(0, 40)
-                : "لا توجد رسائل بعد";
+              const isBlocked = c.other?.id ? blockedUsers.includes(c.other.id) : false;
+              const preview = isBlocked
+                ? "لقد قمت بحظر هذا المستخدم"
+                : c.lastMessage?.content
+                  ? (c.lastMessage.sender_id === user?.id ? "أنت: " : "") +
+                    c.lastMessage.content.slice(0, 40)
+                  : "لا توجد رسائل بعد";
               return (
-                <Link key={c.id} to="/messages/$id" params={{ id: c.id }}
+                <Link
+                  key={c.id}
+                  to="/messages/$id"
+                  params={{ id: c.id }}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60 transition border-b border-border/40",
                     isActive && "bg-primary/10 hover:bg-primary/15",
-                  )}>
-                  <Avatar className="w-12 h-12 shrink-0">
-                    <AvatarFallback className={cn("font-semibold", c.is_group ? "bg-accent text-accent-foreground" : "bg-primary/10 text-primary")}>
-                      {c.is_group ? <Users className="w-5 h-5" /> : title.slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
+                    isBlocked && "opacity-60",
+                  )}
+                >
+                  {c.is_group ? (
+                    <Avatar className="w-12 h-12 shrink-0">
+                      <AvatarFallback className="bg-accent text-accent-foreground font-semibold">
+                        <Users className="w-5 h-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <UserAvatar
+                      avatarUrl={c.other?.avatar_url}
+                      fullName={title}
+                      className="w-12 h-12"
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="font-semibold truncate text-sm">{title}</div>
+                      <div className="font-semibold truncate text-sm flex items-center gap-1.5">
+                        {title}
+                        {isBlocked && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/20 font-medium">
+                            محظور
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-muted-foreground shrink-0">
-                        {formatDistanceToNow(new Date(c.lastMessage?.created_at ?? c.updated_at), { addSuffix: false, locale: ar })}
+                        {formatDistanceToNow(new Date(c.lastMessage?.created_at ?? c.updated_at), {
+                          addSuffix: false,
+                          locale: ar,
+                        })}
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground truncate">{preview}</div>

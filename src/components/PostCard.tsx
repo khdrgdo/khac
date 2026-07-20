@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -30,6 +30,7 @@ import {
   Share2,
   HelpCircle,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import { RankBadge } from "@/components/RankBadge";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
@@ -73,10 +74,26 @@ const REPORT_REASONS = [
 ];
 
 export function PostCard({ post }: { post: PostWithMeta }) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [openReact, setOpenReact] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+
+  const deletePostMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("posts").delete().eq("id", post.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["posts"] });
+      toast.success("تم حذف المنشور بنجاح");
+      if (window.location.pathname.includes(`/posts/${post.id}`)) {
+        navigate({ to: "/feed" });
+      }
+    },
+    onError: (e: Error) => toast.error(e.message || "فشل في حذف المنشور"),
+  });
 
   const reactMut = useMutation({
     mutationFn: async (type: ReactionType | null) => {
@@ -139,12 +156,11 @@ export function PostCard({ post }: { post: PostWithMeta }) {
       <CardContent className="p-3 sm:p-4">
         <div className="flex items-start gap-3">
           <Link to="/profile/$id" params={{ id: post.author_id }}>
-            <Avatar className="w-10 h-10">
-              <AvatarImage src={post.author?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {authorName.slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar
+              avatarUrl={post.author?.avatar_url}
+              fullName={authorName}
+              className="w-10 h-10"
+            />
           </Link>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -186,7 +202,19 @@ export function PostCard({ post }: { post: PostWithMeta }) {
             <DropdownMenuContent align="end">
               {user && user.id !== post.author_id && (
                 <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive">
-                  <Flag className="w-4 h-4" /> بلاغ
+                  <Flag className="w-4 h-4 ml-2" /> بلاغ
+                </DropdownMenuItem>
+              )}
+              {user && (user.id === post.author_id || isAdmin) && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (window.confirm("هل أنت متأكد من رغبتك في حذف هذا المنشور؟")) {
+                      deletePostMut.mutate();
+                    }
+                  }}
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 ml-2 text-destructive" /> حذف المنشور
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

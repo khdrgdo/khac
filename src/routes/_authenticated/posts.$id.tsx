@@ -1,4 +1,4 @@
-import { createFileRoute, useParams, Link } from "@tanstack/react-router";
+import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,20 @@ function PostDetailPage() {
   const { user, isAdmin, profile } = useAuth();
   const suspended = isSuspended(profile);
   const qc = useQueryClient();
+  const navigate = useNavigate();
+
+  const deletePost = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("posts").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["posts"] });
+      toast.success("تم حذف المنشور بنجاح");
+      navigate({ to: "/feed" });
+    },
+    onError: (e: Error) => toast.error(e.message || "فشل في حذف المنشور"),
+  });
 
   const { data: post } = useQuery({
     queryKey: ["post", id],
@@ -150,22 +164,38 @@ function PostDetailPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <Avatar className="w-10 h-10">
-              <AvatarImage src={post.author?.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {authorName.slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="font-semibold flex items-center gap-1">
-                {authorName}
-                {post.author?.verified && <VerifiedBadge />}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ar })}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={post.author?.avatar_url ?? undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {authorName.slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="font-semibold flex items-center gap-1">
+                  {authorName}
+                  {post.author?.verified && <VerifiedBadge />}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ar })}
+                </div>
               </div>
             </div>
+            {user && (user.id === post.author_id || isAdmin) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
+                onClick={() => {
+                  if (window.confirm("هل أنت متأكد من رغبتك في حذف هذا المنشور؟")) {
+                    deletePost.mutate();
+                  }
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
           {post.post_type === "question" && (
             <div className="mt-3">

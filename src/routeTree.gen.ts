@@ -15,6 +15,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSavedRouteImport } from './routes/_authenticated/saved'
 import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated/messages'
+import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
 import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticated/courses'
 import { Route as AuthenticatedCompleteProfileRouteImport } from './routes/_authenticated/complete-profile'
@@ -54,6 +55,12 @@ const AuthenticatedMessagesRoute = AuthenticatedMessagesRouteImport.update({
   path: '/messages',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLeaderboardRoute =
+  AuthenticatedLeaderboardRouteImport.update({
+    id: '/leaderboard',
+    path: '/leaderboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
   id: '/feed',
   path: '/feed',
@@ -111,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/complete-profile': typeof AuthenticatedCompleteProfileRoute
   '/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/feed': typeof AuthenticatedFeedRoute
+  '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/messages': typeof AuthenticatedMessagesRouteWithChildren
   '/saved': typeof AuthenticatedSavedRoute
   '/courses/$id': typeof AuthenticatedCoursesIdRoute
@@ -127,6 +135,7 @@ export interface FileRoutesByTo {
   '/complete-profile': typeof AuthenticatedCompleteProfileRoute
   '/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/feed': typeof AuthenticatedFeedRoute
+  '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/messages': typeof AuthenticatedMessagesRouteWithChildren
   '/saved': typeof AuthenticatedSavedRoute
   '/courses/$id': typeof AuthenticatedCoursesIdRoute
@@ -145,6 +154,7 @@ export interface FileRoutesById {
   '/_authenticated/complete-profile': typeof AuthenticatedCompleteProfileRoute
   '/_authenticated/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
+  '/_authenticated/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/_authenticated/messages': typeof AuthenticatedMessagesRouteWithChildren
   '/_authenticated/saved': typeof AuthenticatedSavedRoute
   '/_authenticated/courses/$id': typeof AuthenticatedCoursesIdRoute
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/complete-profile'
     | '/courses'
     | '/feed'
+    | '/leaderboard'
     | '/messages'
     | '/saved'
     | '/courses/$id'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/complete-profile'
     | '/courses'
     | '/feed'
+    | '/leaderboard'
     | '/messages'
     | '/saved'
     | '/courses/$id'
@@ -196,6 +208,7 @@ export interface FileRouteTypes {
     | '/_authenticated/complete-profile'
     | '/_authenticated/courses'
     | '/_authenticated/feed'
+    | '/_authenticated/leaderboard'
     | '/_authenticated/messages'
     | '/_authenticated/saved'
     | '/_authenticated/courses/$id'
@@ -253,6 +266,13 @@ declare module '@tanstack/react-router' {
       path: '/messages'
       fullPath: '/messages'
       preLoaderRoute: typeof AuthenticatedMessagesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/leaderboard': {
+      id: '/_authenticated/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof AuthenticatedLeaderboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/feed': {
@@ -351,6 +371,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCompleteProfileRoute: typeof AuthenticatedCompleteProfileRoute
   AuthenticatedCoursesRoute: typeof AuthenticatedCoursesRouteWithChildren
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
+  AuthenticatedLeaderboardRoute: typeof AuthenticatedLeaderboardRoute
   AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRouteWithChildren
   AuthenticatedSavedRoute: typeof AuthenticatedSavedRoute
   AuthenticatedPostsIdRoute: typeof AuthenticatedPostsIdRoute
@@ -363,6 +384,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCompleteProfileRoute: AuthenticatedCompleteProfileRoute,
   AuthenticatedCoursesRoute: AuthenticatedCoursesRouteWithChildren,
   AuthenticatedFeedRoute: AuthenticatedFeedRoute,
+  AuthenticatedLeaderboardRoute: AuthenticatedLeaderboardRoute,
   AuthenticatedMessagesRoute: AuthenticatedMessagesRouteWithChildren,
   AuthenticatedSavedRoute: AuthenticatedSavedRoute,
   AuthenticatedPostsIdRoute: AuthenticatedPostsIdRoute,
@@ -381,3 +403,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

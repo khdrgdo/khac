@@ -5,12 +5,13 @@ import { useAuth, isSuspended } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/UserAvatar";
 import { toast } from "sonner";
 import { Loader2, Send, ShieldAlert, ImagePlus, X, HelpCircle } from "lucide-react";
 import { uploadFile } from "@/lib/storage";
 import { StorageImage } from "@/components/StorageImage";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 function findBannedWords(text: string, words: string[]): string[] {
   const t = ` ${text.toLowerCase()} `;
@@ -111,50 +112,90 @@ export function CreatePost() {
   }
 
   return (
-    <Card>
-      <CardContent className="p-3 sm:p-4">
-        <div className="flex gap-3">
-          <Avatar className="w-10 h-10 shrink-0">
-            <AvatarImage src={profile?.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-              {(profile?.full_name ?? "؟").slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 space-y-2">
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="ماذا يدور في ذهنك؟"
-              rows={2}
-              maxLength={2000}
-              className="resize-none"
-            />
+    <Card className="border border-muted/50 shadow-sm overflow-hidden transition-all hover:shadow-md">
+      {/* Top Tabs Header */}
+      <div className="flex border-b border-muted/40 bg-muted/10">
+        <button
+          type="button"
+          onClick={() => setIsQuestion(false)}
+          className={cn(
+            "flex-1 py-3 text-center text-xs font-semibold transition-all relative border-b-2 outline-none",
+            !isQuestion
+              ? "border-primary text-primary bg-background/50"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/5",
+          )}
+        >
+          📝 منشور عام
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsQuestion(true)}
+          className={cn(
+            "flex-1 py-3 text-center text-xs font-semibold transition-all relative border-b-2 outline-none",
+            isQuestion
+              ? "border-primary text-primary bg-background/50"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/5",
+          )}
+        >
+          ❓ سؤال تعليمي
+        </button>
+      </div>
+
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex gap-4">
+          <UserAvatar
+            avatarUrl={profile?.avatar_url}
+            fullName={profile?.full_name ?? "؟"}
+            className="w-10 h-10 shrink-0 border shadow-sm"
+          />
+          <div className="flex-1 space-y-3">
+            <div className="min-h-[85px] w-full">
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder={
+                  isQuestion
+                    ? "اكتب سؤالك التعليمي هنا بالتفصيل (مثال: مسألة رياضية، استفسار أكاديمي، مشكلة برمجية)..."
+                    : "شارك نصيحة، موضوع مفيد، أو منشور عام مع زملائك في الكلية..."
+                }
+                rows={3}
+                maxLength={2000}
+                className="resize-none w-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 text-[15px] placeholder:text-muted-foreground/60 leading-relaxed bg-transparent"
+              />
+            </div>
+
             {imagePaths.length > 0 && (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 {imagePaths.map((p) => (
-                  <div key={p} className="relative group">
+                  <div
+                    key={p}
+                    className="relative group overflow-hidden rounded-lg border shadow-sm"
+                  >
                     <StorageImage
                       bucket="post-images"
                       path={p}
-                      className="w-full h-32 object-cover rounded-md"
+                      className="w-full h-32 object-cover transition-transform group-hover:scale-105"
                     />
                     <button
                       onClick={() => setImagePaths((prev) => prev.filter((x) => x !== p))}
-                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black"
+                      className="absolute top-1.5 right-1.5 bg-black/75 text-white rounded-full p-1.5 hover:bg-red-600 transition shadow-md"
+                      title="إزالة الصورة"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
               </div>
             )}
+
             {hits.length > 0 && (
-              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 rounded-md p-2">
+              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 rounded-lg p-2.5 border border-destructive/10 animate-pulse">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
-                يحتوي المنشور على كلمات محظورة: {hits.join("، ")}
+                يحتوي المنشور على كلمات غير لائقة: {hits.join("، ")}
               </div>
             )}
-            <div className="flex justify-between items-center gap-2">
+
+            <div className="flex justify-between items-center gap-2 pt-3 border-t border-muted/40">
               <input
                 ref={fileRef}
                 type="file"
@@ -163,45 +204,44 @@ export function CreatePost() {
                 className="hidden"
                 onChange={(e) => handleFiles(e.target.files)}
               />
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
                   onClick={() => fileRef.current?.click()}
                   disabled={uploading || imagePaths.length >= 4}
+                  className="rounded-full text-muted-foreground hover:text-primary hover:bg-primary/5 transition gap-1.5 h-8 text-xs"
                 >
                   {uploading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
-                    <ImagePlus className="w-4 h-4" />
+                    <ImagePlus className="w-3.5 h-3.5" />
                   )}
-                  صورة
+                  إرفاق صور
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={isQuestion ? "default" : "ghost"}
-                  onClick={() => setIsQuestion((v) => !v)}
-                  title="هل هذا سؤال يحتاج حل؟"
-                >
-                  <HelpCircle className="w-4 h-4" />
-                  سؤال
-                </Button>
+
+                {content.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground bg-muted/65 px-2.5 py-1 rounded-full font-mono">
+                    {content.length}/2000
+                  </span>
+                )}
               </div>
+
               <Button
                 size="sm"
                 onClick={() => mut.mutate()}
                 disabled={
                   (!content.trim() && imagePaths.length === 0) || mut.isPending || hits.length > 0
                 }
+                className="rounded-full px-4 gap-1.5 text-xs font-semibold shadow-sm transition"
               >
                 {mut.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <Send className="w-3.5 h-3.5" />
                 )}
-                نشر
+                نشر {isQuestion ? "السؤال" : "المنشور"}
               </Button>
             </div>
           </div>

@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
@@ -1265,7 +1267,16 @@ function AddTeacherCard() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [pw, setPw] = useState("");
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const qc = useQueryClient();
+
+  const { data: courses } = useQuery({
+    queryKey: ["all-courses-admin"],
+    queryFn: async () => {
+      const { data } = await supabase.from("courses").select("id, name");
+      return data || [];
+    },
+  });
 
   const mut = useMutation({
     mutationFn: async () => {
@@ -1285,14 +1296,27 @@ function AddTeacherCard() {
       });
       if (error) throw error;
       if (!data.user) throw new Error("لم يتم إنشاء الحساب");
+
+      // Assign selected courses to the teacher
+      if (selectedCourses.length > 0) {
+        const { error: coursesError } = await supabase
+          .from("courses")
+          .update({ teacher_id: data.user.id })
+          .in("id", selectedCourses);
+        if (coursesError) {
+          console.error("Failed to assign courses", coursesError);
+        }
+      }
     },
     onSuccess: () => {
-      toast.success("تم إنشاء حساب الأستاذ");
+      toast.success("تم إنشاء حساب الأستاذ وتعيين المقررات");
       qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["courses"] });
       setOpen(false);
       setEmail("");
       setName("");
       setPw("");
+      setSelectedCourses([]);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1301,7 +1325,7 @@ function AddTeacherCard() {
     <Card>
       <CardContent className="p-4">
         <p className="text-sm text-muted-foreground mb-3">
-          أنشئ حساب أستاذ يدخل بالبريد الإلكتروني.
+          أنشئ حساب أستاذ يدخل بالبريد الإلكتروني، وحدد المقررات التي يدرسها.
         </p>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -1309,11 +1333,11 @@ function AddTeacherCard() {
               <UserPlus className="w-4 h-4" /> إضافة أستاذ
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>حساب أستاذ جديد</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label>الاسم الكامل</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -1336,13 +1360,45 @@ function AddTeacherCard() {
                   minLength={6}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>المقررات التي يدرسها</Label>
+                <ScrollArea className="h-40 border rounded-md p-3">
+                  <div className="space-y-2">
+                    {courses?.map((course) => (
+                      <div key={course.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`course-${course.id}`}
+                          checked={selectedCourses.includes(course.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedCourses([...selectedCourses, course.id]);
+                            } else {
+                              setSelectedCourses(selectedCourses.filter((id) => id !== course.id));
+                            }
+                          }}
+                        />
+                        <Label
+                          htmlFor={`course-${course.id}`}
+                          className="font-normal cursor-pointer text-sm"
+                        >
+                          {course.name}
+                        </Label>
+                      </div>
+                    ))}
+                    {courses?.length === 0 && (
+                      <p className="text-sm text-muted-foreground">لا يوجد مقررات متاحة</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
             <DialogFooter>
               <Button
                 onClick={() => mut.mutate()}
                 disabled={!email || !name || !pw || mut.isPending}
               >
-                {mut.isPending && <Loader2 className="w-4 h-4 animate-spin" />} إنشاء
+                {mut.isPending && <Loader2 className="w-4 h-4 animate-spin ml-2" />} إنشاء وتعيين
               </Button>
             </DialogFooter>
           </DialogContent>

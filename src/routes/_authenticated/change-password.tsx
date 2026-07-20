@@ -29,7 +29,10 @@ function ChangePasswordPage() {
       const { error } = await supabase.auth.updateUser({ password: pw });
       if (error) throw error;
       if (profile?.must_change_password) {
-        await supabase.from("profiles").update({ must_change_password: false }).eq("id", profile.id);
+        await supabase
+          .from("profiles")
+          .update({ must_change_password: false })
+          .eq("id", profile.id);
       }
       toast.success("تم تحديث كلمة السر");
       navigate({ to: "/feed" });
@@ -62,11 +65,23 @@ function ChangePasswordPage() {
           <form onSubmit={onSubmit} className="space-y-3">
             <div className="space-y-1.5">
               <Label>كلمة السر الجديدة</Label>
-              <Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={6} />
+              <Input
+                type="password"
+                value={pw}
+                onChange={(e) => setPw(e.target.value)}
+                required
+                minLength={6}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>تأكيد كلمة السر</Label>
-              <Input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} required minLength={6} />
+              <Input
+                type="password"
+                value={pw2}
+                onChange={(e) => setPw2(e.target.value)}
+                required
+                minLength={6}
+              />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="w-4 h-4 animate-spin" />} حفظ
