@@ -36,7 +36,8 @@ function PostDetailPage() {
     queryFn: async () => {
       const { data: p } = await supabase.from("posts").select("*").eq("id", id).maybeSingle();
       if (!p) return null;
-      const { data: author } = await supabase.from("profiles").select("*").eq("id", p.author_id).maybeSingle();
+      const { data: authorRows } = await supabase.rpc("get_public_profiles", { _ids: [p.author_id] });
+      const author = (authorRows && authorRows[0]) ?? null;
       return { ...p, author };
     },
   });
