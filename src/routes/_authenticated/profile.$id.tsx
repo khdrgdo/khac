@@ -29,15 +29,23 @@ function ProfilePage() {
   const { data: p } = useQuery({
     queryKey: ["profile", id],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
+      const isSelf = user?.id === id;
+      let data: Record<string, unknown> | null = null;
+      if (isSelf) {
+        const { data: row } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
+        data = row as Record<string, unknown> | null;
+      } else {
+        const { data: rows } = await supabase.rpc("get_public_profiles", { _ids: [id] });
+        data = (rows && rows[0]) ? (rows[0] as Record<string, unknown>) : null;
+      }
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", id);
       if (!data) return null;
-      // If avatar_url is a storage path, sign it
+      const avatarUrl = data.avatar_url as string | null;
       let avatarSigned: string | null = null;
-      if (data.avatar_url && !data.avatar_url.startsWith("http")) {
-        avatarSigned = await signedUrl("avatars", data.avatar_url, 3600);
+      if (avatarUrl && !avatarUrl.startsWith("http")) {
+        avatarSigned = await signedUrl("avatars", avatarUrl, 3600);
       } else {
-        avatarSigned = data.avatar_url;
+        avatarSigned = avatarUrl;
       }
       return { ...data, avatar_signed: avatarSigned, roles: (roles ?? []).map((r: { role: string }) => r.role) };
     },
