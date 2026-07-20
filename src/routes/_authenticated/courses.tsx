@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type MouseEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,7 +41,41 @@ import {
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
+import { signedUrl } from "@/lib/storage";
 import { EditCourseDialog, DeleteCourseDialog } from "./courses.$id";
+
+function QuickPdfDownload({ title, path }: { title: string; path: string }) {
+  const [loading, setLoading] = useState(false);
+  async function handleClick(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setLoading(true);
+    try {
+      const url = await signedUrl("course-files", path, 300);
+      if (url) window.open(url, "_blank");
+      else toast.error("تعذّر توليد رابط التنزيل");
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="rounded-xl gap-1.5 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/40 dark:hover:bg-red-950/30"
+      onClick={handleClick}
+      disabled={loading}
+      title={title}
+    >
+      {loading ? (
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      ) : (
+        <Download className="w-3.5 h-3.5" />
+      )}
+      PDF
+    </Button>
+  );
+}
 
 function DeleteCourseAction({ courseId, courseName }: { courseId: string; courseName: string }) {
   const qc = useQueryClient();
@@ -80,7 +114,7 @@ function CoursesPage() {
     queryFn: async () => {
       let q = supabase
         .from("courses")
-        .select("*, course_links(id, link_type)")
+        .select("*, course_links(id, link_type, title, url)")
         .order("year")
         .order("semester");
       if (majorFilter !== "all") q = q.eq("major", majorFilter as "it" | "is" | "se");
@@ -259,15 +293,28 @@ function CoursesPage() {
             const filesCount =
               c.course_links?.filter((l: { link_type: string | null }) => l.link_type === "file")
                 .length ?? 0;
+            const pdfFiles =
+              c.course_links?.filter(
+                (l: { link_type: string | null; title: string }) =>
+                  l.link_type === "file" && l.title.toLowerCase().endsWith(".pdf"),
+              ) ?? [];
 
             const canModifyCourse =
-              !!user &&
-              (isAdmin || user.id === c.created_by || user.id === c.teacher_id);
-            const canDeleteCourse = !!user && (isAdmin || user.id === c.created_by || user.id === c.teacher_id);
+              !!user && (isAdmin || user.id === c.created_by || user.id === c.teacher_id);
+            const canDeleteCourse =
+              !!user && (isAdmin || user.id === c.created_by || user.id === c.teacher_id);
 
             return (
-              <Card key={c.id} className="hover:border-primary/40 hover:shadow-md transition-all duration-300 group h-full flex flex-col justify-between overflow-hidden border border-muted/50">
-                <Link to="/courses/$id" params={{ id: c.id }} search={{ tab: undefined }} className="block flex-1">
+              <Card
+                key={c.id}
+                className="hover:border-primary/40 hover:shadow-md transition-all duration-300 group h-full flex flex-col justify-between overflow-hidden border border-muted/50"
+              >
+                <Link
+                  to="/courses/$id"
+                  params={{ id: c.id }}
+                  search={{ tab: undefined }}
+                  className="block flex-1"
+                >
                   <div className="p-5 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/5 text-primary flex items-center justify-center group-hover:bg-primary/10 transition">
@@ -296,33 +343,38 @@ function CoursesPage() {
 
                 {/* Card bottom stats bar */}
                 <div className="bg-muted/15 border-t border-muted/40 p-3 px-5 flex flex-col gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-emerald-500" />
-                        <span>{filesCount} ملفات</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <ExternalLink className="w-3.5 h-3.5 text-amber-500" />
-                        <span>{linksCount} روابط</span>
-                      </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>{filesCount} ملفات</span>
                     </div>
-                    
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <Button variant="outline" size="sm" className="rounded-xl gap-1.5 flex-1" asChild>
-                        <Link to="/courses/$id" params={{ id: c.id }} search={{ tab: "files" }}>
-                          <FileText className="w-3.5 h-3.5" /> تصفح الملفات
-                        </Link>
-                      </Button>
-                      
-                      {canModifyCourse && (
-                        <EditCourseDialog course={c} />
-                      )}
-                      
-                      {canDeleteCourse && (
-                        <DeleteCourseAction courseId={c.id} courseName={c.name} />
-                      )}
+                    <div className="flex items-center gap-1.5">
+                      <ExternalLink className="w-3.5 h-3.5 text-amber-500" />
+                      <span>{linksCount} روابط</span>
                     </div>
                   </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl gap-1.5 flex-1"
+                      asChild
+                    >
+                      <Link to="/courses/$id" params={{ id: c.id }} search={{ tab: "files" }}>
+                        <FileText className="w-3.5 h-3.5" /> تصفح الملفات
+                      </Link>
+                    </Button>
+
+                    {pdfFiles.length > 0 && (
+                      <QuickPdfDownload title={pdfFiles[0].title} path={pdfFiles[0].url} />
+                    )}
+
+                    {canModifyCourse && <EditCourseDialog course={c} />}
+
+                    {canDeleteCourse && <DeleteCourseAction courseId={c.id} courseName={c.name} />}
+                  </div>
+                </div>
               </Card>
             );
           })}

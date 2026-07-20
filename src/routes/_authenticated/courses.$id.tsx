@@ -110,7 +110,6 @@ function CourseDetailPage() {
     },
   });
 
-  const canEdit = !!user;
   const canModifyCourse =
     !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
   const canDeleteCourse =
@@ -179,10 +178,10 @@ function CourseDetailPage() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="links" className="pt-3">
-          <LinksTab courseId={id} canEdit={!!user} />
+          <LinksTab courseId={id} canEdit={canModifyCourse} />
         </TabsContent>
         <TabsContent value="files" className="pt-3">
-          <FilesTab courseId={id} canEdit={!!user} />
+          <FilesTab courseId={id} canEdit={canModifyCourse} />
         </TabsContent>
         <TabsContent value="schedule" className="pt-3">
           <ScheduleTab
@@ -190,12 +189,12 @@ function CourseDetailPage() {
               id: course.id,
               schedule: course.schedule as unknown as ScheduleEntry[] | null,
             }}
-            canEdit={canEdit}
+            canEdit={canModifyCourse}
             onSaved={() => qc.invalidateQueries({ queryKey: ["course", id] })}
           />
         </TabsContent>
         <TabsContent value="updates" className="pt-3">
-          <UpdatesTab courseId={id} canEdit={canEdit} />
+          <UpdatesTab courseId={id} canEdit={canModifyCourse} />
         </TabsContent>
       </Tabs>
     </div>
