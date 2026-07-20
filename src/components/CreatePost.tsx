@@ -75,6 +75,7 @@ export function CreatePost() {
       setContent(""); setImagePaths([]);
       toast.success("تم النشر (+5 نقاط)");
       qc.invalidateQueries({ queryKey: ["posts"] });
+      refreshProfile();
     },
     onError: (e: Error) => toast.error(e.message),
   });
