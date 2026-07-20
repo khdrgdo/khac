@@ -761,8 +761,10 @@ function UsersTable() {
             <CardContent className="p-3 space-y-1">
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold truncate flex items-center gap-2 flex-wrap">
-                    {u.full_name}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm truncate max-w-[9rem]">
+                      {u.full_name}
+                    </span>
                     {u.verified && <VerifiedBadge />}
                     <StatusBadge status={status} />
                     {u.roles.includes("admin") && <Badge variant="default">مشرف</Badge>}
