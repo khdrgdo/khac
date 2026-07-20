@@ -235,8 +235,8 @@ function SignupForm({ onDone }: { onDone: () => void }) {
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label>كلمة السر (اختياري — الافتراضي هو الرقم الجامعي)</Label>
-        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="اتركه فارغًا لاستخدام الرقم الجامعي" />
+        <Label>كلمة السر</Label>
+        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} placeholder="6 أحرف على الأقل" />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>
         {loading && <Loader2 className="w-4 h-4 animate-spin" />} إنشاء الحساب
