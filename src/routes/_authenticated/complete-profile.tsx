@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/complete-profile")({
 });
 
 function CompleteProfilePage() {
-  const { profile, user, loading } = useAuth();
+  const { profile, user, loading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [univ, setUniv] = useState("");
   const [name, setName] = useState("");
