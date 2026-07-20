@@ -44,8 +44,8 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
         if (!c.is_group) {
           const otherId = (members ?? []).map((m: { user_id: string }) => m.user_id).find((uid: string) => uid !== user.id);
           if (otherId) {
-            const { data: p } = await supabase.from("profiles").select("id, full_name, university_number").eq("id", otherId).maybeSingle();
-            if (p) other = p as ConvRow["other"];
+            const { data: p } = await supabase.rpc("get_public_profiles", { _ids: [otherId] });
+            if (p && p[0]) other = { id: p[0].id, full_name: p[0].full_name, university_number: p[0].university_number } as ConvRow["other"];
           }
         }
         return { ...c, other, lastMessage: (lastMsg && lastMsg[0]) ? lastMsg[0] : null };
