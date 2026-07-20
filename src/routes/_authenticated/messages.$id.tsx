@@ -10,6 +10,7 @@ import { ArrowRight, Loader2, Send, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { MessagesShell } from "@/components/MessagesShell";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/messages/$id")({
   component: ChatPage,
