@@ -39,9 +39,12 @@ import {
   Download,
   Pencil,
   BookOpen,
+  Search,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile, signedUrl } from "@/lib/storage";
+import { fileKind, linkKind, isImageFile } from "@/lib/courseMaterialKind";
 import { format, formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 
@@ -98,11 +101,20 @@ function CourseDetailPage() {
     },
   });
 
+  const { data: teacher } = useQuery({
+    queryKey: ["course-teacher", course?.teacher_id],
+    enabled: !!course?.teacher_id,
+    queryFn: async () => {
+      const { data } = await supabase.rpc("get_public_profiles", { _ids: [course!.teacher_id!] });
+      return data?.[0] ?? null;
+    },
+  });
+
   const canEdit = !!user;
   const canModifyCourse =
-    !!user &&
-    (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
-  const canDeleteCourse = !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
+    !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
+  const canDeleteCourse =
+    !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
 
   if (!course)
     return <div className="text-center py-10 text-sm text-muted-foreground">جارِ التحميل...</div>;
@@ -121,11 +133,16 @@ function CourseDetailPage() {
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="space-y-1">
               <h1 className="text-xl font-bold">{course.name}</h1>
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex gap-1.5 flex-wrap items-center">
                 <Badge variant="secondary">{majorLabel(course.major)}</Badge>
                 <Badge variant="outline">
                   السنة {course.year} • فصل {course.semester}
                 </Badge>
+                {teacher && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <User className="w-3.5 h-3.5" /> د. {teacher.full_name}
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -185,7 +202,13 @@ function CourseDetailPage() {
   );
 }
 
-export function DeleteCourseDialog({ onDelete, isPending }: { onDelete: () => void; isPending: boolean }) {
+export function DeleteCourseDialog({
+  onDelete,
+  isPending,
+}: {
+  onDelete: () => void;
+  isPending: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -362,7 +385,10 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
         </div>
         <div className="bg-primary/5 rounded-lg p-3 text-xs text-primary/80 flex items-start gap-2 mt-2">
           <BookOpen className="w-4 h-4 shrink-0 mt-0.5" />
-          <p>لإضافة ملفات (PDF، صور) أو روابط لهذا المقرر، قم بالدخول إلى صفحة المقرر واستخدم تبويبات "المصادر والروابط" أو "الملفات".</p>
+          <p>
+            لإضافة ملفات (PDF، صور) أو روابط لهذا المقرر، قم بالدخول إلى صفحة المقرر واستخدم تبويبات
+            "المصادر والروابط" أو "الملفات".
+          </p>
         </div>
         <DialogFooter className="pt-4 gap-2 sm:gap-0">
           <Button
@@ -381,6 +407,7 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
 function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
+  const [q, setQ] = useState("");
   const { data: links } = useQuery({
     queryKey: ["course_links", courseId],
     queryFn: async () => {
@@ -400,41 +427,71 @@ function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boolean })
     onSuccess: () => qc.invalidateQueries({ queryKey: ["course_links", courseId] }),
   });
 
+  const filtered = (links ?? []).filter((l) =>
+    q.trim() ? l.title.toLowerCase().includes(q.trim().toLowerCase()) : true,
+  );
+
   return (
     <div className="space-y-2">
-      {canEdit && (
-        <div className="flex justify-end">
-          <AddLinkDialog courseId={courseId} />
+      <div className="flex gap-2 items-center">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground/60" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="ابحث بين الروابط..."
+            className="pr-9"
+          />
         </div>
-      )}
+        {canEdit && <AddLinkDialog courseId={courseId} />}
+      </div>
       {!links || links.length === 0 ? (
-        <div className="text-center py-6 text-sm text-muted-foreground">لا توجد روابط</div>
+        <div className="text-center py-6 text-sm text-muted-foreground">لا توجد روابط بعد</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-6 text-sm text-muted-foreground">لا نتائج مطابقة</div>
       ) : (
-        links.map((l) => (
-          <Card key={l.id}>
-            <CardContent className="p-3 flex items-center gap-2">
-              <ExternalLink className="w-4 h-4 text-primary shrink-0" />
-              <div className="flex-1 min-w-0">
-                <a
-                  href={l.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium hover:underline block truncate"
+        filtered.map((l) => {
+          const kind = linkKind(l.url);
+          const Icon = kind.icon;
+          return (
+            <Card key={l.id} className="hover:shadow-sm transition-shadow">
+              <CardContent className="p-3 flex items-center gap-3">
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${kind.bg}`}
                 >
-                  {l.title}
-                </a>
-                <div className="text-xs text-muted-foreground truncate" dir="ltr">
-                  {l.url}
+                  <Icon className={`w-4 h-4 ${kind.color}`} />
                 </div>
-              </div>
-              {(isAdmin || l.created_by === user?.id) && (
-                <Button size="icon" variant="ghost" onClick={() => del.mutate(l.id)}>
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))
+                <div className="flex-1 min-w-0">
+                  <a
+                    href={l.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium hover:underline block truncate"
+                  >
+                    {l.title}
+                  </a>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span className={kind.color}>{kind.label}</span>
+                    <span>·</span>
+                    <span>
+                      {formatDistanceToNow(new Date(l.created_at), { addSuffix: true, locale: ar })}
+                    </span>
+                  </div>
+                </div>
+                <a href={l.url} target="_blank" rel="noreferrer">
+                  <Button size="icon" variant="ghost">
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                </a>
+                {(isAdmin || l.created_by === user?.id) && (
+                  <Button size="icon" variant="ghost" onClick={() => del.mutate(l.id)}>
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })
       )}
     </div>
   );
@@ -504,6 +561,8 @@ function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean })
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [q, setQ] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   const { data: files } = useQuery({
     queryKey: ["course_files", courseId],
@@ -518,11 +577,11 @@ function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean })
     },
   });
 
-  async function handleFiles(files: FileList | null) {
-    if (!files || !user) return;
+  async function handleFiles(fileList: FileList | null) {
+    if (!fileList || !user) return;
     setUploading(true);
     try {
-      for (const f of Array.from(files)) {
+      for (const f of Array.from(fileList)) {
         if (f.size > 20 * 1024 * 1024) {
           toast.error(`${f.name}: أكبر من 20MB`);
           continue;
@@ -563,54 +622,122 @@ function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean })
     onSuccess: () => qc.invalidateQueries({ queryKey: ["course_files", courseId] }),
   });
 
+  const typeChips = [
+    { key: "all", label: "الكل" },
+    { key: "pdf", label: "PDF" },
+    { key: "ppt|pptx", label: "عروض" },
+    { key: "doc|docx", label: "Word" },
+    { key: "png|jpg|jpeg|webp|gif", label: "صور" },
+    { key: "zip|rar|7z", label: "أرشيف" },
+  ];
+
+  const filtered = (files ?? []).filter((f) => {
+    const matchesQuery = q.trim() ? f.title.toLowerCase().includes(q.trim().toLowerCase()) : true;
+    if (!matchesQuery) return false;
+    if (typeFilter === "all") return true;
+    const ext = f.title.split(".").pop()?.toLowerCase() ?? "";
+    return typeFilter.split("|").includes(ext);
+  });
+
   return (
     <div className="space-y-2">
-      {canEdit && (
-        <div className="flex justify-end">
-          <input
-            ref={fileRef}
-            type="file"
-            multiple
-            accept=".pdf,.ppt,.pptx,.doc,.docx,.zip,.png,.jpg,.jpeg,.webp"
-            className="hidden"
-            onChange={(e) => handleFiles(e.target.files)}
+      <div className="flex gap-2 items-center">
+        <div className="relative flex-1">
+          <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground/60" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="ابحث بين الملفات..."
+            className="pr-9"
           />
-          <Button size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-            {uploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4" />
-            )}{" "}
-            رفع ملفات
-          </Button>
+        </div>
+        {canEdit && (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              accept=".pdf,.ppt,.pptx,.doc,.docx,.zip,.png,.jpg,.jpeg,.webp"
+              className="hidden"
+              onChange={(e) => handleFiles(e.target.files)}
+            />
+            <Button size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
+              رفع
+            </Button>
+          </>
+        )}
+      </div>
+
+      {files && files.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {typeChips.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setTypeFilter(c.key)}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                typeFilter === c.key
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-muted hover:border-primary/40"
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
         </div>
       )}
+
       {!files || files.length === 0 ? (
         <div className="text-center py-6 text-sm text-muted-foreground">
-          لا توجد ملفات — يمكن للأستاذ رفع PDF / PPT / صور
+          لا توجد ملفات — يمكن رفع PDF / PPT / صور
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-6 text-sm text-muted-foreground">لا نتائج مطابقة</div>
       ) : (
-        files.map((f) => (
-          <Card key={f.id}>
-            <CardContent className="p-3 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{f.title}</div>
-                <div className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(f.created_at), { addSuffix: true, locale: ar })}
-                </div>
-              </div>
-              <Button size="icon" variant="ghost" onClick={() => download(f)}>
-                <Download className="w-4 h-4" />
-              </Button>
-              {(isAdmin || f.created_by === user?.id) && (
-                <Button size="icon" variant="ghost" onClick={() => del.mutate(f)}>
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {filtered.map((f) => {
+            const kind = fileKind(f.title);
+            const Icon = kind.icon;
+            const thumbCandidate = isImageFile(f.title);
+            return (
+              <Card key={f.id} className="hover:shadow-sm transition-shadow">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${kind.bg}`}
+                  >
+                    <Icon className={`w-5 h-5 ${kind.color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate text-sm">{f.title}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <span className={kind.color}>{kind.label}</span>
+                      {thumbCandidate && <span>· معاينة صورة</span>}
+                      <span>·</span>
+                      <span>
+                        {formatDistanceToNow(new Date(f.created_at), {
+                          addSuffix: true,
+                          locale: ar,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  <Button size="icon" variant="ghost" onClick={() => download(f)}>
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  {(isAdmin || f.created_by === user?.id) && (
+                    <Button size="icon" variant="ghost" onClick={() => del.mutate(f)}>
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );
