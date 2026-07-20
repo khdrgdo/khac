@@ -2,7 +2,7 @@ import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, isSuspended } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -10,6 +10,7 @@ import { ArrowRight, Loader2, Send, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { MessagesShell } from "@/components/MessagesShell";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/messages/$id")({
   component: ChatPage,
@@ -20,7 +21,8 @@ interface Prof { id: string; full_name: string; university_number: string; }
 
 function ChatPage() {
   const { id } = useParams({ from: "/_authenticated/messages/$id" });
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const suspended = isSuspended(profile);
   const qc = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +63,7 @@ function ChatPage() {
   const sendMut = useMutation({
     mutationFn: async () => {
       if (!user || !text.trim()) return;
+      if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن إرسال الرسائل");
       const { error } = await supabase.from("messages").insert({
         conversation_id: id, sender_id: user.id, content: text.trim(),
       });
@@ -68,6 +71,7 @@ function ChatPage() {
       await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", id);
     },
     onSuccess: () => { setText(""); qc.invalidateQueries({ queryKey: ["messages", id] }); qc.invalidateQueries({ queryKey: ["conversations"] }); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const profilesMap = new Map((conv?.profiles ?? []).map((p: Prof) => [p.id, p]));

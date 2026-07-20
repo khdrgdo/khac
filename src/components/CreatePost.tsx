@@ -18,7 +18,7 @@ function findBannedWords(text: string, words: string[]): string[] {
 }
 
 export function CreatePost() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [content, setContent] = useState("");
   const [imagePaths, setImagePaths] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -75,6 +75,7 @@ export function CreatePost() {
       setContent(""); setImagePaths([]);
       toast.success("تم النشر (+5 نقاط)");
       qc.invalidateQueries({ queryKey: ["posts"] });
+      refreshProfile();
     },
     onError: (e: Error) => toast.error(e.message),
   });

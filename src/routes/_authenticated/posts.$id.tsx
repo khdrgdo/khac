@@ -2,7 +2,7 @@ import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, isSuspended } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,7 +27,8 @@ interface Comment {
 
 function PostDetailPage() {
   const { id } = useParams({ from: "/_authenticated/posts/$id" });
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, profile } = useAuth();
+  const suspended = isSuspended(profile);
   const qc = useQueryClient();
 
   const { data: post } = useQuery({
@@ -68,12 +69,14 @@ function PostDetailPage() {
   const commentMut = useMutation({
     mutationFn: async () => {
       if (!user) return;
+      if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن التعليق");
       const { error } = await supabase.from("comments").insert({
         post_id: id, author_id: user.id, content: text.trim(), parent_id: replyTo,
       });
       if (error) throw error;
     },
     onSuccess: () => { setText(""); setReplyTo(null); qc.invalidateQueries({ queryKey: ["comments", id] }); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const deleteComment = useMutation({

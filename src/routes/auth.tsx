@@ -174,8 +174,11 @@ function SignupForm({ onDone }: { onDone: () => void }) {
     if (cleaned.length < 6) { toast.error("الرقم الجامعي قصير جدًا"); return; }
     if (!email.includes("@")) { toast.error("أدخل بريدًا صحيحًا"); return; }
     if (!major || !year) { toast.error("اختر التخصص والسنة"); return; }
-    const pw = password || cleaned;
-    if (pw.length < 6) { toast.error("كلمة السر قصيرة"); return; }
+    if (!password || password.length < 6) {
+      toast.error("كلمة السر يجب أن تكون 6 أحرف على الأقل");
+      return;
+    }
+    const pw = password;
     setLoading(true);
     try {
       const { error } = await supabase.auth.signUp({

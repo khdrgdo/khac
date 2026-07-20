@@ -127,9 +127,15 @@ function ReportsTab() {
       if (error) throw error;
     },
     onSuccess: (_, v) => {
-      toast.success(v.status === "confirmed" ? "تم تأكيد البلاغ (-20 نقطة)" : "تم رفض البلاغ");
+      toast.success(
+        v.status === "confirmed"
+          ? "تم تأكيد البلاغ — تم خصم 20 نقطة من صاحب المنشور وتحديث لوحة المستخدمين"
+          : "تم رفض البلاغ",
+      );
       qc.invalidateQueries({ queryKey: ["admin-reports"] });
       qc.invalidateQueries({ queryKey: ["admin-users"] });
+      qc.invalidateQueries({ queryKey: ["admin-stats"] });
+      qc.invalidateQueries({ queryKey: ["user-details"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

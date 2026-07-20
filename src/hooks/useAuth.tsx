@@ -84,9 +84,15 @@ export function useAuth() {
     };
   }, []);
 
+  async function refreshProfile() {
+    if (!session?.user?.id) return;
+    const { data: p } = await supabase.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
+    if (p) setProfile(p as Profile);
+  }
+
   const isAdmin = roles.includes("admin");
   const isTeacher = roles.includes("teacher");
   const rank = profile ? computeRank(profile.points ?? 0) : "bronze";
 
-  return { session, user, profile, roles, isAdmin, isTeacher, rank, loading };
+  return { session, user, profile, roles, isAdmin, isTeacher, rank, loading, refreshProfile };
 }

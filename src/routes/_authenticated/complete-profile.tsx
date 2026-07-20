@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/complete-profile")({
 });
 
 function CompleteProfilePage() {
-  const { profile, user, loading } = useAuth();
+  const { profile, user, loading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [univ, setUniv] = useState("");
   const [name, setName] = useState("");
@@ -52,10 +52,8 @@ function CompleteProfilePage() {
         return;
       }
       toast.success("تم الحفظ");
-      // Force hard reload — most reliable across preview/iframe/dev
-      setTimeout(() => { window.location.replace("/feed"); }, 300);
-      // Fallback if replace is blocked
-      setTimeout(() => { navigate({ to: "/feed", replace: true }); }, 800);
+      await refreshProfile();
+      navigate({ to: "/feed", replace: true });
     } catch (e) {
       toast.error((e as Error).message);
       setSaving(false);
