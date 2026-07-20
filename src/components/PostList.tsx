@@ -6,11 +6,12 @@ import { Loader2 } from "lucide-react";
 interface Props {
   authorId?: string;
   savedByUserId?: string;
+  filter?: "all" | "open_questions" | "solved_questions";
 }
 
-export function PostList({ authorId, savedByUserId }: Props) {
+export function PostList({ authorId, savedByUserId, filter = "all" }: Props) {
   const { data: posts, isLoading } = useQuery({
-    queryKey: ["posts", { authorId, savedByUserId }],
+    queryKey: ["posts", { authorId, savedByUserId, filter }],
     queryFn: async (): Promise<PostWithMeta[]> => {
       let postIds: string[] | null = null;
 
@@ -25,12 +26,16 @@ export function PostList({ authorId, savedByUserId }: Props) {
 
       let q = supabase
         .from("posts")
-        .select("id, content, images, author_id, created_at")
+        .select("id, content, images, author_id, created_at, post_type, accepted_answer_id")
         .order("created_at", { ascending: false })
         .limit(50);
 
       if (authorId) q = q.eq("author_id", authorId);
       if (postIds) q = q.in("id", postIds);
+      if (filter === "open_questions")
+        q = q.eq("post_type", "question").is("accepted_answer_id", null);
+      if (filter === "solved_questions")
+        q = q.eq("post_type", "question").not("accepted_answer_id", "is", null);
 
       const { data: rows, error } = await q;
       if (error) throw error;
@@ -59,12 +64,20 @@ export function PostList({ authorId, savedByUserId }: Props) {
         savedSet = new Set((saves ?? []).map((s: { post_id: string }) => s.post_id));
       }
 
-      const authorMap = new Map((authors ?? []).map((a: { id: string } & Record<string, unknown>) => [a.id, a]));
+      const authorMap = new Map(
+        (authors ?? []).map((a: { id: string } & Record<string, unknown>) => [a.id, a]),
+      );
 
       return list.map((r) => {
-        const postReactions = (reactions ?? []).filter((x: { post_id: string }) => x.post_id === r.id);
-        const commentCount = (comments ?? []).filter((x: { post_id: string }) => x.post_id === r.id).length;
-        const myReaction = uid ? postReactions.find((x: { user_id: string }) => x.user_id === uid)?.reaction : null;
+        const postReactions = (reactions ?? []).filter(
+          (x: { post_id: string }) => x.post_id === r.id,
+        );
+        const commentCount = (comments ?? []).filter(
+          (x: { post_id: string }) => x.post_id === r.id,
+        ).length;
+        const myReaction = uid
+          ? postReactions.find((x: { user_id: string }) => x.user_id === uid)?.reaction
+          : null;
         return {
           ...r,
           author: authorMap.get(r.author_id) as PostWithMeta["author"],
@@ -87,15 +100,15 @@ export function PostList({ authorId, savedByUserId }: Props) {
 
   if (!posts || posts.length === 0) {
     return (
-      <div className="text-center py-10 text-muted-foreground text-sm">
-        لا توجد منشورات بعد.
-      </div>
+      <div className="text-center py-10 text-muted-foreground text-sm">لا توجد منشورات بعد.</div>
     );
   }
 
   return (
     <div className="space-y-3">
-      {posts.map((p) => <PostCard key={p.id} post={p} />)}
+      {posts.map((p) => (
+        <PostCard key={p.id} post={p} />
+      ))}
     </div>
   );
 }

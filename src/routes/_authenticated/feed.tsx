@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { CreatePost } from "@/components/CreatePost";
 import { PostList } from "@/components/PostList";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { majorLabel } from "@/lib/college";
 import { RankBadge } from "@/components/RankBadge";
 import { RANKS, nextRankProgress } from "@/lib/ranks";
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/_authenticated/feed")({
 function FeedPage() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const [filter, setFilter] = useState<"all" | "open_questions" | "solved_questions">("all");
 
   useEffect(() => {
     if (profile?.must_change_password) {
@@ -30,7 +32,14 @@ function FeedPage() {
     <div className="grid md:grid-cols-3 gap-4">
       <div className="md:col-span-2 space-y-4">
         <CreatePost />
-        <PostList />
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
+          <TabsList>
+            <TabsTrigger value="all">الكل</TabsTrigger>
+            <TabsTrigger value="open_questions">أسئلة مفتوحة</TabsTrigger>
+            <TabsTrigger value="solved_questions">أسئلة محلولة</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <PostList filter={filter} />
       </div>
       <aside className="hidden md:block space-y-4">
         {profile && (
@@ -43,10 +52,16 @@ function FeedPage() {
                 </div>
               </Link>
               <div className="mt-2 font-bold text-base leading-tight">{profile.full_name}</div>
-              <div className="text-xs text-muted-foreground" dir="ltr">{profile.university_number}</div>
+              <div className="text-xs text-muted-foreground" dir="ltr">
+                {profile.university_number}
+              </div>
               <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-                <span className="px-2 py-0.5 rounded-full bg-muted">{majorLabel(profile.major)}</span>
-                {profile.year && <span className="px-2 py-0.5 rounded-full bg-muted">السنة {profile.year}</span>}
+                <span className="px-2 py-0.5 rounded-full bg-muted">
+                  {majorLabel(profile.major)}
+                </span>
+                {profile.year && (
+                  <span className="px-2 py-0.5 rounded-full bg-muted">السنة {profile.year}</span>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -73,7 +88,9 @@ function FeedPage() {
                 </div>
                 <div className="text-[11px] text-muted-foreground">
                   متبقٍ <b className="text-foreground">{progress.remaining}</b> نقطة للترقية إلى{" "}
-                  <span className="font-semibold">{RANKS[progress.next].emoji} {RANKS[progress.next].label}</span>
+                  <span className="font-semibold">
+                    {RANKS[progress.next].emoji} {RANKS[progress.next].label}
+                  </span>
                 </div>
               </>
             ) : (
@@ -91,9 +108,13 @@ function FeedPage() {
           <CardContent className="p-4">
             <div className="font-semibold text-sm mb-2">المراتب</div>
             <div className="space-y-1.5 text-xs">
-              {(Object.entries(RANKS) as [keyof typeof RANKS, typeof RANKS[keyof typeof RANKS]][]).map(([k, r]) => (
+              {(
+                Object.entries(RANKS) as [keyof typeof RANKS, (typeof RANKS)[keyof typeof RANKS]][]
+              ).map(([k, r]) => (
                 <div key={k} className="flex items-center justify-between">
-                  <span>{r.emoji} {r.label}</span>
+                  <span>
+                    {r.emoji} {r.label}
+                  </span>
                   <span className="text-muted-foreground">{r.min}+</span>
                 </div>
               ))}

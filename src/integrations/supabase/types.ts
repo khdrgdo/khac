@@ -367,30 +367,36 @@ export type Database = {
       }
       posts: {
         Row: {
+          accepted_answer_id: string | null
           author_id: string
           content: string
           created_at: string
           id: string
           image_paths: string[]
           images: string[] | null
+          post_type: Database["public"]["Enums"]["post_type"]
           updated_at: string
         }
         Insert: {
+          accepted_answer_id?: string | null
           author_id: string
           content: string
           created_at?: string
           id?: string
           image_paths?: string[]
           images?: string[] | null
+          post_type?: Database["public"]["Enums"]["post_type"]
           updated_at?: string
         }
         Update: {
+          accepted_answer_id?: string | null
           author_id?: string
           content?: string
           created_at?: string
           id?: string
           image_paths?: string[]
           images?: string[] | null
+          post_type?: Database["public"]["Enums"]["post_type"]
           updated_at?: string
         }
         Relationships: []
@@ -602,6 +608,7 @@ export type Database = {
     Enums: {
       app_role: "student" | "teacher" | "admin"
       major_code: "it" | "is" | "se"
+      post_type: "general" | "question"
       rank_tier: "bronze" | "silver" | "gold" | "platinum" | "diamond"
       reaction_type: "like" | "love" | "haha" | "wow" | "sad"
       report_status: "pending" | "confirmed" | "dismissed"
@@ -734,6 +741,7 @@ export const Constants = {
     Enums: {
       app_role: ["student", "teacher", "admin"],
       major_code: ["it", "is", "se"],
+      post_type: ["general", "question"],
       rank_tier: ["bronze", "silver", "gold", "platinum", "diamond"],
       reaction_type: ["like", "love", "haha", "wow", "sad"],
       report_status: ["pending", "confirmed", "dismissed"],

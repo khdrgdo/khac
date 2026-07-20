@@ -22,7 +22,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { REACTIONS, majorLabel, type ReactionType } from "@/lib/college";
-import { Bookmark, Flag, MessageCircle, MoreHorizontal, Share2 } from "lucide-react";
+import {
+  Bookmark,
+  Flag,
+  MessageCircle,
+  MoreHorizontal,
+  Share2,
+  HelpCircle,
+  CheckCircle2,
+} from "lucide-react";
 import { RankBadge } from "@/components/RankBadge";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { StorageImage } from "@/components/StorageImage";
@@ -37,6 +45,8 @@ export interface PostWithMeta {
   images: string[] | null;
   author_id: string;
   created_at: string;
+  post_type: "general" | "question";
+  accepted_answer_id: string | null;
   author:
     | {
         id: string;
@@ -152,6 +162,16 @@ export function PostCard({ post }: { post: PostWithMeta }) {
                   • {majorLabel(post.author.major)}
                 </span>
               )}
+              {post.post_type === "question" &&
+                (post.accepted_answer_id ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="w-3 h-3" /> محلول
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                    <HelpCircle className="w-3 h-3" /> سؤال مفتوح
+                  </span>
+                ))}
             </div>
             <div className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ar })}

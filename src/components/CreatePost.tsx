@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
-import { Loader2, Send, ShieldAlert, ImagePlus, X } from "lucide-react";
+import { Loader2, Send, ShieldAlert, ImagePlus, X, HelpCircle } from "lucide-react";
 import { uploadFile } from "@/lib/storage";
 import { StorageImage } from "@/components/StorageImage";
 import { format } from "date-fns";
@@ -20,6 +20,7 @@ function findBannedWords(text: string, words: string[]): string[] {
 export function CreatePost() {
   const { user, profile, refreshProfile } = useAuth();
   const [content, setContent] = useState("");
+  const [isQuestion, setIsQuestion] = useState(false);
   const [imagePaths, setImagePaths] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -45,7 +46,10 @@ export function CreatePost() {
       const uploaded: string[] = [];
       for (const f of Array.from(files).slice(0, 4 - imagePaths.length)) {
         if (!f.type.startsWith("image/")) continue;
-        if (f.size > 5 * 1024 * 1024) { toast.error(`${f.name}: أكبر من 5MB`); continue; }
+        if (f.size > 5 * 1024 * 1024) {
+          toast.error(`${f.name}: أكبر من 5MB`);
+          continue;
+        }
         const path = await uploadFile("post-images", user.id, f);
         uploaded.push(path);
       }
@@ -68,11 +72,14 @@ export function CreatePost() {
         author_id: user.id,
         content: content.trim(),
         images: imagePaths,
+        post_type: isQuestion ? "question" : "general",
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      setContent(""); setImagePaths([]);
+      setContent("");
+      setImagePaths([]);
+      setIsQuestion(false);
       toast.success("تم النشر (+5 نقاط)");
       qc.invalidateQueries({ queryKey: ["posts"] });
       refreshProfile();
@@ -91,8 +98,11 @@ export function CreatePost() {
             <div className="text-xs mt-1">
               {profile?.banned
                 ? "تم حظر حسابك من قبل الإدارة."
-                : until ? `لا يمكن النشر حتى ${format(new Date(until), "yyyy/MM/dd HH:mm")}.` : "راجع الإدارة."}
-              {typeof profile?.warning_count === "number" && ` — عدد التحذيرات: ${profile.warning_count}`}
+                : until
+                  ? `لا يمكن النشر حتى ${format(new Date(until), "yyyy/MM/dd HH:mm")}.`
+                  : "راجع الإدارة."}
+              {typeof profile?.warning_count === "number" &&
+                ` — عدد التحذيرات: ${profile.warning_count}`}
             </div>
           </div>
         </CardContent>
@@ -123,7 +133,11 @@ export function CreatePost() {
               <div className="grid grid-cols-2 gap-2">
                 {imagePaths.map((p) => (
                   <div key={p} className="relative group">
-                    <StorageImage bucket="post-images" path={p} className="w-full h-32 object-cover rounded-md" />
+                    <StorageImage
+                      bucket="post-images"
+                      path={p}
+                      className="w-full h-32 object-cover rounded-md"
+                    />
                     <button
                       onClick={() => setImagePaths((prev) => prev.filter((x) => x !== p))}
                       className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black"
@@ -149,22 +163,44 @@ export function CreatePost() {
                 className="hidden"
                 onChange={(e) => handleFiles(e.target.files)}
               />
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading || imagePaths.length >= 4}
-              >
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                صورة
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading || imagePaths.length >= 4}
+                >
+                  {uploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ImagePlus className="w-4 h-4" />
+                  )}
+                  صورة
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isQuestion ? "default" : "ghost"}
+                  onClick={() => setIsQuestion((v) => !v)}
+                  title="هل هذا سؤال يحتاج حل؟"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  سؤال
+                </Button>
+              </div>
               <Button
                 size="sm"
                 onClick={() => mut.mutate()}
-                disabled={(!content.trim() && imagePaths.length === 0) || mut.isPending || hits.length > 0}
+                disabled={
+                  (!content.trim() && imagePaths.length === 0) || mut.isPending || hits.length > 0
+                }
               >
-                {mut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {mut.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
                 نشر
               </Button>
             </div>

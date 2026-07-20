@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowRight, Loader2, Send, Trash2 } from "lucide-react";
+import { ArrowRight, Loader2, Send, Trash2, CheckCircle2 } from "lucide-react";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -116,6 +116,22 @@ function PostDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", id] }),
   });
 
+  const acceptAnswer = useMutation({
+    mutationFn: async (commentId: string | null) => {
+      const { error } = await supabase
+        .from("posts")
+        .update({ accepted_answer_id: commentId })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, commentId) => {
+      toast.success(commentId ? "تم اعتماد الإجابة كحل" : "تم إلغاء اعتماد الحل");
+      qc.invalidateQueries({ queryKey: ["post", id] });
+      qc.invalidateQueries({ queryKey: ["posts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (!post)
     return <div className="text-center py-10 text-sm text-muted-foreground">جارِ التحميل...</div>;
 
@@ -151,6 +167,19 @@ function PostDetailPage() {
               </div>
             </div>
           </div>
+          {post.post_type === "question" && (
+            <div className="mt-3">
+              {post.accepted_answer_id ? (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> سؤال محلول
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                  سؤال مفتوح — بانتظار الحل
+                </span>
+              )}
+            </div>
+          )}
           <p className="mt-3 whitespace-pre-wrap text-[15px]">{post.content}</p>
         </CardContent>
       </Card>
@@ -200,6 +229,11 @@ function PostDetailPage() {
             onReply={(cid) => setReplyTo(cid)}
             onDelete={(cid) => deleteComment.mutate(cid)}
             canDelete={(a) => a === user?.id || isAdmin}
+            isQuestion={post.post_type === "question"}
+            isPostAuthor={user?.id === post.author_id}
+            acceptedAnswerId={post.accepted_answer_id}
+            onAccept={(cid) => acceptAnswer.mutate(cid)}
+            acceptPending={acceptAnswer.isPending}
           />
         ))}
       </div>
@@ -213,6 +247,11 @@ function CommentItem({
   onReply,
   onDelete,
   canDelete,
+  isQuestion,
+  isPostAuthor,
+  acceptedAnswerId,
+  onAccept,
+  acceptPending,
 }: {
   c: {
     id: string;
@@ -231,12 +270,24 @@ function CommentItem({
   onReply: (cid: string) => void;
   onDelete: (cid: string) => void;
   canDelete: (authorId: string) => boolean;
+  isQuestion?: boolean;
+  isPostAuthor?: boolean;
+  acceptedAnswerId?: string | null;
+  onAccept?: (cid: string | null) => void;
+  acceptPending?: boolean;
 }) {
   const name = c.author?.full_name ?? "مستخدم";
+  const isAccepted = isQuestion && acceptedAnswerId === c.id;
+  const canAccept = isQuestion && isPostAuthor && !isAccepted && !acceptedAnswerId;
   return (
     <div>
-      <Card>
+      <Card className={isAccepted ? "border-emerald-500 border-2" : undefined}>
         <CardContent className="p-3">
+          {isAccepted && (
+            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2">
+              <CheckCircle2 className="w-3.5 h-3.5" /> الحل المعتمد
+            </div>
+          )}
           <div className="flex items-start gap-2">
             <Avatar className="w-8 h-8">
               <AvatarImage src={c.author?.avatar_url ?? undefined} />
@@ -255,13 +306,31 @@ function CommentItem({
                 </span>
               </div>
               <p className="text-sm mt-0.5 whitespace-pre-wrap">{c.content}</p>
-              <div className="flex gap-3 mt-1">
+              <div className="flex gap-3 mt-1 items-center flex-wrap">
                 <button
                   onClick={() => onReply(c.id)}
                   className="text-xs text-muted-foreground hover:text-primary"
                 >
                   رد
                 </button>
+                {canAccept && (
+                  <button
+                    onClick={() => onAccept?.(c.id)}
+                    disabled={acceptPending}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-3 h-3" /> اعتماد كحل
+                  </button>
+                )}
+                {isAccepted && isPostAuthor && (
+                  <button
+                    onClick={() => onAccept?.(null)}
+                    disabled={acceptPending}
+                    className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
+                  >
+                    إلغاء الاعتماد
+                  </button>
+                )}
                 {canDelete(c.author_id) && (
                   <button
                     onClick={() => onDelete(c.id)}
