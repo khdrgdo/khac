@@ -20,7 +20,8 @@ interface Prof { id: string; full_name: string; university_number: string; }
 
 function ChatPage() {
   const { id } = useParams({ from: "/_authenticated/messages/$id" });
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const suspended = isSuspended(profile);
   const qc = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
