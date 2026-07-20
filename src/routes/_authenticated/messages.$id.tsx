@@ -62,6 +62,7 @@ function ChatPage() {
   const sendMut = useMutation({
     mutationFn: async () => {
       if (!user || !text.trim()) return;
+      if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن إرسال الرسائل");
       const { error } = await supabase.from("messages").insert({
         conversation_id: id, sender_id: user.id, content: text.trim(),
       });
@@ -69,6 +70,7 @@ function ChatPage() {
       await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", id);
     },
     onSuccess: () => { setText(""); qc.invalidateQueries({ queryKey: ["messages", id] }); qc.invalidateQueries({ queryKey: ["conversations"] }); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const profilesMap = new Map((conv?.profiles ?? []).map((p: Prof) => [p.id, p]));
