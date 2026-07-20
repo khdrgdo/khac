@@ -69,12 +69,14 @@ function PostDetailPage() {
   const commentMut = useMutation({
     mutationFn: async () => {
       if (!user) return;
+      if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن التعليق");
       const { error } = await supabase.from("comments").insert({
         post_id: id, author_id: user.id, content: text.trim(), parent_id: replyTo,
       });
       if (error) throw error;
     },
     onSuccess: () => { setText(""); setReplyTo(null); qc.invalidateQueries({ queryKey: ["comments", id] }); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const deleteComment = useMutation({
