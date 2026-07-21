@@ -36,13 +36,11 @@ import {
   Sparkles,
   BarChart3,
   Calendar,
-  Pencil,
-  Trash2,
   Download,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { signedUrl } from "@/lib/storage";
-import { EditCourseDialog, DeleteCourseDialog } from "./courses.$id";
 
 function QuickPdfDownload({ title, path }: { title: string; path: string }) {
   const [loading, setLoading] = useState(false);
@@ -75,22 +73,6 @@ function QuickPdfDownload({ title, path }: { title: string; path: string }) {
       PDF
     </Button>
   );
-}
-
-function DeleteCourseAction({ courseId, courseName }: { courseId: string; courseName: string }) {
-  const qc = useQueryClient();
-  const mut = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("courses").delete().eq("id", courseId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["courses"] });
-      toast.success("تم حذف المقرر بنجاح");
-    },
-    onError: (e: Error) => toast.error(e.message || "فشل في حذف المقرر"),
-  });
-  return <DeleteCourseDialog onDelete={() => mut.mutate()} isPending={mut.isPending} />;
 }
 
 export const Route = createFileRoute("/_authenticated/courses")({
@@ -370,9 +352,17 @@ function CoursesPage() {
                       <QuickPdfDownload title={pdfFiles[0].title} path={pdfFiles[0].url} />
                     )}
 
-                    {canModifyCourse && <EditCourseDialog course={c} />}
-
-                    {canDeleteCourse && <DeleteCourseAction courseId={c.id} courseName={c.name} />}
+                    {(canModifyCourse || canDeleteCourse) && (
+                      <Button variant="default" size="sm" className="rounded-xl gap-1.5" asChild>
+                        <Link
+                          to="/courses/$id/manage"
+                          params={{ id: c.id }}
+                          search={{ tab: undefined }}
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" /> إدارة
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>

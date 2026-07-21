@@ -1,4 +1,4 @@
-import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +41,7 @@ import {
   BookOpen,
   Search,
   User,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile, signedUrl } from "@/lib/storage";
@@ -76,22 +77,8 @@ interface CourseUpdate {
 function CourseDetailPage() {
   const { id } = useParams({ from: "/_authenticated/courses/$id" });
   const { tab } = Route.useSearch();
-  const { user, isTeacher, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
-  const navigate = useNavigate();
-
-  const deleteCourse = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("courses").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["courses"] });
-      toast.success("تم حذف المقرر بنجاح");
-      navigate({ to: "/courses" });
-    },
-    onError: (e: Error) => toast.error(e.message || "فشل في حذف المقرر"),
-  });
 
   const { data: course } = useQuery({
     queryKey: ["course", id],
@@ -145,12 +132,12 @@ function CourseDetailPage() {
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
-              {canModifyCourse && <EditCourseDialog course={course} />}
-              {canDeleteCourse && (
-                <DeleteCourseDialog
-                  onDelete={() => deleteCourse.mutate()}
-                  isPending={deleteCourse.isPending}
-                />
+              {(canModifyCourse || canDeleteCourse) && (
+                <Link to="/courses/$id/manage" params={{ id }} search={{ tab: undefined }}>
+                  <Button size="sm" className="rounded-xl gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5" /> إدارة المقرر
+                  </Button>
+                </Link>
               )}
             </div>
           </div>
@@ -178,10 +165,10 @@ function CourseDetailPage() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="links" className="pt-3">
-          <LinksTab courseId={id} canEdit={canModifyCourse} />
+          <LinksTab courseId={id} canEdit={false} />
         </TabsContent>
         <TabsContent value="files" className="pt-3">
-          <FilesTab courseId={id} canEdit={canModifyCourse} />
+          <FilesTab courseId={id} canEdit={false} />
         </TabsContent>
         <TabsContent value="schedule" className="pt-3">
           <ScheduleTab
@@ -189,12 +176,12 @@ function CourseDetailPage() {
               id: course.id,
               schedule: course.schedule as unknown as ScheduleEntry[] | null,
             }}
-            canEdit={canModifyCourse}
+            canEdit={false}
             onSaved={() => qc.invalidateQueries({ queryKey: ["course", id] })}
           />
         </TabsContent>
         <TabsContent value="updates" className="pt-3">
-          <UpdatesTab courseId={id} canEdit={canModifyCourse} />
+          <UpdatesTab courseId={id} canEdit={false} />
         </TabsContent>
       </Tabs>
     </div>
@@ -403,7 +390,7 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
   );
 }
 
-function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
+export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
@@ -555,7 +542,7 @@ function AddLinkDialog({ courseId }: { courseId: string }) {
   );
 }
 
-function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
+export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -743,14 +730,14 @@ function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean })
 }
 
 const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"];
-interface ScheduleEntry {
+export interface ScheduleEntry {
   day: string;
   start: string;
   end: string;
   room: string;
 }
 
-function ScheduleTab({
+export function ScheduleTab({
   course,
   canEdit,
   onSaved,
@@ -876,7 +863,7 @@ function ScheduleTab({
   );
 }
 
-function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
+export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [content, setContent] = useState("");
