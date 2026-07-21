@@ -606,6 +606,10 @@ export type Database = {
         Args: { _user: string; _verified: boolean }
         Returns: undefined
       }
+      admin_set_user_role: {
+        Args: { _role: Database["public"]["Enums"]["app_role"]; _user: string }
+        Returns: undefined
+      }
       admin_set_year: {
         Args: { _user: string; _year: number }
         Returns: undefined

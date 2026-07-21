@@ -76,6 +76,7 @@ import { majorLabel } from "@/lib/college";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { RankBadge } from "@/components/RankBadge";
+import { createIsolatedSupabaseClient } from "@/lib/isolatedSupabaseClient";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -1564,20 +1565,31 @@ function AddTeacherCard() {
     mutationFn: async () => {
       if (pw.length < 6) throw new Error("كلمة السر قصيرة");
       const uniqueUniv = "T" + Date.now().toString().slice(-8);
-      const { data, error } = await supabase.auth.signUp({
+      const isolatedClient = createIsolatedSupabaseClient();
+      const { data, error } = await isolatedClient.auth.signUp({
         email: email.trim(),
         password: pw,
         options: {
           data: {
             university_number: uniqueUniv,
             full_name: name.trim(),
-            role: "teacher",
             must_change_password: false,
           },
         },
       });
       if (error) throw error;
       if (!data.user) throw new Error("لم يتم إنشاء الحساب");
+
+      // Signup always creates a 'student' role now (security fix — the
+      // server no longer trusts a client-supplied role). Explicitly
+      // promote to 'teacher' via the admin-only RPC, using the ADMIN's
+      // real session (the shared `supabase` client, untouched by the
+      // isolated signup above).
+      const { error: roleError } = await supabase.rpc("admin_set_user_role", {
+        _user: data.user.id,
+        _role: "teacher",
+      });
+      if (roleError) throw roleError;
 
       // Assign selected courses to the teacher
       if (selectedCourses.length > 0) {
