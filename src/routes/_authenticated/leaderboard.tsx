@@ -334,119 +334,41 @@ function LeaderboardPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {/* Podium Top 3 */}
+          {/* Podium Top 3 — Premium */}
           {podium.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 pt-6 items-end max-w-xl mx-auto">
-              {/* Second Place (Podium Left/Right) */}
-              {podium[1] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative mb-2">
-                    <Avatar className="w-16 h-16 ring-4 ring-slate-300 dark:ring-slate-700">
-                      <AvatarImage src={podium[1].avatar_url ?? undefined} />
-                      <AvatarFallback className="text-lg bg-slate-100 text-slate-800">
-                        {podium[1].full_name.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 bg-slate-400 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs shadow">
-                      ٢
-                    </div>
-                  </div>
-                  <span className="font-semibold text-sm text-center line-clamp-1 max-w-[110px]">
-                    {podium[1].full_name}
-                  </span>
-                  <span className="text-xs text-muted-foreground mb-3">
-                    {majorLabel(podium[1].major)}
-                  </span>
-                  <div className="bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-t-xl w-full h-24 flex flex-col justify-center items-center shadow-sm">
-                    <Medal className="w-5 h-5 text-slate-400 mb-1" />
-                    <span className="font-bold text-base text-slate-700 dark:text-slate-300">
-                      {podium[1].score}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">نقطة</span>
-                  </div>
-                </motion.div>
-              )}
+            <div className="relative">
+              {/* Ambient glow */}
+              <div className="absolute inset-0 -z-10 blur-3xl opacity-40 pointer-events-none">
+                <div className="absolute left-1/2 -translate-x-1/2 top-8 w-56 h-56 rounded-full bg-amber-400/40" />
+                <div className="absolute left-8 top-16 w-32 h-32 rounded-full bg-slate-300/40" />
+                <div className="absolute right-8 top-16 w-32 h-32 rounded-full bg-amber-700/30" />
+              </div>
 
-              {/* First Place (Center Podium) */}
-              {podium[0] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative mb-3">
-                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-amber-500 animate-bounce">
-                      <Trophy className="w-6 h-6 fill-amber-500" />
-                    </div>
-                    <Avatar className="w-20 h-20 ring-4 ring-amber-400">
-                      <AvatarImage src={podium[0].avatar_url ?? undefined} />
-                      <AvatarFallback className="text-xl bg-amber-50 text-amber-800">
-                        {podium[0].full_name.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shadow border border-white">
-                      ١
-                    </div>
-                  </div>
-                  <span className="font-bold text-base text-center line-clamp-1 max-w-[120px]">
-                    {podium[0].full_name}
-                  </span>
-                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-3">
-                    {majorLabel(podium[0].major)}
-                  </span>
-                  <div className="bg-amber-500/10 dark:bg-amber-500/5 border-2 border-amber-300 dark:border-amber-900/50 rounded-t-2xl w-full h-32 flex flex-col justify-center items-center shadow-md">
-                    <Trophy className="w-6 h-6 text-amber-500 mb-1" />
-                    <span className="font-black text-xl text-amber-600 dark:text-amber-400">
-                      {podium[0].score}
-                    </span>
-                    <span className="text-xs font-semibold text-amber-700/80 dark:text-amber-500">
-                      نقطة
-                    </span>
-                  </div>
-                </motion.div>
-              )}
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-16 items-end max-w-2xl mx-auto">
+                {/* Second Place */}
+                {podium[1] ? (
+                  <PodiumSpot user={podium[1]} place={2} />
+                ) : (
+                  <div />
+                )}
 
-              {/* Third Place (Podium Left/Right) */}
-              {podium[2] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative mb-2">
-                    <Avatar className="w-16 h-16 ring-4 ring-amber-700/30">
-                      <AvatarImage src={podium[2].avatar_url ?? undefined} />
-                      <AvatarFallback className="text-lg bg-amber-900/5 text-amber-900">
-                        {podium[2].full_name.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 bg-amber-700 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs shadow">
-                      ٣
-                    </div>
-                  </div>
-                  <span className="font-semibold text-sm text-center line-clamp-1 max-w-[110px]">
-                    {podium[2].full_name}
-                  </span>
-                  <span className="text-xs text-muted-foreground mb-3">
-                    {majorLabel(podium[2].major)}
-                  </span>
-                  <div className="bg-amber-900/5 dark:bg-amber-900/5 border border-amber-800/10 dark:border-amber-900/20 rounded-t-xl w-full h-20 flex flex-col justify-center items-center shadow-sm">
-                    <Medal className="w-5 h-5 text-amber-600 mb-1" />
-                    <span className="font-bold text-base text-amber-700 dark:text-amber-500">
-                      {podium[2].score}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">نقطة</span>
-                  </div>
-                </motion.div>
-              )}
+                {/* First Place — Champion */}
+                {podium[0] ? (
+                  <PodiumSpot user={podium[0]} place={1} />
+                ) : (
+                  <div />
+                )}
+
+                {/* Third Place */}
+                {podium[2] ? (
+                  <PodiumSpot user={podium[2]} place={3} />
+                ) : (
+                  <div />
+                )}
+              </div>
             </div>
           )}
+
 
           {/* List remainder of students */}
           <Card className="border-muted/60 shadow-sm overflow-hidden">
