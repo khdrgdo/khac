@@ -18,17 +18,19 @@ import {
   Trophy,
   Search,
   Medal,
-  Calendar,
   BookOpen,
   Flame,
-  Star,
   Loader2,
-  GraduationCap,
+  Crown,
+  Sparkles,
 } from "lucide-react";
 import { RankBadge } from "@/components/RankBadge";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { majorLabel } from "@/lib/college";
 import { MAJORS, YEARS } from "@/lib/college";
 import { motion } from "motion/react";
+import { Link } from "@tanstack/react-router";
+
 
 export const Route = createFileRoute("/_authenticated/leaderboard")({
   component: LeaderboardPage,
