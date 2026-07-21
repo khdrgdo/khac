@@ -12,23 +12,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Trophy,
   Search,
   Medal,
-  Calendar,
   BookOpen,
   Flame,
-  Star,
   Loader2,
-  GraduationCap,
+  Crown,
+  Sparkles,
 } from "lucide-react";
 import { RankBadge } from "@/components/RankBadge";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { majorLabel } from "@/lib/college";
 import { MAJORS, YEARS } from "@/lib/college";
 import { motion } from "motion/react";
+import { Link } from "@tanstack/react-router";
+
 
 export const Route = createFileRoute("/_authenticated/leaderboard")({
   component: LeaderboardPage,
@@ -332,119 +334,41 @@ function LeaderboardPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {/* Podium Top 3 */}
+          {/* Podium Top 3 — Premium */}
           {podium.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 pt-6 items-end max-w-xl mx-auto">
-              {/* Second Place (Podium Left/Right) */}
-              {podium[1] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative mb-2">
-                    <Avatar className="w-16 h-16 ring-4 ring-slate-300 dark:ring-slate-700">
-                      <AvatarImage src={podium[1].avatar_url ?? undefined} />
-                      <AvatarFallback className="text-lg bg-slate-100 text-slate-800">
-                        {podium[1].full_name.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 bg-slate-400 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs shadow">
-                      ٢
-                    </div>
-                  </div>
-                  <span className="font-semibold text-sm text-center line-clamp-1 max-w-[110px]">
-                    {podium[1].full_name}
-                  </span>
-                  <span className="text-xs text-muted-foreground mb-3">
-                    {majorLabel(podium[1].major)}
-                  </span>
-                  <div className="bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-t-xl w-full h-24 flex flex-col justify-center items-center shadow-sm">
-                    <Medal className="w-5 h-5 text-slate-400 mb-1" />
-                    <span className="font-bold text-base text-slate-700 dark:text-slate-300">
-                      {podium[1].score}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">نقطة</span>
-                  </div>
-                </motion.div>
-              )}
+            <div className="relative">
+              {/* Ambient glow */}
+              <div className="absolute inset-0 -z-10 blur-3xl opacity-40 pointer-events-none">
+                <div className="absolute left-1/2 -translate-x-1/2 top-8 w-56 h-56 rounded-full bg-amber-400/40" />
+                <div className="absolute left-8 top-16 w-32 h-32 rounded-full bg-slate-300/40" />
+                <div className="absolute right-8 top-16 w-32 h-32 rounded-full bg-amber-700/30" />
+              </div>
 
-              {/* First Place (Center Podium) */}
-              {podium[0] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative mb-3">
-                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-amber-500 animate-bounce">
-                      <Trophy className="w-6 h-6 fill-amber-500" />
-                    </div>
-                    <Avatar className="w-20 h-20 ring-4 ring-amber-400">
-                      <AvatarImage src={podium[0].avatar_url ?? undefined} />
-                      <AvatarFallback className="text-xl bg-amber-50 text-amber-800">
-                        {podium[0].full_name.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shadow border border-white">
-                      ١
-                    </div>
-                  </div>
-                  <span className="font-bold text-base text-center line-clamp-1 max-w-[120px]">
-                    {podium[0].full_name}
-                  </span>
-                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-3">
-                    {majorLabel(podium[0].major)}
-                  </span>
-                  <div className="bg-amber-500/10 dark:bg-amber-500/5 border-2 border-amber-300 dark:border-amber-900/50 rounded-t-2xl w-full h-32 flex flex-col justify-center items-center shadow-md">
-                    <Trophy className="w-6 h-6 text-amber-500 mb-1" />
-                    <span className="font-black text-xl text-amber-600 dark:text-amber-400">
-                      {podium[0].score}
-                    </span>
-                    <span className="text-xs font-semibold text-amber-700/80 dark:text-amber-500">
-                      نقطة
-                    </span>
-                  </div>
-                </motion.div>
-              )}
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-16 items-end max-w-2xl mx-auto">
+                {/* Second Place */}
+                {podium[1] ? (
+                  <PodiumSpot user={podium[1]} place={2} />
+                ) : (
+                  <div />
+                )}
 
-              {/* Third Place (Podium Left/Right) */}
-              {podium[2] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative mb-2">
-                    <Avatar className="w-16 h-16 ring-4 ring-amber-700/30">
-                      <AvatarImage src={podium[2].avatar_url ?? undefined} />
-                      <AvatarFallback className="text-lg bg-amber-900/5 text-amber-900">
-                        {podium[2].full_name.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-1 -right-1 bg-amber-700 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs shadow">
-                      ٣
-                    </div>
-                  </div>
-                  <span className="font-semibold text-sm text-center line-clamp-1 max-w-[110px]">
-                    {podium[2].full_name}
-                  </span>
-                  <span className="text-xs text-muted-foreground mb-3">
-                    {majorLabel(podium[2].major)}
-                  </span>
-                  <div className="bg-amber-900/5 dark:bg-amber-900/5 border border-amber-800/10 dark:border-amber-900/20 rounded-t-xl w-full h-20 flex flex-col justify-center items-center shadow-sm">
-                    <Medal className="w-5 h-5 text-amber-600 mb-1" />
-                    <span className="font-bold text-base text-amber-700 dark:text-amber-500">
-                      {podium[2].score}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">نقطة</span>
-                  </div>
-                </motion.div>
-              )}
+                {/* First Place — Champion */}
+                {podium[0] ? (
+                  <PodiumSpot user={podium[0]} place={1} />
+                ) : (
+                  <div />
+                )}
+
+                {/* Third Place */}
+                {podium[2] ? (
+                  <PodiumSpot user={podium[2]} place={3} />
+                ) : (
+                  <div />
+                )}
+              </div>
             </div>
           )}
+
 
           {/* List remainder of students */}
           <Card className="border-muted/60 shadow-sm overflow-hidden">
@@ -453,38 +377,28 @@ function LeaderboardPage() {
                 const rank = idx + 4;
                 const isSelf = user.id === profile?.id;
                 return (
-                  <div
+                  <Link
                     key={user.id}
+                    to="/profile/$id"
+                    params={{ id: user.id }}
                     className={`flex items-center justify-between p-3.5 transition hover:bg-muted/30 ${
                       isSelf ? "bg-primary/5 border-r-4 border-r-primary" : ""
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      {/* Rank number */}
                       <span className="w-8 text-center font-bold text-sm text-muted-foreground">
                         {rank}
                       </span>
-
-                      {/* Avatar */}
                       <Avatar className="w-10 h-10 border">
                         <AvatarImage src={user.avatar_url ?? undefined} />
                         <AvatarFallback className="font-semibold">
                           {user.full_name.slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
-
-                      {/* Full Name & Metadata */}
                       <div>
                         <div className="font-bold text-sm flex items-center gap-1.5">
                           {user.full_name}
-                          {user.verified && (
-                            <Badge
-                              variant="secondary"
-                              className="px-1 py-0 text-[9px] bg-sky-500/10 text-sky-600 border-none"
-                            >
-                              موثق
-                            </Badge>
-                          )}
+                          {user.verified && <VerifiedBadge />}
                         </div>
                         <div className="text-xs text-muted-foreground flex gap-1.5 mt-0.5">
                           <span>{majorLabel(user.major)}</span>
@@ -493,23 +407,20 @@ function LeaderboardPage() {
                         </div>
                       </div>
                     </div>
-
                     <div className="flex items-center gap-4">
-                      {/* Sub-Metric details */}
                       {timeframe !== "all" && user.contributions > 0 && (
                         <span className="text-[11px] text-muted-foreground hidden sm:flex items-center gap-1">
                           <Flame className="w-3.5 h-3.5 text-orange-500" />
                           {user.contributions} نشاط
                         </span>
                       )}
-
-                      {/* Points / Score badge */}
+                      <RankBadge points={user.points} />
                       <div className="text-right">
                         <div className="font-black text-sm text-foreground">{user.score}</div>
                         <div className="text-[10px] text-muted-foreground">نقطة</div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </CardContent>
@@ -519,3 +430,147 @@ function LeaderboardPage() {
     </div>
   );
 }
+
+function PodiumSpot({ user, place }: { user: LeaderboardUser; place: 1 | 2 | 3 }) {
+  const isFirst = place === 1;
+  const isSecond = place === 2;
+  const config = isFirst
+    ? {
+        ring: "ring-4 ring-amber-400 shadow-[0_0_40px_-8px_rgba(245,158,11,0.6)]",
+        size: "w-24 h-24",
+        pedestalHeight: "h-40",
+        pedestalBg:
+          "bg-gradient-to-b from-amber-300 via-amber-400 to-amber-600 dark:from-amber-500/90 dark:via-amber-600/80 dark:to-amber-800/70 border-amber-300",
+        badgeBg: "bg-gradient-to-br from-amber-400 to-amber-600",
+        rankText: "text-white",
+        pointsText: "text-white",
+        nameText: "text-base sm:text-lg",
+        arabic: "١",
+        delay: 0,
+      }
+    : isSecond
+      ? {
+          ring: "ring-4 ring-slate-300 dark:ring-slate-500",
+          size: "w-18 h-18 sm:w-20 sm:h-20",
+          pedestalHeight: "h-28",
+          pedestalBg:
+            "bg-gradient-to-b from-slate-200 via-slate-300 to-slate-400 dark:from-slate-500/80 dark:via-slate-600/70 dark:to-slate-700 border-slate-300",
+          badgeBg: "bg-gradient-to-br from-slate-300 to-slate-500",
+          rankText: "text-slate-800 dark:text-white",
+          pointsText: "text-slate-800 dark:text-white",
+          nameText: "text-sm sm:text-base",
+          arabic: "٢",
+          delay: 0.1,
+        }
+      : {
+          ring: "ring-4 ring-amber-700/60",
+          size: "w-18 h-18 sm:w-20 sm:h-20",
+          pedestalHeight: "h-24",
+          pedestalBg:
+            "bg-gradient-to-b from-amber-600 via-amber-700 to-amber-900 dark:from-amber-700/80 dark:via-amber-800/70 dark:to-amber-950 border-amber-700",
+          badgeBg: "bg-gradient-to-br from-amber-600 to-amber-800",
+          rankText: "text-white",
+          pointsText: "text-white",
+          nameText: "text-sm sm:text-base",
+          arabic: "٣",
+          delay: 0.15,
+        };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: config.delay, type: "spring", stiffness: 120 }}
+      className="flex flex-col items-center relative"
+    >
+      {/* Animated Crown for #1 */}
+      {isFirst && (
+        <>
+          <motion.div
+            initial={{ y: -8, opacity: 0 }}
+            animate={{ y: [-8, -14, -8], opacity: 1 }}
+            transition={{
+              y: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
+              opacity: { duration: 0.4 },
+            }}
+            className="absolute -top-14 left-1/2 -translate-x-1/2 z-20"
+          >
+            <motion.div
+              animate={{ rotate: [-6, 6, -6] }}
+              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+              className="relative"
+            >
+              <Crown
+                className="w-11 h-11 sm:w-14 sm:h-14 text-amber-400 fill-amber-400 drop-shadow-[0_4px_10px_rgba(245,158,11,0.7)]"
+                strokeWidth={1.5}
+              />
+              <motion.div
+                animate={{ scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 1.8, repeat: Infinity }}
+                className="absolute -top-1 -right-1"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
+              </motion.div>
+              <motion.div
+                animate={{ scale: [1.3, 1, 1.3], opacity: [1, 0.6, 1] }}
+                transition={{ duration: 1.8, repeat: Infinity }}
+                className="absolute -bottom-1 -left-1"
+              >
+                <Sparkles className="w-2.5 h-2.5 text-yellow-200 fill-yellow-200" />
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        </>
+      )}
+
+      <Link
+        to="/profile/$id"
+        params={{ id: user.id }}
+        className="flex flex-col items-center group"
+      >
+        <div className="relative mb-3">
+          <Avatar className={`${config.size} ${config.ring} transition-transform group-hover:scale-105`}>
+            <AvatarImage src={user.avatar_url ?? undefined} />
+            <AvatarFallback className="text-xl font-bold bg-muted">
+              {user.full_name.slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+          <div
+            className={`absolute -bottom-1 -right-1 ${config.badgeBg} text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shadow-lg border-2 border-background`}
+          >
+            {config.arabic}
+          </div>
+        </div>
+        <span
+          className={`font-bold text-center line-clamp-1 max-w-[130px] flex items-center gap-1 ${config.nameText}`}
+        >
+          {user.full_name}
+          {user.verified && <VerifiedBadge />}
+        </span>
+        <span className="text-[11px] text-muted-foreground mb-2 line-clamp-1">
+          {majorLabel(user.major)}
+          {user.year ? ` • السنة ${user.year}` : ""}
+        </span>
+      </Link>
+
+      <div
+        className={`${config.pedestalBg} ${config.pedestalHeight} w-full rounded-t-2xl border-t-2 border-x-2 flex flex-col justify-center items-center shadow-xl relative overflow-hidden`}
+      >
+        {/* Shine overlay */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent pointer-events-none" />
+        {isFirst ? (
+          <Trophy className="w-6 h-6 mb-1 text-white drop-shadow" strokeWidth={2.2} />
+        ) : (
+          <Medal className={`w-5 h-5 mb-1 ${config.rankText}`} strokeWidth={2.2} />
+        )}
+        <span className={`font-black text-lg sm:text-xl ${config.pointsText} drop-shadow`}>
+          {user.score}
+        </span>
+        <span className={`text-[10px] font-semibold ${config.pointsText} opacity-90`}>
+          نقطة
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
