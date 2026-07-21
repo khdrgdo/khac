@@ -25,6 +25,7 @@ import { Route as AuthenticatedProfileIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPostsIdRouteImport } from './routes/_authenticated/posts.$id'
 import { Route as AuthenticatedMessagesIdRouteImport } from './routes/_authenticated/messages.$id'
 import { Route as AuthenticatedCoursesIdRouteImport } from './routes/_authenticated/courses.$id'
+import { Route as AuthenticatedCoursesIdManageRouteImport } from './routes/_authenticated/courses.$id.manage'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -108,6 +109,12 @@ const AuthenticatedCoursesIdRoute = AuthenticatedCoursesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedCoursesRoute,
 } as any)
+const AuthenticatedCoursesIdManageRoute =
+  AuthenticatedCoursesIdManageRouteImport.update({
+    id: '/manage',
+    path: '/manage',
+    getParentRoute: () => AuthenticatedCoursesIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -121,10 +128,11 @@ export interface FileRoutesByFullPath {
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/messages': typeof AuthenticatedMessagesRouteWithChildren
   '/saved': typeof AuthenticatedSavedRoute
-  '/courses/$id': typeof AuthenticatedCoursesIdRoute
+  '/courses/$id': typeof AuthenticatedCoursesIdRouteWithChildren
   '/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/posts/$id': typeof AuthenticatedPostsIdRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
+  '/courses/$id/manage': typeof AuthenticatedCoursesIdManageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -138,10 +146,11 @@ export interface FileRoutesByTo {
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/messages': typeof AuthenticatedMessagesRouteWithChildren
   '/saved': typeof AuthenticatedSavedRoute
-  '/courses/$id': typeof AuthenticatedCoursesIdRoute
+  '/courses/$id': typeof AuthenticatedCoursesIdRouteWithChildren
   '/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/posts/$id': typeof AuthenticatedPostsIdRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
+  '/courses/$id/manage': typeof AuthenticatedCoursesIdManageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -157,10 +166,11 @@ export interface FileRoutesById {
   '/_authenticated/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/_authenticated/messages': typeof AuthenticatedMessagesRouteWithChildren
   '/_authenticated/saved': typeof AuthenticatedSavedRoute
-  '/_authenticated/courses/$id': typeof AuthenticatedCoursesIdRoute
+  '/_authenticated/courses/$id': typeof AuthenticatedCoursesIdRouteWithChildren
   '/_authenticated/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/_authenticated/posts/$id': typeof AuthenticatedPostsIdRoute
   '/_authenticated/profile/$id': typeof AuthenticatedProfileIdRoute
+  '/_authenticated/courses/$id/manage': typeof AuthenticatedCoursesIdManageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/messages/$id'
     | '/posts/$id'
     | '/profile/$id'
+    | '/courses/$id/manage'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/messages/$id'
     | '/posts/$id'
     | '/profile/$id'
+    | '/courses/$id/manage'
   id:
     | '__root__'
     | '/'
@@ -215,6 +227,7 @@ export interface FileRouteTypes {
     | '/_authenticated/messages/$id'
     | '/_authenticated/posts/$id'
     | '/_authenticated/profile/$id'
+    | '/_authenticated/courses/$id/manage'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -338,15 +351,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCoursesIdRouteImport
       parentRoute: typeof AuthenticatedCoursesRoute
     }
+    '/_authenticated/courses/$id/manage': {
+      id: '/_authenticated/courses/$id/manage'
+      path: '/manage'
+      fullPath: '/courses/$id/manage'
+      preLoaderRoute: typeof AuthenticatedCoursesIdManageRouteImport
+      parentRoute: typeof AuthenticatedCoursesIdRoute
+    }
   }
 }
 
+interface AuthenticatedCoursesIdRouteChildren {
+  AuthenticatedCoursesIdManageRoute: typeof AuthenticatedCoursesIdManageRoute
+}
+
+const AuthenticatedCoursesIdRouteChildren: AuthenticatedCoursesIdRouteChildren =
+  {
+    AuthenticatedCoursesIdManageRoute: AuthenticatedCoursesIdManageRoute,
+  }
+
+const AuthenticatedCoursesIdRouteWithChildren =
+  AuthenticatedCoursesIdRoute._addFileChildren(
+    AuthenticatedCoursesIdRouteChildren,
+  )
+
 interface AuthenticatedCoursesRouteChildren {
-  AuthenticatedCoursesIdRoute: typeof AuthenticatedCoursesIdRoute
+  AuthenticatedCoursesIdRoute: typeof AuthenticatedCoursesIdRouteWithChildren
 }
 
 const AuthenticatedCoursesRouteChildren: AuthenticatedCoursesRouteChildren = {
-  AuthenticatedCoursesIdRoute: AuthenticatedCoursesIdRoute,
+  AuthenticatedCoursesIdRoute: AuthenticatedCoursesIdRouteWithChildren,
 }
 
 const AuthenticatedCoursesRouteWithChildren =
