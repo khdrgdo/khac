@@ -88,6 +88,20 @@ function PostDetailPage() {
   });
 
   useEffect(() => {
+    if (post?.content?.startsWith("[course:")) {
+      const match = post.content.match(/^\[course:([^\]]+)\]/);
+      if (match && match[1]) {
+        navigate({
+          to: "/courses/$id",
+          params: { id: match[1] },
+          search: { tab: "discussions" },
+          replace: true,
+        });
+      }
+    }
+  }, [post, navigate]);
+
+  useEffect(() => {
     const ch = supabase
       .channel(`post-${id}-comments`)
       .on(

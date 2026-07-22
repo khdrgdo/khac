@@ -27,6 +27,7 @@ export function PostList({ authorId, savedByUserId, filter = "all" }: Props) {
       let q = supabase
         .from("posts")
         .select("id, content, images, author_id, created_at, post_type, accepted_answer_id")
+        .not("content", "ilike", "[course:%")
         .order("created_at", { ascending: false })
         .limit(50);
 
@@ -39,7 +40,7 @@ export function PostList({ authorId, savedByUserId, filter = "all" }: Props) {
 
       const { data: rows, error } = await q;
       if (error) throw error;
-      const list = rows ?? [];
+      const list = (rows ?? []).filter((r) => !r.content?.startsWith("[course:"));
       if (list.length === 0) return [];
 
       const ids = list.map((r) => r.id);

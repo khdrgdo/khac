@@ -1568,6 +1568,18 @@ function QuestionCard({
         content: replyText.trim(),
       });
       if (error) throw error;
+
+      if (q.author_id !== user.id) {
+        broadcastNotification({
+          actorId: user.id,
+          actorName: user.user_metadata?.full_name || "زميل",
+          type: "post_comment",
+          title: "رد جديد على سؤالك في المقرر 💬",
+          body: replyText.trim(),
+          link: `/courses/${courseId}?tab=discussions`,
+          currentUserId: user.id,
+        });
+      }
     },
     onSuccess: () => {
       setReplyText("");
