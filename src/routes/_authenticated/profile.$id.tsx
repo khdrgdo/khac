@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/profile/$id")({
 
 function ProfilePage() {
   const { id } = useParams({ from: "/_authenticated/profile/$id" });
-  const { user } = useAuth();
+  const { user, isMainAdmin } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -40,6 +40,29 @@ function ProfilePage() {
       }
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", id);
       if (!data) return null;
+
+      const universityNumber = (data.university_number as string) || "";
+      const emailStr = (data.email as string) || "";
+      const isSubAdminProfile =
+        universityNumber.startsWith("sub_") ||
+        emailStr.endsWith("@subadmin.edu") ||
+        ((data.full_name as string) || "").toLowerCase().includes("a guard");
+
+      // Hide sub-admins from public view: only self or main admin can view them.
+      if (isSubAdminProfile && !isSelf && !isMainAdmin) {
+        return {
+          full_name: "",
+          university_number: "",
+          major: null,
+          year: null,
+          points: 0,
+          bio: null,
+          avatar_signed: null,
+          roles: [],
+          __is_restricted_subadmin: true,
+        };
+      }
+
       const avatarUrl = data.avatar_url as string | null;
       let avatarSigned: string | null = null;
       if (avatarUrl && !avatarUrl.startsWith("http")) {
@@ -63,6 +86,7 @@ function ProfilePage() {
         verified?: boolean;
         avatar_signed: string | null;
         roles: string[];
+        __is_restricted_subadmin?: boolean;
       };
     },
   });
@@ -228,6 +252,20 @@ function ProfilePage() {
     } finally {
       setUploading(false);
     }
+  }
+
+  if (p && p.__is_restricted_subadmin) {
+    return (
+      <div className="text-center py-12 px-4 max-w-sm mx-auto space-y-4">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto text-muted-foreground">
+          <KeyRound className="w-8 h-8" />
+        </div>
+        <h3 className="text-base font-bold text-foreground">الحساب غير متوفر للعامة</h3>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          هذا الحساب خاص بالنظام ولا يملك ملف شخصي متاح للعامة.
+        </p>
+      </div>
+    );
   }
 
   if (!p)

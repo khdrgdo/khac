@@ -231,18 +231,34 @@ export function GlobalSearchDialog() {
         (fullProfiles ?? []).map((fp: { id: string } & Record<string, unknown>) => [fp.id, fp]),
       );
 
-      return list.map((p: PersonResult) => {
+      const mapped = list.map((p: PersonResult) => {
         const full = fullMap.get(p.id);
         return {
           id: p.id,
           full_name: p.full_name,
-          university_number: p.university_number,
+          university_number: p.university_number || (full?.university_number as string) || "",
           avatar_url: p.avatar_url,
           major: (full?.major as PersonResult["major"]) ?? null,
           year: (full?.year as number) ?? null,
           points: (full?.points as number) ?? 0,
           verified: (full?.verified as boolean) ?? false,
         };
+      });
+
+      return mapped.filter((p) => {
+        const uniNum = p.university_number || "";
+        if (uniNum.startsWith("sub_")) return false;
+        const nameLower = (p.full_name || "").toLowerCase();
+        if (
+          nameLower.includes("أدمن") ||
+          nameLower.includes("ادمن") ||
+          nameLower.includes("admin") ||
+          nameLower.includes("مدير") ||
+          nameLower.includes("a guard")
+        ) {
+          return false;
+        }
+        return true;
       });
     },
   });

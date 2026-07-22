@@ -1993,9 +1993,6 @@ function SubAdminsTab() {
                       >
                         ID: {userCode}
                       </Badge>
-                      <Badge variant="outline" className="text-[10px]">
-                        {sub.email}
-                      </Badge>
                     </div>
 
                     {/* Permissions list */}

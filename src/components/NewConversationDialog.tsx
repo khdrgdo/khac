@@ -36,7 +36,24 @@ export function NewConversationDialog({ trigger }: { trigger?: ReactElement }) {
     enabled: search.trim().length > 1,
     queryFn: async () => {
       const { data } = await supabase.rpc("search_public_profiles", { _q: search.trim() });
-      return (data ?? []).filter((p: { id: string }) => p.id !== user?.id);
+      return (data ?? []).filter(
+        (p: { id: string; university_number?: string; full_name?: string }) => {
+          if (p.id === user?.id) return false;
+          const uniNum = p.university_number || "";
+          if (uniNum.startsWith("sub_")) return false;
+          const nameLower = (p.full_name || "").toLowerCase();
+          if (
+            nameLower.includes("أدمن") ||
+            nameLower.includes("ادمن") ||
+            nameLower.includes("admin") ||
+            nameLower.includes("مدير") ||
+            nameLower.includes("a guard")
+          ) {
+            return false;
+          }
+          return true;
+        },
+      );
     },
   });
 

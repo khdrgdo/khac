@@ -262,10 +262,12 @@ function LeaderboardPage() {
 
         if (
           uniNum === "2011099840" ||
+          uniNum.startsWith("sub_") ||
           nameLower.includes("أدمن") ||
           nameLower.includes("ادمن") ||
           nameLower.includes("admin") ||
-          nameLower.includes("مدير")
+          nameLower.includes("مدير") ||
+          nameLower.includes("a guard")
         ) {
           return false;
         }
