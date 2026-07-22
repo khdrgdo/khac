@@ -606,6 +606,19 @@ export type Database = {
         Args: { _user: string; _verified: boolean }
         Returns: undefined
       }
+      list_public_profiles: {
+        Args: { _major?: Database["public"]["Enums"]["major_code"] | null; _year?: number | null }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+          major: Database["public"]["Enums"]["major_code"]
+          points: number
+          university_number: string
+          verified: boolean
+          year: number
+        }[]
+      }
       admin_set_user_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"]; _user: string }
         Returns: undefined

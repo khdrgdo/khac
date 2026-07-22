@@ -70,21 +70,28 @@ function LeaderboardPage() {
   const { data: leaderboard, isLoading } = useQuery<LeaderboardUser[]>({
     queryKey: ["leaderboard", timeframe, majorFilter, yearFilter, courseFilter],
     queryFn: async () => {
-      // 1. Fetch profiles based on basic filters
-      let q = supabase.from("profiles").select("*").eq("banned", false);
+      // 1. Determine major/year filter values
+      let filterMajor: "is" | "it" | "se" | null = null;
+      let filterYear: number | null = null;
 
-      // If filtering by a specific course, we restrict to the course's major and year
       if (courseFilter !== "all" && courses) {
         const selectedCourse = courses.find((c) => c.id === courseFilter);
         if (selectedCourse) {
-          q = q.eq("major", selectedCourse.major as "is" | "it" | "se").eq("year", selectedCourse.year);
+          filterMajor = selectedCourse.major as "is" | "it" | "se";
+          filterYear = selectedCourse.year;
         }
       } else {
-        if (majorFilter !== "all") q = q.eq("major", majorFilter as "is" | "it" | "se");
-        if (yearFilter !== "all") q = q.eq("year", Number(yearFilter));
+        if (majorFilter !== "all") filterMajor = majorFilter as "is" | "it" | "se";
+        if (yearFilter !== "all") filterYear = Number(yearFilter);
       }
 
-      const { data: profiles, error } = await q;
+      // Use the safe public RPC — profiles RLS restricts direct SELECT to
+      // own-row-or-admin, so a plain `.from("profiles")` query here would
+      // only ever return the current user's own row for everyone else.
+      const { data: profiles, error } = await supabase.rpc("list_public_profiles", {
+        _major: filterMajor,
+        _year: filterYear,
+      });
       if (error) throw error;
 
       const profileList = profiles ?? [];
