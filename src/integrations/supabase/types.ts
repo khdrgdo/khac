@@ -565,18 +565,18 @@ export type Database = {
         Returns: string;
       };
       get_leaderboard_profiles: {
-        Args: { _major?: string | null; _year?: number | null }
+        Args: { _major?: string | null; _year?: number | null };
         Returns: {
-          avatar_url: string
-          full_name: string
-          id: string
-          major: Database["public"]["Enums"]["major_code"]
-          points: number
-          university_number: string
-          verified: boolean
-          year: number
-        }[]
-      }
+          avatar_url: string;
+          full_name: string;
+          id: string;
+          major: Database["public"]["Enums"]["major_code"];
+          points: number;
+          university_number: string;
+          verified: boolean;
+          year: number;
+        }[];
+      };
       get_public_profiles: {
         Args: { _ids: string[] };
         Returns: {
