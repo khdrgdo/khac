@@ -21,6 +21,7 @@ import { Route as AuthenticatedCoursesRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCompleteProfileRouteImport } from './routes/_authenticated/complete-profile'
 import { Route as AuthenticatedChangePasswordRouteImport } from './routes/_authenticated/change-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedCoursesIndexRouteImport } from './routes/_authenticated/courses.index'
 import { Route as AuthenticatedProfileIdRouteImport } from './routes/_authenticated/profile.$id'
 import { Route as AuthenticatedPostsIdRouteImport } from './routes/_authenticated/posts.$id'
 import { Route as AuthenticatedMessagesIdRouteImport } from './routes/_authenticated/messages.$id'
@@ -90,6 +91,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCoursesIndexRoute =
+  AuthenticatedCoursesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedCoursesRoute,
+  } as any)
 const AuthenticatedProfileIdRoute = AuthenticatedProfileIdRouteImport.update({
   id: '/profile/$id',
   path: '/profile/$id',
@@ -140,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/posts/$id': typeof AuthenticatedPostsIdRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
+  '/courses/': typeof AuthenticatedCoursesIndexRoute
   '/courses/$id/manage': typeof AuthenticatedCoursesIdManageRoute
 }
 export interface FileRoutesByTo {
@@ -149,7 +157,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/change-password': typeof AuthenticatedChangePasswordRoute
   '/complete-profile': typeof AuthenticatedCompleteProfileRoute
-  '/courses': typeof AuthenticatedCoursesRouteWithChildren
   '/feed': typeof AuthenticatedFeedRoute
   '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/messages': typeof AuthenticatedMessagesRouteWithChildren
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/posts/$id': typeof AuthenticatedPostsIdRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
+  '/courses': typeof AuthenticatedCoursesIndexRoute
   '/courses/$id/manage': typeof AuthenticatedCoursesIdManageRoute
 }
 export interface FileRoutesById {
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/_authenticated/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/_authenticated/posts/$id': typeof AuthenticatedPostsIdRoute
   '/_authenticated/profile/$id': typeof AuthenticatedProfileIdRoute
+  '/_authenticated/courses/': typeof AuthenticatedCoursesIndexRoute
   '/_authenticated/courses/$id/manage': typeof AuthenticatedCoursesIdManageRoute
 }
 export interface FileRouteTypes {
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/messages/$id'
     | '/posts/$id'
     | '/profile/$id'
+    | '/courses/'
     | '/courses/$id/manage'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -210,7 +220,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/change-password'
     | '/complete-profile'
-    | '/courses'
     | '/feed'
     | '/leaderboard'
     | '/messages'
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/messages/$id'
     | '/posts/$id'
     | '/profile/$id'
+    | '/courses'
     | '/courses/$id/manage'
   id:
     | '__root__'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/_authenticated/messages/$id'
     | '/_authenticated/posts/$id'
     | '/_authenticated/profile/$id'
+    | '/_authenticated/courses/'
     | '/_authenticated/courses/$id/manage'
   fileRoutesById: FileRoutesById
 }
@@ -336,6 +347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/courses/': {
+      id: '/_authenticated/courses/'
+      path: '/'
+      fullPath: '/courses/'
+      preLoaderRoute: typeof AuthenticatedCoursesIndexRouteImport
+      parentRoute: typeof AuthenticatedCoursesRoute
+    }
     '/_authenticated/profile/$id': {
       id: '/_authenticated/profile/$id'
       path: '/profile/$id'
@@ -398,11 +416,13 @@ const AuthenticatedCoursesIdRouteWithChildren =
 interface AuthenticatedCoursesRouteChildren {
   AuthenticatedCoursesIdRoute: typeof AuthenticatedCoursesIdRouteWithChildren
   AuthenticatedCoursesMineRoute: typeof AuthenticatedCoursesMineRoute
+  AuthenticatedCoursesIndexRoute: typeof AuthenticatedCoursesIndexRoute
 }
 
 const AuthenticatedCoursesRouteChildren: AuthenticatedCoursesRouteChildren = {
   AuthenticatedCoursesIdRoute: AuthenticatedCoursesIdRouteWithChildren,
   AuthenticatedCoursesMineRoute: AuthenticatedCoursesMineRoute,
+  AuthenticatedCoursesIndexRoute: AuthenticatedCoursesIndexRoute,
 }
 
 const AuthenticatedCoursesRouteWithChildren =

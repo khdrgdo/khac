@@ -68,15 +68,12 @@ import {
   Clock,
   BadgeCheck,
   MoreVertical,
-  ShieldAlert,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { majorLabel } from "@/lib/college";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
-import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { RankBadge } from "@/components/RankBadge";
-import { createIsolatedSupabaseClient } from "@/lib/isolatedSupabaseClient";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -146,9 +143,6 @@ function AdminPage() {
           <TabsTrigger value="reports">
             <Flag className="w-4 h-4" /> البلاغات
           </TabsTrigger>
-          <TabsTrigger value="msg_reports">
-            <ShieldAlert className="w-4 h-4" /> بلاغات الرسائل
-          </TabsTrigger>
           <TabsTrigger value="users">
             <Users className="w-4 h-4" /> المستخدمون
           </TabsTrigger>
@@ -164,9 +158,6 @@ function AdminPage() {
         </TabsList>
         <TabsContent value="reports" className="pt-3">
           <ReportsTab />
-        </TabsContent>
-        <TabsContent value="msg_reports" className="pt-3">
-          <MessageReportsTab />
         </TabsContent>
         <TabsContent value="users" className="pt-3">
           <UsersTable />
@@ -189,61 +180,17 @@ function StatsCards() {
   const { data } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const since = new Date();
-      since.setDate(since.getDate() - 13);
-      const sinceIso = since.toISOString();
-
-      const [
-        { count: users },
-        { count: posts },
-        { count: reports },
-        { count: msgReports },
-        { count: msgs },
-        { data: userTrendRows },
-        { data: postTrendRows },
-        { data: msgTrendRows },
-      ] = await Promise.all([
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-        supabase.from("posts").select("*", { count: "exact", head: true }),
-        supabase
-          .from("post_reports")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "pending"),
-        supabase
-          .from("message_reports")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "pending"),
-        supabase.from("messages").select("*", { count: "exact", head: true }),
-        supabase.from("profiles").select("created_at").gte("created_at", sinceIso),
-        supabase.from("posts").select("created_at").gte("created_at", sinceIso),
-        supabase.from("messages").select("created_at").gte("created_at", sinceIso),
-      ]);
-
-      function toDailyTrend(rows: { created_at: string }[] | null) {
-        const days: { date: string; count: number }[] = [];
-        for (let i = 13; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          days.push({ date: d.toISOString().slice(0, 10), count: 0 });
-        }
-        const map = new Map(days.map((d) => [d.date, d]));
-        (rows ?? []).forEach((r) => {
-          const key = r.created_at.slice(0, 10);
-          const entry = map.get(key);
-          if (entry) entry.count += 1;
-        });
-        return days;
-      }
-
-      return {
-        users: users ?? 0,
-        posts: posts ?? 0,
-        reports: (reports ?? 0) + (msgReports ?? 0),
-        msgs: msgs ?? 0,
-        userTrend: toDailyTrend(userTrendRows),
-        postTrend: toDailyTrend(postTrendRows),
-        msgTrend: toDailyTrend(msgTrendRows),
-      };
+      const [{ count: users }, { count: posts }, { count: reports }, { count: msgs }] =
+        await Promise.all([
+          supabase.from("profiles").select("*", { count: "exact", head: true }),
+          supabase.from("posts").select("*", { count: "exact", head: true }),
+          supabase
+            .from("post_reports")
+            .select("*", { count: "exact", head: true })
+            .eq("status", "pending"),
+          supabase.from("messages").select("*", { count: "exact", head: true }),
+        ]);
+      return { users: users ?? 0, posts: posts ?? 0, reports: reports ?? 0, msgs: msgs ?? 0 };
     },
   });
 
@@ -253,66 +200,38 @@ function StatsCards() {
       label: "المستخدمون",
       value: data?.users ?? 0,
       color: "text-blue-600 bg-blue-500/10",
-      stroke: "#2563eb",
-      trend: data?.userTrend,
     },
     {
       icon: FileText,
       label: "المنشورات",
       value: data?.posts ?? 0,
       color: "text-emerald-600 bg-emerald-500/10",
-      stroke: "#059669",
-      trend: data?.postTrend,
     },
     {
       icon: Flag,
       label: "بلاغات معلّقة",
       value: data?.reports ?? 0,
       color: "text-red-600 bg-red-500/10",
-      stroke: "#dc2626",
-      trend: null,
     },
     {
       icon: MessageSquare,
       label: "الرسائل",
       value: data?.msgs ?? 0,
       color: "text-purple-600 bg-purple-500/10",
-      stroke: "#9333ea",
-      trend: data?.msgTrend,
     },
   ];
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {items.map((it) => (
-        <Card key={it.label} className="overflow-hidden">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${it.color}`}
-              >
-                <it.icon className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs text-muted-foreground truncate">{it.label}</div>
-                <div className="text-lg font-bold">{it.value}</div>
-              </div>
+        <Card key={it.label}>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${it.color}`}>
+              <it.icon className="w-5 h-5" />
             </div>
-            {it.trend && (
-              <div className="h-8 -mx-1 mt-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={it.trend}>
-                    <Line
-                      type="monotone"
-                      dataKey="count"
-                      stroke={it.stroke}
-                      strokeWidth={2}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+            <div>
+              <div className="text-xs text-muted-foreground">{it.label}</div>
+              <div className="text-lg font-bold">{it.value}</div>
+            </div>
           </CardContent>
         </Card>
       ))}
@@ -562,208 +481,6 @@ function ReportsTab() {
               consequence.mutate({
                 reportId: target.id,
                 authorId: reasonFor.authorId,
-                action: reasonFor.action,
-                reason,
-                days,
-              });
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function MessageReportsTab() {
-  const qc = useQueryClient();
-  const [reasonFor, setReasonFor] = useState<{
-    reportId: string;
-    userId: string;
-    action: "warn" | "suspend" | "ban";
-  } | null>(null);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-message-reports"],
-    queryFn: async () => {
-      const { data: rows } = await supabase
-        .from("message_reports")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100);
-      const list = rows ?? [];
-      const ids = Array.from(
-        new Set([...list.map((r) => r.reporter_id), ...list.map((r) => r.reported_user_id)]),
-      );
-      const { data: profs } = ids.length
-        ? await supabase.rpc("get_public_profiles", { _ids: ids })
-        : { data: [] as { id: string; full_name: string }[] };
-      const nameMap = new Map((profs ?? []).map((p) => [p.id, p.full_name]));
-      return list.map((r) => ({
-        ...r,
-        reporterName: nameMap.get(r.reporter_id) ?? "مستخدم محذوف",
-        reportedName: nameMap.get(r.reported_user_id) ?? "مستخدم محذوف",
-      }));
-    },
-  });
-
-  function invalidateAfterAction() {
-    qc.invalidateQueries({ queryKey: ["admin-message-reports"] });
-    qc.invalidateQueries({ queryKey: ["admin-users"] });
-    qc.invalidateQueries({ queryKey: ["admin-log"] });
-  }
-
-  const dismiss = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("message_reports")
-        .update({ status: "dismissed" })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("تم رفض البلاغ");
-      invalidateAfterAction();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const consequence = useMutation({
-    mutationFn: async ({
-      reportId,
-      userId,
-      action,
-      reason,
-      days,
-    }: {
-      reportId: string;
-      userId: string;
-      action: "warn" | "suspend" | "ban";
-      reason: string;
-      days?: number;
-    }) => {
-      if (action === "warn") {
-        const { error } = await supabase.rpc("admin_warn", { _user: userId, _reason: reason });
-        if (error) throw error;
-      } else if (action === "suspend") {
-        const { error } = await supabase.rpc("admin_suspend", {
-          _user: userId,
-          _days: days ?? 3,
-          _reason: reason,
-        });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.rpc("admin_ban", { _user: userId, _reason: reason });
-        if (error) throw error;
-      }
-      await supabase.from("message_reports").update({ status: "confirmed" }).eq("id", reportId);
-    },
-    onSuccess: (_, v) => {
-      toast.success(
-        v.action === "warn"
-          ? "تم إرسال إنذار"
-          : v.action === "suspend"
-            ? "تم الإيقاف المؤقت"
-            : "تم الحظر",
-      );
-      invalidateAfterAction();
-      setReasonFor(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  return (
-    <div className="space-y-2">
-      {isLoading && (
-        <div className="flex justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin" />
-        </div>
-      )}
-      {!isLoading && (data ?? []).length === 0 && (
-        <div className="text-sm text-muted-foreground text-center py-8">لا توجد بلاغات رسائل</div>
-      )}
-      {(data ?? []).map((r) => (
-        <Card key={r.id}>
-          <CardContent className="p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="text-sm">
-                <span className="text-muted-foreground">من:</span> <b>{r.reporterName}</b>{" "}
-                <span className="text-muted-foreground">ضد:</span> <b>{r.reportedName}</b>
-              </div>
-              <Badge
-                variant={
-                  r.status === "pending"
-                    ? "default"
-                    : r.status === "confirmed"
-                      ? "destructive"
-                      : "secondary"
-                }
-              >
-                {r.status === "pending"
-                  ? "معلّق"
-                  : r.status === "confirmed"
-                    ? "تمت المعالجة"
-                    : "مرفوض"}
-              </Badge>
-            </div>
-            <div className="text-sm bg-muted/50 rounded p-2">
-              <div className="text-xs text-muted-foreground mb-1">السبب: {r.reason}</div>
-              {r.note && <p className="whitespace-pre-wrap">{r.note}</p>}
-            </div>
-            {r.status === "pending" && (
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => dismiss.mutate(r.id)}
-                  disabled={dismiss.isPending}
-                >
-                  <X className="w-4 h-4" /> رفض البلاغ
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    setReasonFor({ reportId: r.id, userId: r.reported_user_id, action: "warn" })
-                  }
-                >
-                  <AlertTriangle className="w-4 h-4" /> إنذار
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-amber-600"
-                  onClick={() =>
-                    setReasonFor({ reportId: r.id, userId: r.reported_user_id, action: "suspend" })
-                  }
-                >
-                  <Clock className="w-4 h-4" /> إيقاف مؤقت
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() =>
-                    setReasonFor({ reportId: r.id, userId: r.reported_user_id, action: "ban" })
-                  }
-                >
-                  <Ban className="w-4 h-4" /> حظر
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-
-      <Dialog open={!!reasonFor} onOpenChange={(o) => !o && setReasonFor(null)}>
-        <DialogContent>
-          <ConsequenceForm
-            action={reasonFor?.action}
-            pending={consequence.isPending}
-            onCancel={() => setReasonFor(null)}
-            onConfirm={(reason, days) => {
-              if (!reasonFor) return;
-              consequence.mutate({
-                reportId: reasonFor.reportId,
-                userId: reasonFor.userId,
                 action: reasonFor.action,
                 reason,
                 days,
@@ -1565,31 +1282,20 @@ function AddTeacherCard() {
     mutationFn: async () => {
       if (pw.length < 6) throw new Error("كلمة السر قصيرة");
       const uniqueUniv = "T" + Date.now().toString().slice(-8);
-      const isolatedClient = createIsolatedSupabaseClient();
-      const { data, error } = await isolatedClient.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password: pw,
         options: {
           data: {
             university_number: uniqueUniv,
             full_name: name.trim(),
+            role: "teacher",
             must_change_password: false,
           },
         },
       });
       if (error) throw error;
       if (!data.user) throw new Error("لم يتم إنشاء الحساب");
-
-      // Signup always creates a 'student' role now (security fix — the
-      // server no longer trusts a client-supplied role). Explicitly
-      // promote to 'teacher' via the admin-only RPC, using the ADMIN's
-      // real session (the shared `supabase` client, untouched by the
-      // isolated signup above).
-      const { error: roleError } = await supabase.rpc("admin_set_user_role", {
-        _user: data.user.id,
-        _role: "teacher",
-      });
-      if (roleError) throw roleError;
 
       // Assign selected courses to the teacher
       if (selectedCourses.length > 0) {

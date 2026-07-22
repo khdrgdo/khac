@@ -6,7 +6,7 @@ import { useAuth, isSuspended } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/UserAvatar";
 import { ArrowRight, Loader2, Send, Trash2, CheckCircle2 } from "lucide-react";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { toast } from "sonner";
@@ -166,17 +166,22 @@ function PostDetailPage() {
         <CardContent className="p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={post.author?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {authorName.slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
+              <Link to="/profile/$id" params={{ id: post.author_id }}>
+                <UserAvatar
+                  avatarUrl={post.author?.avatar_url}
+                  fullName={authorName}
+                  className="w-10 h-10"
+                />
+              </Link>
               <div>
-                <div className="font-semibold flex items-center gap-1">
+                <Link
+                  to="/profile/$id"
+                  params={{ id: post.author_id }}
+                  className="font-semibold flex items-center gap-1 hover:underline"
+                >
                   {authorName}
                   {post.author?.verified && <VerifiedBadge />}
-                </div>
+                </Link>
                 <div className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ar })}
                 </div>
@@ -319,18 +324,19 @@ function CommentItem({
             </div>
           )}
           <div className="flex items-start gap-2">
-            <Avatar className="w-8 h-8">
-              <AvatarImage src={c.author?.avatar_url ?? undefined} />
-              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                {name.slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
+            <Link to="/profile/$id" params={{ id: c.author_id }}>
+              <UserAvatar avatarUrl={c.author?.avatar_url} fullName={name} className="w-8 h-8" />
+            </Link>
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-2">
-                <span className="font-medium text-sm inline-flex items-center gap-1">
+                <Link
+                  to="/profile/$id"
+                  params={{ id: c.author_id }}
+                  className="font-medium text-sm inline-flex items-center gap-1 hover:underline"
+                >
                   {name}
                   {c.author?.verified && <VerifiedBadge />}
-                </span>
+                </Link>
                 <span className="text-[10px] text-muted-foreground">
                   {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: ar })}
                 </span>
@@ -382,18 +388,23 @@ function CommentItem({
               <Card key={ch.id}>
                 <CardContent className="p-3">
                   <div className="flex items-start gap-2">
-                    <Avatar className="w-7 h-7">
-                      <AvatarImage src={ch.author?.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                        {cn.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <Link to="/profile/$id" params={{ id: ch.author_id }}>
+                      <UserAvatar
+                        avatarUrl={ch.author?.avatar_url}
+                        fullName={cn}
+                        className="w-7 h-7"
+                      />
+                    </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2">
-                        <span className="font-medium text-xs inline-flex items-center gap-1">
+                        <Link
+                          to="/profile/$id"
+                          params={{ id: ch.author_id }}
+                          className="font-medium text-xs inline-flex items-center gap-1 hover:underline"
+                        >
                           {cn}
                           {ch.author?.verified && <VerifiedBadge />}
-                        </span>
+                        </Link>
                         <span className="text-[10px] text-muted-foreground">
                           {formatDistanceToNow(new Date(ch.created_at), {
                             addSuffix: true,

@@ -229,6 +229,7 @@ function SignupForm({ onDone }: { onDone: () => void }) {
   const [univ, setUniv] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState<"student" | "teacher">("student");
   const [major, setMajor] = useState<string>("");
   const [year, setYear] = useState<string>("");
   const [password, setPassword] = useState("");
@@ -245,8 +246,12 @@ function SignupForm({ onDone }: { onDone: () => void }) {
       toast.error("أدخل بريدًا صحيحًا");
       return;
     }
-    if (!major || !year) {
+    if (role === "student" && (!major || !year)) {
       toast.error("اختر التخصص والسنة");
+      return;
+    }
+    if (role === "teacher" && !major) {
+      toast.error("اختر التخصص");
       return;
     }
     if (!password || password.length < 6) {
@@ -265,7 +270,8 @@ function SignupForm({ onDone }: { onDone: () => void }) {
             university_number: cleaned,
             full_name: name.trim(),
             major,
-            year: Number(year),
+            year: role === "student" ? Number(year) : null,
+            role,
             must_change_password: false,
           },
         },
@@ -310,12 +316,55 @@ function SignupForm({ onDone }: { onDone: () => void }) {
         <Label>الاسم الكامل</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} required />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-1.5">
+        <Label>الدور (الصفة)</Label>
+        <Select value={role} onValueChange={(val) => setRole(val as "student" | "teacher")}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="student">طالب</SelectItem>
+            <SelectItem value="teacher">أستاذ مقرر / معيد</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {role === "student" ? (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>التخصص</Label>
+            <Select value={major} onValueChange={setMajor}>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر" />
+              </SelectTrigger>
+              <SelectContent>
+                {MAJORS.map((m) => (
+                  <SelectItem key={m.code} value={m.code}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>السنة</Label>
+            <Select value={year} onValueChange={setYear}>
+              <SelectTrigger>
+                <SelectValue placeholder="اختر" />
+              </SelectTrigger>
+              <SelectContent>
+                {YEARS.map((y) => (
+                  <SelectItem key={y} value={String(y)}>{`السنة ${y}`}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      ) : (
         <div className="space-y-1.5">
-          <Label>التخصص</Label>
+          <Label>التخصص / القسم</Label>
           <Select value={major} onValueChange={setMajor}>
             <SelectTrigger>
-              <SelectValue placeholder="اختر" />
+              <SelectValue placeholder="اختر التخصص" />
             </SelectTrigger>
             <SelectContent>
               {MAJORS.map((m) => (
@@ -326,29 +375,16 @@ function SignupForm({ onDone }: { onDone: () => void }) {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1.5">
-          <Label>السنة</Label>
-          <Select value={year} onValueChange={setYear}>
-            <SelectTrigger>
-              <SelectValue placeholder="اختر" />
-            </SelectTrigger>
-            <SelectContent>
-              {YEARS.map((y) => (
-                <SelectItem key={y} value={String(y)}>{`السنة ${y}`}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      )}
       <div className="space-y-1.5">
-        <Label>كلمة السر (6 أحرف على الأقل)</Label>
+        <Label>كلمة السر</Label>
         <Input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={6}
-          placeholder="أدخل كلمة سر خاصة بك"
+          placeholder="6 أحرف على الأقل"
         />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>

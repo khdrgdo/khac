@@ -4,26 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { PostList } from "@/components/PostList";
-import { RankBadge } from "@/components/RankBadge";
-import { VerifiedBadge } from "@/components/VerifiedBadge";
-import { majorLabel } from "@/lib/college";
-import {
-  Camera,
-  Loader2,
-  MessageCircle,
-  ShieldAlert,
-  Flame,
-  Trophy,
-  CheckCircle2,
-  Bookmark,
-  Award,
-  Calendar,
-  Activity,
-} from "lucide-react";
+import { ProfileCardFrame } from "@/components/ProfileCardFrame";
+import { Loader2, Flame, Trophy, CheckCircle2, Award, Calendar, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile, signedUrl } from "@/lib/storage";
 
@@ -254,85 +237,14 @@ function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
-      <Card>
-        <CardContent className="p-4 sm:p-5">
-          <div className="flex items-start gap-4">
-            <div className="relative">
-              <Avatar className="w-20 h-20">
-                <AvatarImage src={p.avatar_signed ?? undefined} />
-                <AvatarFallback className="text-xl bg-primary/10 text-primary font-semibold">
-                  {p.full_name.slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-              {isMe && (
-                <>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => onPickAvatar(e.target.files)}
-                  />
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploading}
-                    className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1.5 shadow-md hover:scale-110 transition"
-                    aria-label="تغيير الصورة"
-                  >
-                    {uploading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Camera className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold flex items-center gap-1.5">
-                  {p.full_name}
-                  {p.verified && <VerifiedBadge size="md" />}
-                </h1>
-                <RankBadge points={p.points ?? 0} />
-              </div>
-              <div className="text-sm text-muted-foreground" dir="ltr">
-                {p.university_number}
-              </div>
-              <div className="flex gap-1.5 mt-2 flex-wrap">
-                {p.roles.map((r: string) => (
-                  <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>
-                    {r === "admin" ? "مشرف" : r === "teacher" ? "أستاذ" : "طالب"}
-                  </Badge>
-                ))}
-                {p.major && <Badge variant="outline">{majorLabel(p.major)}</Badge>}
-                {p.year && <Badge variant="outline">السنة {p.year}</Badge>}
-                {p.banned && (
-                  <Badge variant="destructive">
-                    <ShieldAlert className="w-3 h-3" /> محظور
-                  </Badge>
-                )}
-                {!p.banned && p.suspended_until && new Date(p.suspended_until) > new Date() && (
-                  <Badge variant="destructive">
-                    <ShieldAlert className="w-3 h-3" /> موقوف
-                  </Badge>
-                )}
-              </div>
-              {p.bio && <p className="mt-3 text-sm">{p.bio}</p>}
-              {user && user.id !== id && (
-                <Button
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => startChat.mutate()}
-                  disabled={startChat.isPending}
-                >
-                  <MessageCircle className="w-4 h-4" /> مراسلة
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <ProfileCardFrame
+        profile={{ ...p, id }}
+        isMe={isMe}
+        uploading={uploading}
+        onPickAvatar={onPickAvatar}
+        onStartChat={() => startChat.mutate()}
+        isChatPending={startChat.isPending}
+      />
 
       {/* GitHub style Contribution Heatmap, Streaks, and Statistics */}
       <Card className="border-muted/60">

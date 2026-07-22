@@ -6,6 +6,7 @@ import { PostList } from "@/components/PostList";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { majorLabel } from "@/lib/college";
+import { formatUnivNumber } from "@/lib/privacy";
 import { RankBadge } from "@/components/RankBadge";
 import { RANKS, nextRankProgress } from "@/lib/ranks";
 import { Trophy } from "lucide-react";
@@ -53,7 +54,7 @@ function FeedPage() {
               </Link>
               <div className="mt-2 font-bold text-base leading-tight">{profile.full_name}</div>
               <div className="text-xs text-muted-foreground" dir="ltr">
-                {profile.university_number}
+                {formatUnivNumber(profile.university_number, profile.id)}
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
                 <span className="px-2 py-0.5 rounded-full bg-muted">

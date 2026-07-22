@@ -1,4 +1,4 @@
-import { createFileRoute, useParams, Link } from "@tanstack/react-router";
+import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { majorLabel, MAJORS, YEARS, SEMESTERS } from "@/lib/college";
+import { parseTitleAndNote, formatTitleAndNote, getFileTypeInfo } from "@/lib/courseUtils";
 import {
   ArrowRight,
   ExternalLink,
@@ -39,15 +40,16 @@ import {
   Download,
   Pencil,
   BookOpen,
-  Search,
-  User,
-  ShieldCheck,
-  Star,
+  Clock,
+  Video,
+  Image as ImageIcon,
+  MessageSquare,
+  UserCheck,
+  Play,
 } from "lucide-react";
 import { toast } from "sonner";
-import { uploadFile, signedUrl } from "@/lib/storage";
-import { fileKind, linkKind, isImageFile } from "@/lib/courseMaterialKind";
-import { format, formatDistanceToNow } from "date-fns";
+import { signedUrl } from "@/lib/storage";
+import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/courses/$id")({
@@ -66,8 +68,8 @@ interface CourseFile {
   link_type: string | null;
   created_by: string;
   created_at: string;
-  is_important: boolean;
 }
+
 interface CourseUpdate {
   id: string;
   course_id: string;
@@ -79,111 +81,205 @@ interface CourseUpdate {
 function CourseDetailPage() {
   const { id } = useParams({ from: "/_authenticated/courses/$id" });
   const { tab } = Route.useSearch();
-  const { user, isAdmin } = useAuth();
+  const { user, isTeacher, isAdmin } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
-  const { data: course } = useQuery({
+  // Real-time synchronization inside course detail
+  useEffect(() => {
+    const channel = supabase
+      .channel(`course-detail-${id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "course_links" }, () => {
+        qc.invalidateQueries({ queryKey: ["course_links", id] });
+        qc.invalidateQueries({ queryKey: ["course_files", id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "course_updates" }, () => {
+        qc.invalidateQueries({ queryKey: ["course_updates", id] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, qc]);
+
+  const deleteCourse = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("courses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["courses"] });
+      toast.success("تم حذف المقرر بنجاح");
+      navigate({ to: "/courses" });
+    },
+    onError: (e: Error) => toast.error(e.message || "فشل في حذف المقرر"),
+  });
+
+  const [activeTab, setActiveTab] = useState<string>(tab || "files");
+
+  useEffect(() => {
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [tab]);
+
+  const { data: course, isLoading: isCourseLoading } = useQuery({
     queryKey: ["course", id],
     queryFn: async () => {
       const { data } = await supabase.from("courses").select("*").eq("id", id).maybeSingle();
-      return data;
+      if (!data) return null;
+
+      let teacherName = null;
+      if (data.teacher_id) {
+        const { data: profiles } = await supabase.rpc("get_public_profiles", {
+          _ids: [data.teacher_id],
+        });
+        if (profiles && profiles.length > 0) {
+          teacherName = profiles[0].full_name;
+        }
+      }
+
+      return {
+        ...data,
+        teacher_name: teacherName,
+      };
     },
   });
 
-  const { data: teacher } = useQuery({
-    queryKey: ["course-teacher", course?.teacher_id],
-    enabled: !!course?.teacher_id,
-    queryFn: async () => {
-      const { data } = await supabase.rpc("get_public_profiles", { _ids: [course!.teacher_id!] });
-      return data?.[0] ?? null;
-    },
-  });
-
+  const canEdit = !!user;
   const canModifyCourse =
     !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
   const canDeleteCourse =
     !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
 
-  if (!course)
-    return <div className="text-center py-10 text-sm text-muted-foreground">جارِ التحميل...</div>;
+  if (isCourseLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-2">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">جارِ تحميل بيانات المقرر...</p>
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4 text-center max-w-md mx-auto">
+        <BookOpen className="w-12 h-12 text-muted-foreground/60" />
+        <div className="space-y-1">
+          <h3 className="font-bold text-lg">المقرر الدراسي غير موجود</h3>
+          <p className="text-sm text-muted-foreground">
+            قد يكون تم حذف المقرر أو أن الرابط المطلوب غير صحيح.
+          </p>
+        </div>
+        <Button asChild className="rounded-xl mt-2">
+          <Link to="/courses">العودة إلى قائمة المقررات</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="max-w-4xl mx-auto space-y-4 pb-10">
       <Link
         to="/courses"
-        className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+        className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition"
       >
-        <ArrowRight className="w-4 h-4" /> العودة إلى الكورسات
+        <ArrowRight className="w-4 h-4" /> العودة إلى قائمة المقررات
       </Link>
 
-      <Card>
-        <CardContent className="p-4 sm:p-5">
+      {/* Main Course Header Card */}
+      <Card className="border-muted/80 shadow-xs">
+        <CardContent className="p-5 sm:p-6 space-y-3">
           <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="space-y-1">
-              <h1 className="text-xl font-bold">{course.name}</h1>
-              <div className="flex gap-1.5 flex-wrap items-center">
-                <Badge variant="secondary">{majorLabel(course.major)}</Badge>
-                <Badge variant="outline">
-                  السنة {course.year} • فصل {course.semester}
+            <div className="space-y-1.5">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">{course.name}</h1>
+              <div className="flex gap-2 flex-wrap items-center">
+                <Badge variant="secondary" className="font-semibold">
+                  {majorLabel(course.major)}
                 </Badge>
-                {teacher && (
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <User className="w-3.5 h-3.5" /> د. {teacher.full_name}
-                  </span>
+                <Badge variant="outline">
+                  السنة {course.year} • الفصل {course.semester}
+                </Badge>
+                {course.teacher_name ? (
+                  <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 border-emerald-500/20">
+                    <UserCheck className="w-3.5 h-3.5 ml-1" /> الأستاذ: {course.teacher_name}
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive">⚠️ لم يتم تعيين أستاذ بعد</Badge>
                 )}
               </div>
             </div>
+
             <div className="flex gap-2 flex-wrap">
-              {(canModifyCourse || canDeleteCourse) && (
-                <Link to="/courses/$id/manage" params={{ id }} search={{ tab: undefined }}>
-                  <Button size="sm" className="rounded-xl gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5" /> إدارة المقرر
-                  </Button>
-                </Link>
+              {canModifyCourse && <EditCourseDialog course={course} />}
+              {canDeleteCourse && (
+                <DeleteCourseDialog
+                  onDelete={() => deleteCourse.mutate()}
+                  isPending={deleteCourse.isPending}
+                />
               )}
             </div>
           </div>
+
           {course.description && (
-            <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
+            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap border-t pt-3">
               {course.description}
             </p>
           )}
         </CardContent>
       </Card>
 
-      <Tabs defaultValue={tab || "links"}>
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="links">
-            <ExternalLink className="w-4 h-4" /> روابط
+      {/* Course Detail Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-4 w-full bg-muted/60 p-1 rounded-xl h-auto">
+          <TabsTrigger
+            value="files"
+            className="rounded-lg py-2.5 font-semibold text-xs sm:text-sm gap-1.5"
+          >
+            <FileText className="w-4 h-4" /> الملفات والفيديوهات
           </TabsTrigger>
-          <TabsTrigger value="files">
-            <FileText className="w-4 h-4" /> ملفات
+          <TabsTrigger
+            value="links"
+            className="rounded-lg py-2.5 font-semibold text-xs sm:text-sm gap-1.5"
+          >
+            <ExternalLink className="w-4 h-4" /> الروابط والمصادر
           </TabsTrigger>
-          <TabsTrigger value="schedule">
-            <Calendar className="w-4 h-4" /> الجدول
+          <TabsTrigger
+            value="updates"
+            className="rounded-lg py-2.5 font-semibold text-xs sm:text-sm gap-1.5"
+          >
+            <Megaphone className="w-4 h-4" /> إعلانات المقرر
           </TabsTrigger>
-          <TabsTrigger value="updates">
-            <Megaphone className="w-4 h-4" /> إعلانات
+          <TabsTrigger
+            value="schedule"
+            className="rounded-lg py-2.5 font-semibold text-xs sm:text-sm gap-1.5"
+          >
+            <Calendar className="w-4 h-4" /> مواعيد المحاضرات
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="links" className="pt-3">
-          <LinksTab courseId={id} canEdit={false} />
+
+        <TabsContent value="files" className="pt-4">
+          <FilesTab courseId={id} canEdit={canModifyCourse} />
         </TabsContent>
-        <TabsContent value="files" className="pt-3">
-          <FilesTab courseId={id} canEdit={false} />
+
+        <TabsContent value="links" className="pt-4">
+          <LinksTab courseId={id} canEdit={canModifyCourse} />
         </TabsContent>
-        <TabsContent value="schedule" className="pt-3">
+
+        <TabsContent value="updates" className="pt-4">
+          <UpdatesTab courseId={id} canEdit={canModifyCourse} />
+        </TabsContent>
+
+        <TabsContent value="schedule" className="pt-4">
           <ScheduleTab
             course={{
               id: course.id,
               schedule: course.schedule as unknown as ScheduleEntry[] | null,
             }}
-            canEdit={false}
+            canEdit={canModifyCourse}
             onSaved={() => qc.invalidateQueries({ queryKey: ["course", id] })}
           />
-        </TabsContent>
-        <TabsContent value="updates" className="pt-3">
-          <UpdatesTab courseId={id} canEdit={false} />
         </TabsContent>
       </Tabs>
     </div>
@@ -204,7 +300,7 @@ export function DeleteCourseDialog({
         <Button
           variant="outline"
           size="sm"
-          className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 rounded-xl gap-1.5 animate-in fade-in zoom-in duration-200"
+          className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive rounded-xl gap-1.5"
         >
           <Trash2 className="w-3.5 h-3.5" />
           حذف المقرر
@@ -220,8 +316,8 @@ export function DeleteCourseDialog({
           هل أنت متأكد من رغبتك في حذف هذا المقرر الدراسي نهائياً؟ ستُحذف جميع الملفات والروابط
           والإعلانات التابعة له بشكل لا يمكن التراجع عنه.
         </p>
-        <DialogFooter className="pt-4 gap-2 sm:gap-0 flex flex-col-reverse sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={() => setOpen(false)} className="rounded-lg sm:ml-2">
+        <DialogFooter className="pt-4 gap-2 flex flex-col-reverse sm:flex-row sm:justify-end">
+          <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl">
             إلغاء
           </Button>
           <Button
@@ -231,7 +327,7 @@ export function DeleteCourseDialog({
               setOpen(false);
             }}
             disabled={isPending}
-            className="rounded-lg mb-2 sm:mb-0"
+            className="rounded-xl font-semibold"
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />} نعم، حذف المقرر
           </Button>
@@ -248,6 +344,7 @@ export interface CourseData {
   major: string;
   year: number;
   semester: number;
+  teacher_id?: string | null;
 }
 
 export function EditCourseDialog({ course }: { course: CourseData }) {
@@ -257,7 +354,31 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
   const [major, setMajor] = useState(course.major);
   const [year, setYear] = useState(String(course.year));
   const [semester, setSemester] = useState(String(course.semester));
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>(course.teacher_id || "none");
+
   const qc = useQueryClient();
+
+  const { data: teachers } = useQuery({
+    queryKey: ["teachers_and_admins_list"],
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("role", ["teacher", "admin"]);
+
+      if (!roles || roles.length === 0) return [];
+
+      const userIds = Array.from(new Set(roles.map((r) => r.user_id)));
+      const { data: profiles } = await supabase.rpc("get_public_profiles", { _ids: userIds });
+
+      const roleMap = new Map(roles.map((r) => [r.user_id, r.role]));
+      return (profiles ?? []).map((p) => ({
+        ...p,
+        role: roleMap.get(p.id) ?? "teacher",
+      }));
+    },
+    enabled: open,
+  });
 
   useEffect(() => {
     if (open) {
@@ -266,6 +387,7 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
       setMajor(course.major);
       setYear(String(course.year));
       setSemester(String(course.semester));
+      setSelectedTeacherId(course.teacher_id || "none");
     }
   }, [open, course]);
 
@@ -279,12 +401,13 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
           major: major as "it" | "is" | "se",
           year: Number(year),
           semester: Number(semester),
+          teacher_id: selectedTeacherId === "none" ? null : selectedTeacherId,
         })
         .eq("id", course.id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("تم تحديث المقرر الدراسي بنجاح");
+      toast.success("تم تحديث بيانات المقرر والتخصيص بنجاح");
       qc.invalidateQueries({ queryKey: ["course", course.id] });
       qc.invalidateQueries({ queryKey: ["courses"] });
       setOpen(false);
@@ -296,39 +419,55 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="rounded-xl gap-1.5">
-          <Pencil className="w-3.5 h-3.5" /> تعديل المقرر
+          <Pencil className="w-3.5 h-3.5" /> تعديل البيانات
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">تعديل بيانات المقرر الدراسي</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            تعديل بيانات المقرر والأستاذ
+          </DialogTitle>
         </DialogHeader>
+
         <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label className="font-semibold text-xs text-foreground/80">اسم المقرر الدراسي</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="مثال: رياضيات الحاسوب، شبكات..."
-              className="rounded-lg"
-            />
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="rounded-xl" />
           </div>
+
+          <div className="space-y-1.5">
+            <Label className="font-semibold text-xs text-foreground/80">الأستاذ المشرف</Label>
+            <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder="اختر الأستاذ المسند له" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">بدون أستاذ (غير معين)</SelectItem>
+                {teachers?.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.full_name} ({t.role === "admin" ? "مسؤول" : "أستاذ"})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-1.5">
             <Label className="font-semibold text-xs text-foreground/80">الوصف أو المفردات</Label>
             <Textarea
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder="اكتب نبذة مختصرة عن هذا المقرر الدراسي..."
               rows={3}
-              className="resize-none rounded-lg"
+              className="resize-none rounded-xl"
             />
           </div>
+
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="font-semibold text-xs text-foreground/80">التخصص</Label>
               <Select value={major} onValueChange={setMajor}>
-                <SelectTrigger className="rounded-lg">
-                  <SelectValue placeholder="—" />
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {MAJORS.map((m) => (
@@ -339,11 +478,12 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-1.5">
               <Label className="font-semibold text-xs text-foreground/80">السنة</Label>
               <Select value={year} onValueChange={setYear}>
-                <SelectTrigger className="rounded-lg">
-                  <SelectValue placeholder="—" />
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {YEARS.map((y) => (
@@ -354,10 +494,11 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-1.5">
               <Label className="font-semibold text-xs text-foreground/80">الفصل</Label>
               <Select value={semester} onValueChange={setSemester}>
-                <SelectTrigger className="rounded-lg">
+                <SelectTrigger className="rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -371,20 +512,14 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
             </div>
           </div>
         </div>
-        <div className="bg-primary/5 rounded-lg p-3 text-xs text-primary/80 flex items-start gap-2 mt-2">
-          <BookOpen className="w-4 h-4 shrink-0 mt-0.5" />
-          <p>
-            لإضافة ملفات (PDF، صور) أو روابط لهذا المقرر، قم بالدخول إلى صفحة المقرر واستخدم تبويبات
-            "المصادر والروابط" أو "الملفات".
-          </p>
-        </div>
-        <DialogFooter className="pt-4 gap-2 sm:gap-0">
+
+        <DialogFooter className="pt-4">
           <Button
             onClick={() => mut.mutate()}
-            disabled={!name || !major || !year || mut.isPending}
-            className="w-full sm:w-auto rounded-lg"
+            disabled={!name.trim() || !major || !year || mut.isPending}
+            className="w-full sm:w-auto rounded-xl font-semibold"
           >
-            {mut.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />} تحديث المقرر
+            {mut.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />} حفظ التغييرات
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -392,11 +527,12 @@ export function EditCourseDialog({ course }: { course: CourseData }) {
   );
 }
 
+/* Links Component with Notes / Comments Support */
 export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
-  const [q, setQ] = useState("");
-  const { data: links } = useQuery({
+
+  const { data: links, isLoading } = useQuery({
     queryKey: ["course_links", courseId],
     queryFn: async () => {
       const { data } = await supabase
@@ -404,114 +540,118 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
         .select("*")
         .eq("course_id", courseId)
         .is("link_type", null)
-        .order("created_at");
+        .order("created_at", { ascending: false });
       return (data ?? []) as CourseFile[];
     },
   });
+
   const del = useMutation({
     mutationFn: async (linkId: string) => {
       await supabase.from("course_links").delete().eq("id", linkId);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["course_links", courseId] }),
-  });
-  const toggleImportant = useMutation({
-    mutationFn: async ({ linkId, next }: { linkId: string; next: boolean }) => {
-      const { error } = await supabase
-        .from("course_links")
-        .update({ is_important: next })
-        .eq("id", linkId);
-      if (error) throw error;
+    onSuccess: () => {
+      toast.success("تم حذف الرابط بنجاح");
+      qc.invalidateQueries({ queryKey: ["course_links", courseId] });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["course_links", courseId] }),
-    onError: (e: Error) => toast.error(e.message),
   });
-
-  const filtered = (links ?? [])
-    .filter((l) => (q.trim() ? l.title.toLowerCase().includes(q.trim().toLowerCase()) : true))
-    .sort((a, b) => {
-      if (a.is_important !== b.is_important) return a.is_important ? -1 : 1;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
 
   return (
-    <div className="space-y-2">
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
-          <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground/60" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="ابحث بين الروابط..."
-            className="pr-9"
-          />
+    <div className="space-y-3">
+      {canEdit && (
+        <div className="flex justify-between items-center bg-muted/30 p-3 rounded-xl border">
+          <span className="text-xs font-semibold text-muted-foreground">
+            إضافة رابط المحاضرة، اجتماع، أو مصدر خارجي للمحاضرة
+          </span>
+          <AddLinkDialog courseId={courseId} />
         </div>
-        {canEdit && <AddLinkDialog courseId={courseId} />}
-      </div>
-      {!links || links.length === 0 ? (
-        <div className="text-center py-6 text-sm text-muted-foreground">لا توجد روابط بعد</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-6 text-sm text-muted-foreground">لا نتائج مطابقة</div>
+      )}
+
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : !links || links.length === 0 ? (
+        <div className="text-center py-8 border rounded-2xl border-dashed bg-muted/5">
+          <ExternalLink className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">لا توجد روابط مضافة لهذا المقرر بعد</p>
+        </div>
       ) : (
-        filtered.map((l) => {
-          const kind = linkKind(l.url);
-          const Icon = kind.icon;
-          return (
-            <Card
-              key={l.id}
-              className={`hover:shadow-sm transition-shadow ${l.is_important ? "border-amber-400/60 bg-amber-500/5" : ""}`}
-            >
-              <CardContent className="p-3 flex items-center gap-3">
-                <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${kind.bg}`}
-                >
-                  <Icon className={`w-4 h-4 ${kind.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <a
-                    href={l.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-medium hover:underline flex items-center gap-1.5 truncate"
-                  >
-                    {l.is_important && (
-                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
-                    )}
-                    <span className="truncate">{l.title}</span>
-                  </a>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <span className={kind.color}>{kind.label}</span>
-                    <span>·</span>
-                    <span>
-                      {formatDistanceToNow(new Date(l.created_at), { addSuffix: true, locale: ar })}
-                    </span>
+        <div className="grid gap-2.5">
+          {links.map((l) => {
+            const parsed = parseTitleAndNote(l.title);
+
+            return (
+              <Card key={l.id} className="hover:border-primary/40 transition">
+                <CardContent className="p-3.5 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <ExternalLink className="w-4 h-4" />
+                    </div>
+
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <a
+                        href={l.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold text-sm hover:underline hover:text-primary block truncate text-foreground"
+                      >
+                        {parsed.title}
+                      </a>
+
+                      {parsed.note && (
+                        <div className="bg-muted/40 border rounded-lg p-2 text-xs text-foreground/90 flex items-start gap-1.5 my-1">
+                          <MessageSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                          <p className="leading-relaxed">
+                            <strong className="text-primary font-semibold">ملاحظة الأستاذ:</strong>{" "}
+                            {parsed.note}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span className="truncate max-w-[200px] sm:max-w-xs" dir="ltr">
+                          {l.url}
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />{" "}
+                          {formatDistanceToNow(new Date(l.created_at), {
+                            addSuffix: true,
+                            locale: ar,
+                          })}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <a href={l.url} target="_blank" rel="noreferrer">
-                  <Button size="icon" variant="ghost">
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                </a>
-                {canEdit && (isAdmin || l.created_by === user?.id) && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title={l.is_important ? "إلغاء التمييز" : "تمييز كمهم"}
-                    onClick={() => toggleImportant.mutate({ linkId: l.id, next: !l.is_important })}
-                  >
-                    <Star
-                      className={`w-4 h-4 ${l.is_important ? "text-amber-500 fill-amber-500" : "text-muted-foreground"}`}
-                    />
-                  </Button>
-                )}
-                {(isAdmin || l.created_by === user?.id) && (
-                  <Button size="icon" variant="ghost" onClick={() => del.mutate(l.id)}>
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-lg h-8 gap-1 text-xs"
+                      asChild
+                    >
+                      <a href={l.url} target="_blank" rel="noreferrer">
+                        فتح الرابط <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </Button>
+
+                    {(isAdmin || l.created_by === user?.id) && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        onClick={() => del.mutate(l.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -521,54 +661,85 @@ function AddLinkDialog({ courseId }: { courseId: string }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  const [note, setNote] = useState("");
+
   const { user } = useAuth();
   const qc = useQueryClient();
+
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) return;
-      const { error } = await supabase
-        .from("course_links")
-        .insert({ course_id: courseId, title, url, created_by: user.id });
+      const formattedTitle = formatTitleAndNote(title, note);
+      const { error } = await supabase.from("course_links").insert({
+        course_id: courseId,
+        title: formattedTitle,
+        url,
+        created_by: user.id,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("تمت الإضافة");
+      toast.success("تمت إضافة الرابط بنجاح");
       qc.invalidateQueries({ queryKey: ["course_links", courseId] });
       setOpen(false);
       setTitle("");
       setUrl("");
+      setNote("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
-          <Plus className="w-4 h-4" /> رابط
+        <Button size="sm" className="rounded-xl gap-1">
+          <Plus className="w-4 h-4" /> إضافة رابط
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
-          <DialogTitle>إضافة رابط</DialogTitle>
+          <DialogTitle>إضافة رابط أو مصدر خارجي</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label>العنوان</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+        <div className="space-y-3 pt-2">
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">عنوان الرابط / اسم المصدر *</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="مثال: رابط المحاضرة المباشرة على زوم، كتاب المقرر..."
+              className="rounded-xl"
+            />
           </div>
-          <div>
-            <Label>الرابط</Label>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">عنوان URL *</Label>
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               dir="ltr"
               placeholder="https://..."
+              className="rounded-xl"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">ملاحظة أو تعليق للطلاب (اختياري)</Label>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="مثال: رابط المحاضرة المسجلة ليوم الأحد الماضي، يرجى المشاهدة قبل الاختبار..."
+              rows={2}
+              className="resize-none rounded-xl"
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button onClick={() => mut.mutate()} disabled={!title || !url || mut.isPending}>
-            {mut.isPending && <Loader2 className="w-4 h-4 animate-spin" />} حفظ
+        <DialogFooter className="pt-3">
+          <Button
+            onClick={() => mut.mutate()}
+            disabled={!title.trim() || !url.trim() || mut.isPending}
+            className="rounded-xl font-semibold"
+          >
+            {mut.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />} حفظ الرابط
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -576,15 +747,19 @@ function AddLinkDialog({ courseId }: { courseId: string }) {
   );
 }
 
+/* Files Component with Video/PDF Support and Teacher Notes */
 export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [q, setQ] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  const { data: files } = useQuery({
+  const [uploading, setUploading] = useState(false);
+  const [selectedFileNote, setSelectedFileNote] = useState("");
+  const [customFileName, setCustomFileName] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
+
+  const { data: files, isLoading } = useQuery({
     queryKey: ["course_files", courseId],
     queryFn: async () => {
       const { data } = await supabase
@@ -597,41 +772,66 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
     },
   });
 
-  async function handleFiles(fileList: FileList | null) {
-    if (!fileList || !user) return;
+  async function handleFileUpload() {
+    const fileList = fileRef.current?.files;
+    if (!fileList || fileList.length === 0 || !user) return;
+
     setUploading(true);
     try {
       for (const f of Array.from(fileList)) {
-        if (f.size > 100 * 1024 * 1024) {
-          toast.error(`${f.name}: أكبر من 100MB`);
+        const isVideo = ["mp4", "mov", "webm", "mkv", "avi"].includes(
+          f.name.split(".").pop()?.toLowerCase() || "",
+        );
+
+        const maxLimit = isVideo ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
+        if (f.size > maxLimit) {
+          toast.error(`${f.name}: حجم الملف يتجاوز الحد المسموح (${isVideo ? "100MB" : "25MB"})`);
           continue;
         }
+
         const path = `${courseId}/${Date.now()}-${f.name}`;
         const { error: upErr } = await supabase.storage.from("course-files").upload(path, f);
         if (upErr) {
           toast.error(upErr.message);
           continue;
         }
+
+        const baseTitle = customFileName.trim() || f.name;
+        const formattedTitle = formatTitleAndNote(baseTitle, selectedFileNote);
+
         await supabase.from("course_links").insert({
           course_id: courseId,
-          title: f.name,
+          title: formattedTitle,
           url: path,
           link_type: "file",
           created_by: user.id,
         });
       }
+
       qc.invalidateQueries({ queryKey: ["course_files", courseId] });
-      toast.success("تم الرفع");
+      toast.success("تم رفع الملف بنجاح مع التعليق");
+      setDialogOpen(false);
+      setCustomFileName("");
+      setSelectedFileNote("");
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
 
-  async function download(f: CourseFile) {
-    const url = await signedUrl("course-files", f.url, 300);
-    if (url) window.open(url, "_blank");
-    else toast.error("تعذّر توليد الرابط");
+  async function downloadOrPreview(f: CourseFile) {
+    const url = await signedUrl("course-files", f.url, 600);
+    if (!url) {
+      toast.error("تعذّر توليد رابط التنزيل");
+      return;
+    }
+
+    const fileInfo = getFileTypeInfo(f.url, f.link_type);
+    if (fileInfo.isVideo) {
+      setSelectedVideoUrl(url);
+    } else {
+      window.open(url, "_blank");
+    }
   }
 
   const del = useMutation({
@@ -639,171 +839,213 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       await supabase.storage.from("course-files").remove([f.url]);
       await supabase.from("course_links").delete().eq("id", f.id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["course_files", courseId] }),
-  });
-  const toggleImportant = useMutation({
-    mutationFn: async ({ fileId, next }: { fileId: string; next: boolean }) => {
-      const { error } = await supabase
-        .from("course_links")
-        .update({ is_important: next })
-        .eq("id", fileId);
-      if (error) throw error;
+    onSuccess: () => {
+      toast.success("تم حذف الملف بنجاح");
+      qc.invalidateQueries({ queryKey: ["course_files", courseId] });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["course_files", courseId] }),
-    onError: (e: Error) => toast.error(e.message),
   });
-
-  const typeChips = [
-    { key: "all", label: "الكل" },
-    { key: "pdf", label: "PDF" },
-    { key: "ppt|pptx", label: "عروض" },
-    { key: "doc|docx", label: "Word" },
-    { key: "png|jpg|jpeg|webp|gif", label: "صور" },
-    { key: "mp4|mov|webm|mkv|avi", label: "فيديو" },
-    { key: "zip|rar|7z", label: "أرشيف" },
-  ];
-
-  const filtered = (files ?? [])
-    .filter((f) => {
-      const matchesQuery = q.trim() ? f.title.toLowerCase().includes(q.trim().toLowerCase()) : true;
-      if (!matchesQuery) return false;
-      if (typeFilter === "all") return true;
-      const ext = f.title.split(".").pop()?.toLowerCase() ?? "";
-      return typeFilter.split("|").includes(ext);
-    })
-    .sort((a, b) => {
-      if (a.is_important !== b.is_important) return a.is_important ? -1 : 1;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
 
   return (
-    <div className="space-y-2">
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
-          <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground/60" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="ابحث بين الملفات..."
-            className="pr-9"
-          />
-        </div>
-        {canEdit && (
-          <>
-            <input
-              ref={fileRef}
-              type="file"
-              multiple
-              accept=".pdf,.ppt,.pptx,.doc,.docx,.zip,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm"
-              className="hidden"
-              onChange={(e) => handleFiles(e.target.files)}
-            />
-            <Button size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-              {uploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Upload className="w-4 h-4" />
-              )}
-              رفع
-            </Button>
-          </>
-        )}
-      </div>
+    <div className="space-y-3">
+      {canEdit && (
+        <div className="flex justify-between items-center bg-muted/30 p-3 rounded-xl border">
+          <span className="text-xs font-semibold text-muted-foreground">
+            رفع ملفات PDF، مذكرات، عروض تقديمة، وفيديوهات قصيرة للمقرر
+          </span>
 
-      {files && files.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap">
-          {typeChips.map((c) => (
-            <button
-              key={c.key}
-              onClick={() => setTypeFilter(c.key)}
-              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                typeFilter === c.key
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-muted hover:border-primary/40"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="rounded-xl gap-1">
+                <Upload className="w-4 h-4" /> رفع ملف للمقرر
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[450px]">
+              <DialogHeader>
+                <DialogTitle>رفع ملف أو فيديو دراسي</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-3 pt-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">عنوان الملف / التسمية *</Label>
+                  <Input
+                    value={customFileName}
+                    onChange={(e) => setCustomFileName(e.target.value)}
+                    placeholder="مثال: ملخص الفصل الأول PDF، شرح فيديو للمسألة..."
+                    className="rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">
+                    اختر الملف (PDF, Word, PPT, Video) *
+                  </Label>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".pdf,.ppt,.pptx,.doc,.docx,.zip,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.mkv"
+                    className="block w-full text-xs text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer border rounded-xl p-1"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    يدعم جميع المستندات حتى 25MB، والفيديوهات حتى 100MB.
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">ملاحظة أو تعليق للطلاب (اختياري)</Label>
+                  <Textarea
+                    value={selectedFileNote}
+                    onChange={(e) => setSelectedFileNote(e.target.value)}
+                    placeholder="اكتب أية ملاحظات هامّة يجب على الطلاب قراءتها عند تنزيل هذا الملف..."
+                    rows={2}
+                    className="resize-none rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter className="pt-3">
+                <Button
+                  onClick={handleFileUpload}
+                  disabled={uploading}
+                  className="rounded-xl font-semibold w-full"
+                >
+                  {uploading && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />} رفع الملف الآن
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 
-      {!files || files.length === 0 ? (
-        <div className="text-center py-6 text-sm text-muted-foreground">
-          لا توجد ملفات — يمكن رفع PDF / PPT / صور
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-6 text-sm text-muted-foreground">لا نتائج مطابقة</div>
+      ) : !files || files.length === 0 ? (
+        <div className="text-center py-8 border rounded-2xl border-dashed bg-muted/5">
+          <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">لا توجد ملفات مرفوعة لهذا المقرر بعد</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {filtered.map((f) => {
-            const kind = fileKind(f.title);
-            const Icon = kind.icon;
-            const thumbCandidate = isImageFile(f.title);
+        <div className="grid gap-2.5">
+          {files.map((f) => {
+            const parsed = parseTitleAndNote(f.title);
+            const fileInfo = getFileTypeInfo(f.url, f.link_type);
+
             return (
-              <Card
-                key={f.id}
-                className={`hover:shadow-sm transition-shadow ${f.is_important ? "border-amber-400/60 bg-amber-500/5" : ""}`}
-              >
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${kind.bg}`}
-                  >
-                    <Icon className={`w-5 h-5 ${kind.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate text-sm flex items-center gap-1.5">
-                      {f.is_important && (
-                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
-                      )}
-                      <span className="truncate">{f.title}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <span className={kind.color}>{kind.label}</span>
-                      {thumbCandidate && <span>· معاينة صورة</span>}
-                      <span>·</span>
-                      <span>
-                        {formatDistanceToNow(new Date(f.created_at), {
-                          addSuffix: true,
-                          locale: ar,
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                  <Button size="icon" variant="ghost" onClick={() => download(f)}>
-                    <Download className="w-4 h-4" />
-                  </Button>
-                  {canEdit && (isAdmin || f.created_by === user?.id) && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title={f.is_important ? "إلغاء التمييز" : "تمييز كمهم"}
-                      onClick={() =>
-                        toggleImportant.mutate({ fileId: f.id, next: !f.is_important })
-                      }
+              <Card key={f.id} className="hover:border-primary/40 transition">
+                <CardContent className="p-3.5 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                        fileInfo.type === "video"
+                          ? "bg-purple-500/10 text-purple-600"
+                          : fileInfo.type === "pdf"
+                            ? "bg-red-500/10 text-red-600"
+                            : fileInfo.type === "ppt"
+                              ? "bg-orange-500/10 text-orange-600"
+                              : "bg-emerald-500/10 text-emerald-600"
+                      }`}
                     >
-                      <Star
-                        className={`w-4 h-4 ${f.is_important ? "text-amber-500 fill-amber-500" : "text-muted-foreground"}`}
-                      />
+                      {fileInfo.type === "video" ? (
+                        <Video className="w-4 h-4" />
+                      ) : fileInfo.type === "pdf" ? (
+                        <FileText className="w-4 h-4" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4" />
+                      )}
+                    </div>
+
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-sm text-foreground truncate">
+                          {parsed.title}
+                        </h4>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {fileInfo.label}
+                        </Badge>
+                      </div>
+
+                      {parsed.note && (
+                        <div className="bg-muted/40 border rounded-lg p-2 text-xs text-foreground/90 flex items-start gap-1.5 my-1">
+                          <MessageSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                          <p className="leading-relaxed">
+                            <strong className="text-primary font-semibold">ملاحظة الأستاذ:</strong>{" "}
+                            {parsed.note}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> تم الرفع:{" "}
+                          {formatDistanceToNow(new Date(f.created_at), {
+                            addSuffix: true,
+                            locale: ar,
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-lg h-8 gap-1 text-xs"
+                      onClick={() => downloadOrPreview(f)}
+                    >
+                      {fileInfo.isVideo ? (
+                        <>
+                          تشغيل الفيديو{" "}
+                          <Play className="w-3.5 h-3.5 text-purple-600 fill-purple-600" />
+                        </>
+                      ) : (
+                        <>
+                          تحميل/تنزيل <Download className="w-3.5 h-3.5" />
+                        </>
+                      )}
                     </Button>
-                  )}
-                  {(isAdmin || f.created_by === user?.id) && (
-                    <Button size="icon" variant="ghost" onClick={() => del.mutate(f)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  )}
+
+                    {(isAdmin || f.created_by === user?.id) && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        onClick={() => del.mutate(f)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
           })}
         </div>
       )}
+
+      {/* Video Modal Player */}
+      {selectedVideoUrl && (
+        <Dialog open={!!selectedVideoUrl} onOpenChange={() => setSelectedVideoUrl(null)}>
+          <DialogContent className="sm:max-w-[700px] p-4">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Video className="w-5 h-5 text-purple-600" /> مشغل الفيديو الشارح
+              </DialogTitle>
+            </DialogHeader>
+            <div className="aspect-video w-full bg-black rounded-xl overflow-hidden mt-2">
+              <video src={selectedVideoUrl} controls autoPlay className="w-full h-full" />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
 
+/* Course Schedule Component */
 const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"];
-export interface ScheduleEntry {
+interface ScheduleEntry {
   day: string;
   start: string;
   end: string;
@@ -839,7 +1081,7 @@ export function ScheduleTab({
       toast.error(error.message);
       return;
     }
-    toast.success("تم حفظ الجدول");
+    toast.success("تم حفظ جدول المحاضرات بنجاح");
     onSaved();
   }
 
@@ -847,16 +1089,26 @@ export function ScheduleTab({
 
   if (!canEdit) {
     return existing.length === 0 ? (
-      <div className="text-center py-6 text-sm text-muted-foreground">لا يوجد جدول بعد</div>
+      <div className="text-center py-8 border rounded-2xl border-dashed bg-muted/5">
+        <Calendar className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+        <p className="text-xs text-muted-foreground">لم يتم إضافة مواعيد أسبوعية لهذا المقرر بعد</p>
+      </div>
     ) : (
-      <div className="space-y-2">
+      <div className="grid gap-2">
         {existing.map((e, i) => (
-          <Card key={i}>
-            <CardContent className="p-3 flex justify-between text-sm">
-              <div>
-                <b>{e.day}</b> • {e.start} - {e.end}
+          <Card key={i} className="border-muted/60">
+            <CardContent className="p-3.5 flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="font-bold">
+                  {e.day}
+                </Badge>
+                <span className="font-mono text-xs dir-ltr">
+                  {e.start} - {e.end}
+                </span>
               </div>
-              <div className="text-muted-foreground">{e.room}</div>
+              <div className="text-xs text-muted-foreground bg-muted/30 px-2.5 py-1 rounded-lg">
+                القاعة / المعمل: <strong>{e.room || "غير محدد"}</strong>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -865,9 +1117,9 @@ export function ScheduleTab({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {entries.map((e, i) => (
-        <Card key={i}>
+        <Card key={i} className="border-muted/60">
           <CardContent className="p-3 flex flex-wrap gap-2 items-center">
             <select
               value={e.day}
@@ -876,7 +1128,7 @@ export function ScheduleTab({
                   prev.map((x, j) => (j === i ? { ...x, day: ev.target.value } : x)),
                 )
               }
-              className="border rounded px-2 py-1 text-sm bg-background"
+              className="border rounded-xl px-2.5 py-1.5 text-xs bg-background font-semibold"
             >
               {DAYS.map((d) => (
                 <option key={d} value={d}>
@@ -884,63 +1136,78 @@ export function ScheduleTab({
                 </option>
               ))}
             </select>
+
             <Input
               type="time"
               value={e.start}
               onChange={(ev) =>
                 setEntries((p) => p.map((x, j) => (j === i ? { ...x, start: ev.target.value } : x)))
               }
-              className="w-28"
+              className="w-28 rounded-xl text-xs"
             />
+
             <Input
               type="time"
               value={e.end}
               onChange={(ev) =>
                 setEntries((p) => p.map((x, j) => (j === i ? { ...x, end: ev.target.value } : x)))
               }
-              className="w-28"
+              className="w-28 rounded-xl text-xs"
             />
+
             <Input
-              placeholder="القاعة"
+              placeholder="اسم القاعة أو رقم القاعة"
               value={e.room}
               onChange={(ev) =>
                 setEntries((p) => p.map((x, j) => (j === i ? { ...x, room: ev.target.value } : x)))
               }
-              className="flex-1 min-w-32"
+              className="flex-1 min-w-32 rounded-xl text-xs"
             />
+
             <Button
               size="icon"
               variant="ghost"
+              className="text-destructive h-8 w-8"
               onClick={() => setEntries((p) => p.filter((_, j) => j !== i))}
             >
-              <Trash2 className="w-4 h-4 text-destructive" />
+              <Trash2 className="w-4 h-4" />
             </Button>
           </CardContent>
         </Card>
       ))}
-      <div className="flex gap-2">
+
+      <div className="flex gap-2 justify-between">
         <Button
           size="sm"
           variant="outline"
+          className="rounded-xl gap-1 text-xs"
           onClick={() =>
             setEntries([...entries, { day: DAYS[0], start: "08:00", end: "09:30", room: "" }])
           }
         >
-          <Plus className="w-4 h-4" /> إضافة موعد
+          <Plus className="w-4 h-4" /> إضافة موعد آخر
         </Button>
-        <Button size="sm" onClick={save} disabled={saving}>
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />} حفظ الجدول
+
+        <Button
+          size="sm"
+          onClick={save}
+          disabled={saving}
+          className="rounded-xl font-semibold text-xs"
+        >
+          {saving && <Loader2 className="w-4 h-4 animate-spin ml-1" />} حفظ الجدول للمقرر
         </Button>
       </div>
     </div>
   );
 }
 
+/* Course Announcements / Updates */
 export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [content, setContent] = useState("");
-  const { data: updates } = useQuery({
+
+  const { data: updates, isLoading } = useQuery({
     queryKey: ["course_updates", courseId],
     queryFn: async () => {
       const { data } = await supabase
@@ -948,19 +1215,22 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
         .select("*")
         .eq("course_id", courseId)
         .order("created_at", { ascending: false });
+
       const rows = (data ?? []) as CourseUpdate[];
       const authorIds = Array.from(new Set(rows.map((r) => r.author_id)));
-      if (!authorIds.length) return rows.map((r) => ({ ...r, author_name: "" }));
+      if (!authorIds.length) return rows.map((r) => ({ ...r, author_name: "الأستاذ" }));
+
       const { data: authors } = await supabase.rpc("get_public_profiles", { _ids: authorIds });
       const m = new Map(
         (authors ?? []).map((a: { id: string; full_name: string }) => [a.id, a.full_name]),
       );
-      return rows.map((r) => ({ ...r, author_name: m.get(r.author_id) ?? "" }));
+      return rows.map((r) => ({ ...r, author_name: m.get(r.author_id) ?? "الأستاذ" }));
     },
   });
+
   const post = useMutation({
     mutationFn: async () => {
-      if (!user || !content.trim()) throw new Error("أدخل محتوى");
+      if (!user || !content.trim()) throw new Error("يرجى كتابة نص الإعلان");
       const { error } = await supabase
         .from("course_updates")
         .insert({ course_id: courseId, author_id: user.id, content: content.trim() });
@@ -968,71 +1238,95 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
     },
     onSuccess: () => {
       setContent("");
-      toast.success("تم النشر");
+      toast.success("تم نشر الإعلان للطلاب بنجاح");
       qc.invalidateQueries({ queryKey: ["course_updates", courseId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
   const del = useMutation({
     mutationFn: async (uid: string) => {
       await supabase.from("course_updates").delete().eq("id", uid);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["course_updates", courseId] }),
+    onSuccess: () => {
+      toast.success("تم حذف الإعلان");
+      qc.invalidateQueries({ queryKey: ["course_updates", courseId] });
+    },
   });
 
   return (
     <div className="space-y-3">
       {canEdit && (
-        <Card>
-          <CardContent className="p-3 space-y-2">
+        <Card className="border-primary/30 bg-card">
+          <CardContent className="p-4 space-y-3">
+            <Label className="text-xs font-semibold text-foreground">
+              نشر إعلان جديد للطلاب في هذا المقرر
+            </Label>
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={3}
-              placeholder="اكتب إعلانًا أو تحديثًا للطلاب..."
+              placeholder="اكتب إعلاناً مهماً أو تنبيهاً لطلاب المقررات (مثال: تأجيل محاضرة، موعد تسليم التكليف...)"
+              className="resize-none rounded-xl text-xs"
             />
             <div className="flex justify-end">
               <Button
                 size="sm"
                 onClick={() => post.mutate()}
                 disabled={!content.trim() || post.isPending}
+                className="rounded-xl font-semibold text-xs gap-1.5"
               >
-                {post.isPending && <Loader2 className="w-4 h-4 animate-spin" />} نشر إعلان
+                {post.isPending && <Loader2 className="w-4 h-4 animate-spin" />} نشر الإعلان الآن
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
-      {!updates || updates.length === 0 ? (
-        <div className="text-center py-6 text-sm text-muted-foreground">لا توجد إعلانات</div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : !updates || updates.length === 0 ? (
+        <div className="text-center py-8 border rounded-2xl border-dashed bg-muted/5">
+          <Megaphone className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">لا توجد إعلانات منشورة لهذا المقرر بعد</p>
+        </div>
       ) : (
-        updates.map((u) => (
-          <Card key={u.id}>
-            <CardContent className="p-3 space-y-1">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div>
-                  <b className="text-foreground">{u.author_name}</b> •{" "}
-                  {formatDistanceToNow(new Date(u.created_at), { addSuffix: true, locale: ar })}
+        <div className="grid gap-2.5">
+          {updates.map((u) => (
+            <Card key={u.id} className="border-muted/60">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <strong className="text-foreground font-semibold">{u.author_name}</strong>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />{" "}
+                      {formatDistanceToNow(new Date(u.created_at), { addSuffix: true, locale: ar })}
+                    </span>
+                  </div>
+
+                  {(isAdmin || u.author_id === user?.id) && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                      onClick={() => del.mutate(u.id)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
-                {(isAdmin || u.author_id === user?.id) && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6"
-                    onClick={() => del.mutate(u.id)}
-                  >
-                    <Trash2 className="w-3 h-3 text-destructive" />
-                  </Button>
-                )}
-              </div>
-              <p className="whitespace-pre-wrap text-sm">{u.content}</p>
-            </CardContent>
-          </Card>
-        ))
+
+                <p className="whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed">
+                  {u.content}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );
 }
-
-// Silence unused import for format if not used above
-void format;

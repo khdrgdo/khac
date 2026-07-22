@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -12,25 +13,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { UserAvatar } from "@/components/UserAvatar";
 import {
   Trophy,
   Search,
   Medal,
+  Calendar,
   BookOpen,
   Flame,
+  Star,
   Loader2,
-  Crown,
-  Sparkles,
+  GraduationCap,
+  MoreVertical,
+  Filter,
+  SlidersHorizontal,
 } from "lucide-react";
 import { RankBadge } from "@/components/RankBadge";
-import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { majorLabel } from "@/lib/college";
 import { MAJORS, YEARS } from "@/lib/college";
-import { motion } from "motion/react";
-import { Link } from "@tanstack/react-router";
-
+import { motion, AnimatePresence } from "motion/react";
 
 export const Route = createFileRoute("/_authenticated/leaderboard")({
   component: LeaderboardPage,
@@ -50,12 +52,28 @@ type LeaderboardUser = {
 };
 
 function LeaderboardPage() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const [timeframe, setTimeframe] = useState<"all" | "month" | "week">("all");
   const [majorFilter, setMajorFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const activeFiltersCount =
+    (searchQuery.trim() ? 1 : 0) +
+    (majorFilter !== "all" ? 1 : 0) +
+    (yearFilter !== "all" ? 1 : 0) +
+    (courseFilter !== "all" ? 1 : 0) +
+    (timeframe !== "all" ? 1 : 0);
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setMajorFilter("all");
+    setYearFilter("all");
+    setCourseFilter("all");
+    setTimeframe("all");
+  };
 
   // Fetch all courses for filtering
   const { data: courses } = useQuery({
@@ -68,33 +86,183 @@ function LeaderboardPage() {
 
   // Fetch leaderboard data
   const { data: leaderboard, isLoading } = useQuery<LeaderboardUser[]>({
-    queryKey: ["leaderboard", timeframe, majorFilter, yearFilter, courseFilter],
+    queryKey: [
+      "leaderboard",
+      timeframe,
+      majorFilter,
+      yearFilter,
+      courseFilter,
+      profile?.id,
+      isAdmin,
+    ],
     queryFn: async () => {
-      // 1. Determine major/year filter values
-      let filterMajor: "is" | "it" | "se" | null = null;
-      let filterYear: number | null = null;
+      let effectiveMajor: string | null = majorFilter !== "all" ? majorFilter : null;
+      let effectiveYear: number | null = yearFilter !== "all" ? Number(yearFilter) : null;
 
       if (courseFilter !== "all" && courses) {
         const selectedCourse = courses.find((c) => c.id === courseFilter);
         if (selectedCourse) {
-          filterMajor = selectedCourse.major as "is" | "it" | "se";
-          filterYear = selectedCourse.year;
+          effectiveMajor = selectedCourse.major;
+          effectiveYear = selectedCourse.year;
         }
-      } else {
-        if (majorFilter !== "all") filterMajor = majorFilter as "is" | "it" | "se";
-        if (yearFilter !== "all") filterYear = Number(yearFilter);
       }
 
-      // Use the safe public RPC — profiles RLS restricts direct SELECT to
-      // own-row-or-admin, so a plain `.from("profiles")` query here would
-      // only ever return the current user's own row for everyone else.
-      const { data: profiles, error } = await supabase.rpc("list_public_profiles", {
-        _major: filterMajor,
-        _year: filterYear,
-      });
-      if (error) throw error;
+      interface RawProfileRow {
+        id: string;
+        full_name: string;
+        avatar_url?: string | null;
+        points?: number | null;
+        major?: string | null;
+        year?: number | null;
+        university_number?: string | null;
+        verified?: boolean | null;
+      }
 
-      const profileList = profiles ?? [];
+      let profileList: Array<{
+        id: string;
+        full_name: string;
+        avatar_url: string | null;
+        points: number;
+        major: string | null;
+        year: number | null;
+        university_number: string;
+        verified: boolean;
+      }> = [];
+
+      // 1. Try get_leaderboard_profiles RPC (returns all non-banned public profiles securely)
+      const { data: rpcProfiles, error: rpcError } = await supabase.rpc(
+        "get_leaderboard_profiles" as never,
+        {
+          _major: effectiveMajor,
+          _year: effectiveYear,
+        } as never,
+      );
+
+      if (!rpcError && Array.isArray(rpcProfiles) && rpcProfiles.length > 0) {
+        profileList = (rpcProfiles as unknown as RawProfileRow[]).map((p) => ({
+          id: p.id,
+          full_name: p.full_name || "مستخدم",
+          avatar_url: p.avatar_url || null,
+          points: p.points || 0,
+          major: p.major || null,
+          year: p.year || null,
+          university_number: p.university_number || "",
+          verified: !!p.verified,
+        }));
+      } else {
+        // 2. Direct profiles query fallback (works for admins or if RLS policy grants view)
+        let q = supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url, points, major, year, university_number, verified")
+          .eq("banned", false);
+
+        if (effectiveMajor === "is" || effectiveMajor === "it" || effectiveMajor === "se") {
+          q = q.eq("major", effectiveMajor);
+        }
+        if (effectiveYear) q = q.eq("year", effectiveYear);
+
+        const { data: directProfiles } = await q;
+        profileList = directProfiles ?? [];
+
+        // 3. Fallback for non-admin users if direct query returned only current user (due to RLS restriction):
+        // Collect author/user IDs from posts, comments, Q&A, courses, and search_public_profiles RPC
+        if (profileList.length <= 1) {
+          const [
+            { data: postAuthors },
+            { data: commentAuthors },
+            { data: qaAuthors },
+            { data: courseMembers },
+            { data: allCourses },
+            { data: searchedProfiles },
+          ] = await Promise.all([
+            supabase.from("posts").select("author_id"),
+            supabase.from("comments").select("author_id"),
+            supabase.from("qa_questions").select("author_id"),
+            supabase.from("course_members").select("user_id"),
+            supabase.from("courses").select("teacher_id, created_by"),
+            supabase.rpc("search_public_profiles", { _q: "" }),
+          ]);
+
+          const userIdsSet = new Set<string>();
+          if (profile?.id) userIdsSet.add(profile.id);
+
+          (postAuthors ?? []).forEach((row) => row.author_id && userIdsSet.add(row.author_id));
+          (commentAuthors ?? []).forEach((row) => row.author_id && userIdsSet.add(row.author_id));
+          (qaAuthors ?? []).forEach((row) => row.author_id && userIdsSet.add(row.author_id));
+          (courseMembers ?? []).forEach((row) => row.user_id && userIdsSet.add(row.user_id));
+          (allCourses ?? []).forEach((row) => {
+            if (row.teacher_id) userIdsSet.add(row.teacher_id);
+            if (row.created_by) userIdsSet.add(row.created_by);
+          });
+          (searchedProfiles ?? []).forEach(
+            (row: { id?: string }) => row.id && userIdsSet.add(row.id),
+          );
+
+          if (userIdsSet.size > 0) {
+            const { data: publicProfs } = await supabase.rpc("get_public_profiles", {
+              _ids: Array.from(userIdsSet),
+            });
+
+            if (publicProfs && publicProfs.length > 0) {
+              const existingMap = new Map(profileList.map((p) => [p.id, p]));
+              (publicProfs as unknown as RawProfileRow[]).forEach((p) => {
+                if (!existingMap.has(p.id)) {
+                  existingMap.set(p.id, {
+                    id: p.id,
+                    full_name: p.full_name || "مستخدم",
+                    avatar_url: p.avatar_url || null,
+                    points: p.points || 0,
+                    major: p.major || null,
+                    year: p.year || null,
+                    university_number: p.university_number || "",
+                    verified: !!p.verified,
+                  });
+                }
+              });
+              profileList = Array.from(existingMap.values());
+            }
+          }
+
+          // Filter by major and year if effective filters are active
+          if (effectiveMajor) {
+            profileList = profileList.filter((p) => p.major === effectiveMajor);
+          }
+          if (effectiveYear) {
+            profileList = profileList.filter((p) => p.year === effectiveYear);
+          }
+        }
+      }
+
+      // Always filter out all admin users unconditionally from profileList
+      const { data: adminRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+      const adminUserIds = new Set((adminRoles ?? []).map((r) => r.user_id));
+
+      if (profile?.id && isAdmin) {
+        adminUserIds.add(profile.id);
+      }
+
+      profileList = profileList.filter((p) => {
+        if (adminUserIds.has(p.id)) return false;
+        if (profile?.id && p.id === profile.id && isAdmin) return false;
+
+        const nameLower = (p.full_name || "").toLowerCase();
+        const uniNum = p.university_number || "";
+
+        if (
+          uniNum === "2011099840" ||
+          nameLower.includes("أدمن") ||
+          nameLower.includes("ادمن") ||
+          nameLower.includes("admin") ||
+          nameLower.includes("مدير")
+        ) {
+          return false;
+        }
+
+        return true;
+      });
 
       // 2. Adjust scores for dynamic timeframes
       if (timeframe === "all") {
@@ -158,11 +326,24 @@ function LeaderboardPage() {
     },
   });
 
-  const filteredLeaderboard = (leaderboard ?? []).filter(
-    (user) =>
+  const filteredLeaderboard = (leaderboard ?? []).filter((user) => {
+    // 1. Unconditionally exclude admin user or any account with admin attributes
+    const isUserAdmin =
+      (profile?.id && user.id === profile.id && isAdmin) ||
+      user.university_number === "2011099840" ||
+      user.full_name.toLowerCase().includes("ادمن") ||
+      user.full_name.toLowerCase().includes("أدمن") ||
+      user.full_name.toLowerCase().includes("admin") ||
+      user.full_name.toLowerCase().includes("مدير");
+
+    if (isUserAdmin) return false;
+
+    // 2. Search query filter
+    return (
       user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.university_number.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+      user.university_number.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   // Top 3 positions
   const podium = filteredLeaderboard.slice(0, 3);
@@ -173,139 +354,195 @@ function LeaderboardPage() {
   const currentUserData = filteredLeaderboard.find((u) => u.id === profile?.id);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shadow-sm">
-          <Trophy className="w-6 h-6 animate-pulse" />
+    <div className="max-w-4xl mx-auto space-y-4">
+      {/* Top Header Bar with 3-Dots Action */}
+      <div className="flex items-center justify-between gap-3 bg-card/60 border border-border/60 p-3 rounded-2xl shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+            <Trophy className="w-5 h-5 animate-pulse" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight leading-tight">لوحة الصدارة</h1>
+            {showFilters && (
+              <p className="text-xs text-muted-foreground transition-all">
+                تحدّ زملائك، احصل على نقاط علمية، وتصدّر قائمة الكلية والمساقات
+              </p>
+            )}
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">لوحة الصدارة</h1>
-          <p className="text-sm text-muted-foreground">
-            تحدّ زملائك، احصل على نقاط علمية، وتصدّر قائمة الكلية والمساقات
-          </p>
+
+        {/* 3-Dots Filter Toggle Button */}
+        <div className="flex items-center gap-2">
+          {activeFiltersCount > 0 && !showFilters && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] bg-primary/10 text-primary border-none"
+            >
+              {activeFiltersCount} تصفية نشطة
+            </Badge>
+          )}
+
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowFilters((prev) => !prev)}
+            className="h-9 px-3 rounded-xl gap-1.5 text-xs font-semibold transition-all shadow-xs"
+            title="خيارات البحث والتصفية"
+          >
+            <MoreVertical className="w-4 h-4" />
+            <span className="hidden sm:inline">خيارات الفلترة</span>
+          </Button>
         </div>
       </div>
 
-      {/* Main Grid Filters */}
-      <Card className="border-muted/60 shadow-sm">
-        <CardContent className="p-4 flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap gap-2 items-center flex-1 min-w-[280px]">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-xs">
-              <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="ابحث بالاسم أو الرقم الجامعي..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-9"
-              />
-            </div>
+      {/* Collapsible Filter Panel */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <Card className="border-primary/20 shadow-xs rounded-2xl">
+              <CardContent className="p-3.5 space-y-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground pb-1.5 border-b border-border/50">
+                  <span className="flex items-center gap-1.5 text-foreground">
+                    <Filter className="w-3.5 h-3.5 text-primary" /> البحث وتصفية النتائج
+                  </span>
+                  {activeFiltersCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="text-primary hover:underline text-[11px]"
+                    >
+                      إعادة ضبط الفلاتر
+                    </button>
+                  )}
+                </div>
 
-            {/* Major Select */}
-            <Select
-              value={majorFilter}
-              onValueChange={(val) => {
-                setMajorFilter(val);
-                setCourseFilter("all"); // reset course on major change
-              }}
-              disabled={courseFilter !== "all"}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="التخصص" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">كل التخصصات</SelectItem>
-                {MAJORS.map((m) => (
-                  <SelectItem key={m.code} value={m.code}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <div className="flex flex-wrap gap-2.5 items-center justify-between">
+                  <div className="flex flex-wrap gap-2 items-center flex-1 min-w-[260px]">
+                    {/* Search Input */}
+                    <div className="relative flex-1 min-w-[180px]">
+                      <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="ابحث بالاسم أو الرقم الجامعي..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pr-9 h-9 text-xs rounded-xl"
+                      />
+                    </div>
 
-            {/* Year Select */}
-            <Select
-              value={yearFilter}
-              onValueChange={(val) => {
-                setYearFilter(val);
-                setCourseFilter("all"); // reset course on year change
-              }}
-              disabled={courseFilter !== "all"}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="السنة الدراسية" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">كل السنوات</SelectItem>
-                {YEARS.map((y) => (
-                  <SelectItem key={y} value={String(y)}>
-                    السنة {y}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    {/* Major Select */}
+                    <Select
+                      value={majorFilter}
+                      onValueChange={(val) => {
+                        setMajorFilter(val);
+                        setCourseFilter("all");
+                      }}
+                      disabled={courseFilter !== "all"}
+                    >
+                      <SelectTrigger className="w-36 h-9 text-xs rounded-xl">
+                        <SelectValue placeholder="التخصص" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">كل التخصصات</SelectItem>
+                        {MAJORS.map((m) => (
+                          <SelectItem key={m.code} value={m.code}>
+                            {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-            {/* Course Tag Select */}
-            <Select
-              value={courseFilter}
-              onValueChange={(val) => {
-                setCourseFilter(val);
-              }}
-            >
-              <SelectTrigger className="w-48">
-                <BookOpen className="w-4 h-4 ml-1.5 text-muted-foreground" />
-                <SelectValue placeholder="تصفية بحسب الكورس" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">كل الكورسات</SelectItem>
-                {(courses ?? []).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                    {/* Year Select */}
+                    <Select
+                      value={yearFilter}
+                      onValueChange={(val) => {
+                        setYearFilter(val);
+                        setCourseFilter("all");
+                      }}
+                      disabled={courseFilter !== "all"}
+                    >
+                      <SelectTrigger className="w-32 h-9 text-xs rounded-xl">
+                        <SelectValue placeholder="السنة الدراسية" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">كل السنوات</SelectItem>
+                        {YEARS.map((y) => (
+                          <SelectItem key={y} value={String(y)}>
+                            السنة {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-          {/* Timeframe Select */}
-          <div className="flex border rounded-lg p-0.5 bg-muted/40">
-            <button
-              onClick={() => setTimeframe("all")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                timeframe === "all"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              الكل
-            </button>
-            <button
-              onClick={() => setTimeframe("month")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                timeframe === "month"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              هذا الشهر
-            </button>
-            <button
-              onClick={() => setTimeframe("week")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                timeframe === "week"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              هذا الأسبوع
-            </button>
-          </div>
-        </CardContent>
-      </Card>
+                    {/* Course Tag Select */}
+                    <Select
+                      value={courseFilter}
+                      onValueChange={(val) => {
+                        setCourseFilter(val);
+                      }}
+                    >
+                      <SelectTrigger className="w-44 h-9 text-xs rounded-xl">
+                        <BookOpen className="w-3.5 h-3.5 ml-1 text-muted-foreground" />
+                        <SelectValue placeholder="تصفية بالكورس" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">كل الكورسات</SelectItem>
+                        {(courses ?? []).map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Timeframe Select */}
+                  <div className="flex border rounded-xl p-0.5 bg-muted/40 text-xs">
+                    <button
+                      onClick={() => setTimeframe("all")}
+                      className={`px-3 py-1 rounded-lg font-medium transition ${
+                        timeframe === "all"
+                          ? "bg-background text-foreground shadow-xs font-bold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      الكل
+                    </button>
+                    <button
+                      onClick={() => setTimeframe("month")}
+                      className={`px-3 py-1 rounded-lg font-medium transition ${
+                        timeframe === "month"
+                          ? "bg-background text-foreground shadow-xs font-bold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      هذا الشهر
+                    </button>
+                    <button
+                      onClick={() => setTimeframe("week")}
+                      className={`px-3 py-1 rounded-lg font-medium transition ${
+                        timeframe === "week"
+                          ? "bg-background text-foreground shadow-xs font-bold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      هذا الأسبوع
+                    </button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Current User Quick Status */}
-      {currentUserData && timeframe === "all" && (
+      {currentUserData && !isAdmin && timeframe === "all" && (
         <Card className="border-primary/20 bg-primary/5 shadow-sm overflow-hidden">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -341,41 +578,158 @@ function LeaderboardPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {/* Podium Top 3 — Premium */}
+          {/* Podium Top 3 */}
           {podium.length > 0 && (
-            <div className="relative">
-              {/* Ambient glow */}
-              <div className="absolute inset-0 -z-10 blur-3xl opacity-40 pointer-events-none">
-                <div className="absolute left-1/2 -translate-x-1/2 top-8 w-56 h-56 rounded-full bg-amber-400/40" />
-                <div className="absolute left-8 top-16 w-32 h-32 rounded-full bg-slate-300/40" />
-                <div className="absolute right-8 top-16 w-32 h-32 rounded-full bg-amber-700/30" />
-              </div>
+            <div className="grid grid-cols-3 gap-3 pt-6 items-end max-w-xl mx-auto">
+              {/* Second Place (Podium Left/Right) */}
+              {podium[1] && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="flex flex-col items-center"
+                >
+                  <Link
+                    to="/profile/$id"
+                    params={{ id: podium[1].id }}
+                    className="flex flex-col items-center group cursor-pointer"
+                  >
+                    <div className="relative mb-2">
+                      <UserAvatar
+                        avatarUrl={podium[1].avatar_url}
+                        fullName={podium[1].full_name}
+                        className="w-16 h-16 ring-4 ring-slate-300 dark:ring-slate-700 group-hover:ring-primary transition"
+                      />
+                      <div className="absolute -bottom-1 -right-1 bg-slate-400 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs shadow">
+                        ٢
+                      </div>
+                    </div>
+                    <span className="font-semibold text-sm text-center line-clamp-1 max-w-[110px] group-hover:underline flex items-center gap-1">
+                      {podium[1].full_name}
+                      {podium[1].verified && (
+                        <Badge
+                          variant="secondary"
+                          className="px-1 py-0 text-[9px] bg-sky-500/10 text-sky-600 border-none"
+                        >
+                          موثق
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground mb-3">
+                      {majorLabel(podium[1].major)}
+                    </span>
+                  </Link>
+                  <div className="bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-t-xl w-full h-24 flex flex-col justify-center items-center shadow-sm">
+                    <Medal className="w-5 h-5 text-slate-400 mb-1" />
+                    <span className="font-bold text-base text-slate-700 dark:text-slate-300">
+                      {podium[1].score}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">نقطة</span>
+                  </div>
+                </motion.div>
+              )}
 
-              <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-16 items-end max-w-2xl mx-auto">
-                {/* Second Place */}
-                {podium[1] ? (
-                  <PodiumSpot user={podium[1]} place={2} />
-                ) : (
-                  <div />
-                )}
+              {/* First Place (Center Podium) */}
+              {podium[0] && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col items-center"
+                >
+                  <Link
+                    to="/profile/$id"
+                    params={{ id: podium[0].id }}
+                    className="flex flex-col items-center group cursor-pointer"
+                  >
+                    <div className="relative mb-3">
+                      <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-amber-500 animate-bounce">
+                        <Trophy className="w-6 h-6 fill-amber-500" />
+                      </div>
+                      <UserAvatar
+                        avatarUrl={podium[0].avatar_url}
+                        fullName={podium[0].full_name}
+                        className="w-20 h-20 ring-4 ring-amber-400 group-hover:ring-amber-500 transition"
+                      />
+                      <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shadow border border-white">
+                        ١
+                      </div>
+                    </div>
+                    <span className="font-bold text-base text-center line-clamp-1 max-w-[120px] group-hover:underline flex items-center gap-1">
+                      {podium[0].full_name}
+                      {podium[0].verified && (
+                        <Badge
+                          variant="secondary"
+                          className="px-1 py-0 text-[9px] bg-sky-500/10 text-sky-600 border-none"
+                        >
+                          موثق
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-3">
+                      {majorLabel(podium[0].major)}
+                    </span>
+                  </Link>
+                  <div className="bg-amber-500/10 dark:bg-amber-500/5 border-2 border-amber-300 dark:border-amber-900/50 rounded-t-2xl w-full h-32 flex flex-col justify-center items-center shadow-md">
+                    <Trophy className="w-6 h-6 text-amber-500 mb-1" />
+                    <span className="font-black text-xl text-amber-600 dark:text-amber-400">
+                      {podium[0].score}
+                    </span>
+                    <span className="text-xs font-semibold text-amber-700/80 dark:text-amber-500">
+                      نقطة
+                    </span>
+                  </div>
+                </motion.div>
+              )}
 
-                {/* First Place — Champion */}
-                {podium[0] ? (
-                  <PodiumSpot user={podium[0]} place={1} />
-                ) : (
-                  <div />
-                )}
-
-                {/* Third Place */}
-                {podium[2] ? (
-                  <PodiumSpot user={podium[2]} place={3} />
-                ) : (
-                  <div />
-                )}
-              </div>
+              {/* Third Place (Podium Left/Right) */}
+              {podium[2] && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="flex flex-col items-center"
+                >
+                  <Link
+                    to="/profile/$id"
+                    params={{ id: podium[2].id }}
+                    className="flex flex-col items-center group cursor-pointer"
+                  >
+                    <div className="relative mb-2">
+                      <UserAvatar
+                        avatarUrl={podium[2].avatar_url}
+                        fullName={podium[2].full_name}
+                        className="w-16 h-16 ring-4 ring-amber-700/30 group-hover:ring-amber-700 transition"
+                      />
+                      <div className="absolute -bottom-1 -right-1 bg-amber-700 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs shadow">
+                        ٣
+                      </div>
+                    </div>
+                    <span className="font-semibold text-sm text-center line-clamp-1 max-w-[110px] group-hover:underline flex items-center gap-1">
+                      {podium[2].full_name}
+                      {podium[2].verified && (
+                        <Badge
+                          variant="secondary"
+                          className="px-1 py-0 text-[9px] bg-sky-500/10 text-sky-600 border-none"
+                        >
+                          موثق
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground mb-3">
+                      {majorLabel(podium[2].major)}
+                    </span>
+                  </Link>
+                  <div className="bg-amber-900/5 dark:bg-amber-900/5 border border-amber-800/10 dark:border-amber-900/20 rounded-t-xl w-full h-20 flex flex-col justify-center items-center shadow-sm">
+                    <Medal className="w-5 h-5 text-amber-600 mb-1" />
+                    <span className="font-bold text-base text-amber-700 dark:text-amber-500">
+                      {podium[2].score}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">نقطة</span>
+                  </div>
+                </motion.div>
+              )}
             </div>
           )}
-
 
           {/* List remainder of students */}
           <Card className="border-muted/60 shadow-sm overflow-hidden">
@@ -384,28 +738,41 @@ function LeaderboardPage() {
                 const rank = idx + 4;
                 const isSelf = user.id === profile?.id;
                 return (
-                  <Link
+                  <div
                     key={user.id}
-                    to="/profile/$id"
-                    params={{ id: user.id }}
                     className={`flex items-center justify-between p-3.5 transition hover:bg-muted/30 ${
                       isSelf ? "bg-primary/5 border-r-4 border-r-primary" : ""
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 text-center font-bold text-sm text-muted-foreground">
+                    <Link
+                      to="/profile/$id"
+                      params={{ id: user.id }}
+                      className="flex items-center gap-3 group cursor-pointer flex-1 min-w-0"
+                    >
+                      {/* Rank number */}
+                      <span className="w-8 text-center font-bold text-sm text-muted-foreground shrink-0">
                         {rank}
                       </span>
-                      <Avatar className="w-10 h-10 border">
-                        <AvatarImage src={user.avatar_url ?? undefined} />
-                        <AvatarFallback className="font-semibold">
-                          {user.full_name.slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-bold text-sm flex items-center gap-1.5">
-                          {user.full_name}
-                          {user.verified && <VerifiedBadge />}
+
+                      {/* Avatar */}
+                      <UserAvatar
+                        avatarUrl={user.avatar_url}
+                        fullName={user.full_name}
+                        className="w-10 h-10 border shrink-0"
+                      />
+
+                      {/* Full Name & Metadata */}
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm flex items-center gap-1.5 group-hover:underline truncate">
+                          <span className="truncate">{user.full_name}</span>
+                          {user.verified && (
+                            <Badge
+                              variant="secondary"
+                              className="px-1 py-0 text-[9px] bg-sky-500/10 text-sky-600 border-none shrink-0"
+                            >
+                              موثق
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground flex gap-1.5 mt-0.5">
                           <span>{majorLabel(user.major)}</span>
@@ -413,21 +780,24 @@ function LeaderboardPage() {
                           <span>السنة {user.year}</span>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4">
+                    </Link>
+
+                    <div className="flex items-center gap-4 shrink-0 ms-2">
+                      {/* Sub-Metric details */}
                       {timeframe !== "all" && user.contributions > 0 && (
                         <span className="text-[11px] text-muted-foreground hidden sm:flex items-center gap-1">
                           <Flame className="w-3.5 h-3.5 text-orange-500" />
                           {user.contributions} نشاط
                         </span>
                       )}
-                      <RankBadge points={user.points} />
+
+                      {/* Points / Score badge */}
                       <div className="text-right">
                         <div className="font-black text-sm text-foreground">{user.score}</div>
                         <div className="text-[10px] text-muted-foreground">نقطة</div>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 );
               })}
             </CardContent>
@@ -437,147 +807,3 @@ function LeaderboardPage() {
     </div>
   );
 }
-
-function PodiumSpot({ user, place }: { user: LeaderboardUser; place: 1 | 2 | 3 }) {
-  const isFirst = place === 1;
-  const isSecond = place === 2;
-  const config = isFirst
-    ? {
-        ring: "ring-4 ring-amber-400 shadow-[0_0_40px_-8px_rgba(245,158,11,0.6)]",
-        size: "w-24 h-24",
-        pedestalHeight: "h-40",
-        pedestalBg:
-          "bg-gradient-to-b from-amber-300 via-amber-400 to-amber-600 dark:from-amber-500/90 dark:via-amber-600/80 dark:to-amber-800/70 border-amber-300",
-        badgeBg: "bg-gradient-to-br from-amber-400 to-amber-600",
-        rankText: "text-white",
-        pointsText: "text-white",
-        nameText: "text-base sm:text-lg",
-        arabic: "١",
-        delay: 0,
-      }
-    : isSecond
-      ? {
-          ring: "ring-4 ring-slate-300 dark:ring-slate-500",
-          size: "w-18 h-18 sm:w-20 sm:h-20",
-          pedestalHeight: "h-28",
-          pedestalBg:
-            "bg-gradient-to-b from-slate-200 via-slate-300 to-slate-400 dark:from-slate-500/80 dark:via-slate-600/70 dark:to-slate-700 border-slate-300",
-          badgeBg: "bg-gradient-to-br from-slate-300 to-slate-500",
-          rankText: "text-slate-800 dark:text-white",
-          pointsText: "text-slate-800 dark:text-white",
-          nameText: "text-sm sm:text-base",
-          arabic: "٢",
-          delay: 0.1,
-        }
-      : {
-          ring: "ring-4 ring-amber-700/60",
-          size: "w-18 h-18 sm:w-20 sm:h-20",
-          pedestalHeight: "h-24",
-          pedestalBg:
-            "bg-gradient-to-b from-amber-600 via-amber-700 to-amber-900 dark:from-amber-700/80 dark:via-amber-800/70 dark:to-amber-950 border-amber-700",
-          badgeBg: "bg-gradient-to-br from-amber-600 to-amber-800",
-          rankText: "text-white",
-          pointsText: "text-white",
-          nameText: "text-sm sm:text-base",
-          arabic: "٣",
-          delay: 0.15,
-        };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: config.delay, type: "spring", stiffness: 120 }}
-      className="flex flex-col items-center relative"
-    >
-      {/* Animated Crown for #1 */}
-      {isFirst && (
-        <>
-          <motion.div
-            initial={{ y: -8, opacity: 0 }}
-            animate={{ y: [-8, -14, -8], opacity: 1 }}
-            transition={{
-              y: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
-              opacity: { duration: 0.4 },
-            }}
-            className="absolute -top-14 left-1/2 -translate-x-1/2 z-20"
-          >
-            <motion.div
-              animate={{ rotate: [-6, 6, -6] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-              className="relative"
-            >
-              <Crown
-                className="w-11 h-11 sm:w-14 sm:h-14 text-amber-400 fill-amber-400 drop-shadow-[0_4px_10px_rgba(245,158,11,0.7)]"
-                strokeWidth={1.5}
-              />
-              <motion.div
-                animate={{ scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 1.8, repeat: Infinity }}
-                className="absolute -top-1 -right-1"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
-              </motion.div>
-              <motion.div
-                animate={{ scale: [1.3, 1, 1.3], opacity: [1, 0.6, 1] }}
-                transition={{ duration: 1.8, repeat: Infinity }}
-                className="absolute -bottom-1 -left-1"
-              >
-                <Sparkles className="w-2.5 h-2.5 text-yellow-200 fill-yellow-200" />
-              </motion.div>
-            </motion.div>
-          </motion.div>
-        </>
-      )}
-
-      <Link
-        to="/profile/$id"
-        params={{ id: user.id }}
-        className="flex flex-col items-center group"
-      >
-        <div className="relative mb-3">
-          <Avatar className={`${config.size} ${config.ring} transition-transform group-hover:scale-105`}>
-            <AvatarImage src={user.avatar_url ?? undefined} />
-            <AvatarFallback className="text-xl font-bold bg-muted">
-              {user.full_name.slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
-          <div
-            className={`absolute -bottom-1 -right-1 ${config.badgeBg} text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shadow-lg border-2 border-background`}
-          >
-            {config.arabic}
-          </div>
-        </div>
-        <span
-          className={`font-bold text-center line-clamp-1 max-w-[130px] flex items-center gap-1 ${config.nameText}`}
-        >
-          {user.full_name}
-          {user.verified && <VerifiedBadge />}
-        </span>
-        <span className="text-[11px] text-muted-foreground mb-2 line-clamp-1">
-          {majorLabel(user.major)}
-          {user.year ? ` • السنة ${user.year}` : ""}
-        </span>
-      </Link>
-
-      <div
-        className={`${config.pedestalBg} ${config.pedestalHeight} w-full rounded-t-2xl border-t-2 border-x-2 flex flex-col justify-center items-center shadow-xl relative overflow-hidden`}
-      >
-        {/* Shine overlay */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent pointer-events-none" />
-        {isFirst ? (
-          <Trophy className="w-6 h-6 mb-1 text-white drop-shadow" strokeWidth={2.2} />
-        ) : (
-          <Medal className={`w-5 h-5 mb-1 ${config.rankText}`} strokeWidth={2.2} />
-        )}
-        <span className={`font-black text-lg sm:text-xl ${config.pointsText} drop-shadow`}>
-          {user.score}
-        </span>
-        <span className={`text-[10px] font-semibold ${config.pointsText} opacity-90`}>
-          نقطة
-        </span>
-      </div>
-    </motion.div>
-  );
-}
-

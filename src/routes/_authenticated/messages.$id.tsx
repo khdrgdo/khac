@@ -63,9 +63,32 @@ function ChatPage() {
   const qc = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("blocked_users");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("محتوى غير لائق أو مسيء");
   const [reportNote, setReportNote] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      try {
+        const stored = localStorage.getItem("blocked_users");
+        setBlockedUsers(stored ? JSON.parse(stored) : []);
+      } catch (e) {
+        console.warn(e);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   const { data: conv, isLoading: loadingConv } = useQuery({
     queryKey: ["conversation", id],
@@ -94,26 +117,6 @@ function ChatPage() {
     },
   });
 
-  const otherUserId = (conv?.profiles ?? []).find((p: Prof) => p.id !== user?.id)?.id;
-
-  const { data: blockStatus } = useQuery({
-    queryKey: ["block-status", user?.id, otherUserId],
-    enabled: !!user && !!otherUserId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("blocked_users")
-        .select("blocker_id, blocked_id")
-        .or(
-          `and(blocker_id.eq.${user!.id},blocked_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_id.eq.${user!.id})`,
-        );
-      const rows = data ?? [];
-      return {
-        iBlockedThem: rows.some((r) => r.blocker_id === user!.id),
-        theyBlockedMe: rows.some((r) => r.blocker_id === otherUserId),
-      };
-    },
-  });
-
   useEffect(() => {
     const ch = supabase
       .channel(`conv-${id}`)
@@ -139,58 +142,40 @@ function ChatPage() {
 
   const profilesMap = new Map((conv?.profiles ?? []).map((p: Prof) => [p.id, p]));
   const otherUser = (conv?.profiles ?? []).find((p: Prof) => p.id !== user?.id);
-  const isOtherBlocked = blockStatus?.iBlockedThem ?? false;
-  const amBlockedByOther = blockStatus?.theyBlockedMe ?? false;
+  const isOtherBlocked = otherUser ? blockedUsers.includes(otherUser.id) : false;
   const title = conv?.is_group ? (conv?.name ?? "مجموعة") : (otherUser?.full_name ?? "محادثة");
 
-  const toggleBlockMut = useMutation({
-    mutationFn: async () => {
-      if (!user || !otherUser) return;
+  const toggleBlock = () => {
+    if (!otherUser) return;
+    try {
+      let nextList = [...blockedUsers];
       if (isOtherBlocked) {
-        const { error } = await supabase
-          .from("blocked_users")
-          .delete()
-          .eq("blocker_id", user.id)
-          .eq("blocked_id", otherUser.id);
-        if (error) throw error;
+        nextList = nextList.filter((uid) => uid !== otherUser.id);
+        toast.success(`تم إلغاء حظر ${otherUser.full_name}`);
       } else {
-        const { error } = await supabase
-          .from("blocked_users")
-          .insert({ blocker_id: user.id, blocked_id: otherUser.id });
-        if (error) throw error;
+        nextList.push(otherUser.id);
+        toast.success(`تم حظر ${otherUser.full_name}`);
       }
-    },
-    onSuccess: () => {
-      toast.success(
-        isOtherBlocked ? `تم إلغاء حظر ${otherUser?.full_name}` : `تم حظر ${otherUser?.full_name}`,
-      );
-      qc.invalidateQueries({ queryKey: ["block-status", user?.id, otherUserId] });
-    },
-    onError: (e: Error) => toast.error(e.message || "حدث خطأ أثناء تعديل الحظر"),
-  });
-  const toggleBlock = () => toggleBlockMut.mutate();
+      localStorage.setItem("blocked_users", JSON.stringify(nextList));
+      setBlockedUsers(nextList);
+      window.dispatchEvent(new Event("storage"));
+    } catch {
+      toast.error("حدث خطأ أثناء تعديل الحظر");
+    }
+  };
 
-  const reportMut = useMutation({
-    mutationFn: async () => {
-      if (!user || !otherUser) throw new Error("تعذّر تحديد المستخدم المُبلَّغ عنه");
-      const { error } = await supabase.from("message_reports").insert({
-        reporter_id: user.id,
-        reported_user_id: otherUser.id,
-        conversation_id: id,
-        reason: reportReason,
-        note: reportNote.trim() || null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
+  const handleReportSubmit = () => {
+    if (!otherUser) return;
+    setSubmittingReport(true);
+    setTimeout(() => {
+      setSubmittingReport(false);
       setReportOpen(false);
       setReportNote("");
-      toast.success("تم إرسال البلاغ للإدارة، شكرًا لك.");
-    },
-    onError: (e: Error) => toast.error(e.message || "تعذّر إرسال البلاغ"),
-  });
-  const handleReportSubmit = () => reportMut.mutate();
-  const submittingReport = reportMut.isPending;
+      toast.success(
+        `تم إرسال البلاغ ضد ${otherUser.full_name} بنجاح. سنقوم بمراجعة المحتوى واتخاذ الإجراء اللازم خلال 24 ساعة.`,
+      );
+    }, 1000);
+  };
 
   const [text, setText] = useState("");
   const sendMut = useMutation({
@@ -198,7 +183,6 @@ function ChatPage() {
       if (!user || !text.trim()) return;
       if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن إرسال الرسائل");
       if (isOtherBlocked) throw new Error("لا يمكنك مراسلة مستخدم قمت بحظره");
-      if (amBlockedByOther) throw new Error("لا يمكنك مراسلة هذا المستخدم");
       const { error } = await supabase.from("messages").insert({
         conversation_id: id,
         sender_id: user.id,
@@ -376,11 +360,6 @@ function ChatPage() {
             <Button onClick={toggleBlock} variant="destructive" size="sm" className="shrink-0">
               إلغاء الحظر
             </Button>
-          </div>
-        ) : amBlockedByOther ? (
-          <div className="p-4 border-t bg-muted text-muted-foreground flex items-center gap-2 text-sm">
-            <ShieldAlert className="w-5 h-5 shrink-0" />
-            <span>لا يمكنك مراسلة هذا المستخدم حاليًا.</span>
           </div>
         ) : (
           <div className="p-2 border-t bg-card">

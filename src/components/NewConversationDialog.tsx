@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, Users, User as UserIcon, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { formatUnivNumber } from "@/lib/privacy";
 import type { ReactElement } from "react";
 
 export function NewConversationDialog({ trigger }: { trigger?: ReactElement }) {
@@ -131,7 +132,7 @@ export function NewConversationDialog({ trigger }: { trigger?: ReactElement }) {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{p.full_name}</div>
                     <div className="text-xs text-muted-foreground" dir="ltr">
-                      {p.university_number}
+                      {formatUnivNumber(p.university_number, p.id)}
                     </div>
                   </div>
                 </button>
