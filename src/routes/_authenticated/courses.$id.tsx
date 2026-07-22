@@ -1045,7 +1045,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
 
 /* Course Schedule Component */
 const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"];
-interface ScheduleEntry {
+export interface ScheduleEntry {
   day: string;
   start: string;
   end: string;

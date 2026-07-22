@@ -21,21 +21,15 @@ function ResetPasswordPage() {
 
   useEffect(() => {
     // Supabase will place the recovery session automatically. Verify we have one.
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        if (data?.session) setReady(true);
-        else {
-          // Sometimes tokens land in hash; give supabase a tick.
-          setTimeout(() => {
-            supabase.auth
-              .getSession()
-              .then(({ data: d2 }) => setReady(!!d2?.session))
-              .catch(() => setReady(false));
-          }, 300);
-        }
-      })
-      .catch(() => setReady(false));
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setReady(true);
+      else {
+        // Sometimes tokens land in hash; give supabase a tick.
+        setTimeout(() => {
+          supabase.auth.getSession().then(({ data: d2 }) => setReady(!!d2.session));
+        }, 300);
+      }
+    });
   }, []);
 
   async function submit(e: React.FormEvent) {

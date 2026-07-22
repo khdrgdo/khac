@@ -32,19 +32,9 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const env = typeof process !== "undefined" ? process.env : {};
-  const metaEnv = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
-
-  const SUPABASE_URL = metaEnv.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL || env.SUPABASE_URL || "";
-
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY =
-    metaEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    metaEnv.VITE_SUPABASE_ANON_KEY ||
-    env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    env.VITE_SUPABASE_ANON_KEY ||
-    env.SUPABASE_PUBLISHABLE_KEY ||
-    env.SUPABASE_ANON_KEY ||
-    "";
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
@@ -52,20 +42,8 @@ function createSupabaseClient() {
       ...(!SUPABASE_PUBLISHABLE_KEY ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
     ];
     const message = `Missing Supabase environment variable(s): ${missing.join(", ")}. Connect Supabase in Lovable Cloud.`;
-    console.warn(`[Supabase] ${message}`);
-
-    // Return fallback client so app renders UI instead of blank white screen crash
-    return createClient<Database>(
-      SUPABASE_URL || "https://placeholder.supabase.co",
-      SUPABASE_PUBLISHABLE_KEY || "placeholder-key",
-      {
-        auth: {
-          storage: typeof window !== "undefined" ? localStorage : undefined,
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      },
-    );
+    console.error(`[Supabase] ${message}`);
+    throw new Error(message);
   }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

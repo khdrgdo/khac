@@ -131,11 +131,11 @@ function LeaderboardPage() {
 
       // 1. Try get_leaderboard_profiles RPC (returns all non-banned public profiles securely)
       const { data: rpcProfiles, error: rpcError } = await supabase.rpc(
-        "get_leaderboard_profiles" as never,
+        "get_leaderboard_profiles",
         {
           _major: effectiveMajor,
           _year: effectiveYear,
-        } as never,
+        },
       );
 
       if (!rpcError && Array.isArray(rpcProfiles) && rpcProfiles.length > 0) {
@@ -170,15 +170,11 @@ function LeaderboardPage() {
           const [
             { data: postAuthors },
             { data: commentAuthors },
-            { data: qaAuthors },
-            { data: courseMembers },
             { data: allCourses },
             { data: searchedProfiles },
           ] = await Promise.all([
             supabase.from("posts").select("author_id"),
             supabase.from("comments").select("author_id"),
-            supabase.from("qa_questions").select("author_id"),
-            supabase.from("course_members").select("user_id"),
             supabase.from("courses").select("teacher_id, created_by"),
             supabase.rpc("search_public_profiles", { _q: "" }),
           ]);
@@ -188,8 +184,6 @@ function LeaderboardPage() {
 
           (postAuthors ?? []).forEach((row) => row.author_id && userIdsSet.add(row.author_id));
           (commentAuthors ?? []).forEach((row) => row.author_id && userIdsSet.add(row.author_id));
-          (qaAuthors ?? []).forEach((row) => row.author_id && userIdsSet.add(row.author_id));
-          (courseMembers ?? []).forEach((row) => row.user_id && userIdsSet.add(row.user_id));
           (allCourses ?? []).forEach((row) => {
             if (row.teacher_id) userIdsSet.add(row.teacher_id);
             if (row.created_by) userIdsSet.add(row.created_by);
