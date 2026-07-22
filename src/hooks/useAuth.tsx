@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { bindAccountToDevice } from "@/lib/deviceGuard";
 import type { Session, User } from "@supabase/supabase-js";
 
 export type AppRole = "student" | "teacher" | "admin";
@@ -95,6 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setProfile((p as Profile | null) ?? null);
         setRoles((r ?? []).map((x: { role: AppRole }) => x.role));
+        if (uid && sessionRef.current?.user?.email) {
+          bindAccountToDevice(uid, sessionRef.current.user.email);
+        }
       } catch (err) {
         console.error("Failed to load user profile extras:", err);
       } finally {

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { MAJORS, YEARS, universityNumberToEmail } from "@/lib/college";
+import { bindAccountToDevice, isSignupAllowedOnDevice } from "@/lib/deviceGuard";
 import {
   GraduationCap,
   Loader2,
@@ -371,6 +372,16 @@ function SignupForm({
     e.preventDefault();
     const cleanedUniv = univ.trim();
 
+    // Device check: verify if another account is already registered on this device
+    const deviceCheck = isSignupAllowedOnDevice();
+    if (!deviceCheck.allowed) {
+      toast.error(
+        `تنويه أمني: هذا الهاتف مرتبط بحساب آخر (${deviceCheck.existingEmail}). يُسمح بحساب واحد فقط لكل جهاز منعاً للحسابات الوهمية.`,
+        { duration: 6000 },
+      );
+      return;
+    }
+
     if (cleanedUniv.length < 5) {
       toast.error("الرقم الجامعي يجب أن يكون 5 أرقام أو أكثر");
       return;
@@ -423,6 +434,9 @@ function SignupForm({
       }
 
       const registered = email.trim();
+      if (data?.user?.id) {
+        bindAccountToDevice(data.user.id, registered);
+      }
       setRegisteredEmail(registered);
       onCreated(registered);
       toast.success("تم إنشاء الحساب بنجاح! يلزم تفعيل البريد.");
