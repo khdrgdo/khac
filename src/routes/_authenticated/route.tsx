@@ -5,9 +5,17 @@ import { AppLayout } from "@/components/AppLayout";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data?.user) throw redirect({ to: "/auth" });
+      return { user: data.user };
+    } catch (err) {
+      if (err && typeof err === "object" && ("isRedirect" in err || "to" in err)) {
+        throw err;
+      }
+      console.error("Auth check failed:", err);
+      throw redirect({ to: "/auth" });
+    }
   },
   component: () => (
     <AppLayout>

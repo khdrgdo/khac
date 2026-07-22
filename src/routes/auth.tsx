@@ -27,9 +27,14 @@ function AuthPage() {
   const [tab, setTab] = useState("login");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/feed", replace: true });
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (data?.session) navigate({ to: "/feed", replace: true });
+      })
+      .catch((err) => {
+        console.error("Auth session check failed:", err);
+      });
   }, [navigate]);
 
   async function googleSignIn() {

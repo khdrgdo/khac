@@ -11,13 +11,19 @@ function IndexRedirect() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate({ to: "/feed", replace: true });
-      } else {
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (session) {
+          navigate({ to: "/feed", replace: true });
+        } else {
+          navigate({ to: "/auth", replace: true });
+        }
+      })
+      .catch((err) => {
+        console.error("Session check error on index route:", err);
         navigate({ to: "/auth", replace: true });
-      }
-    });
+      });
   }, [navigate]);
 
   return (
