@@ -48,6 +48,8 @@ export function fileKind(name: string): KindInfo {
     };
   if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext))
     return { icon: FileImage, color: "text-pink-600", bg: "bg-pink-500/10", label: "صورة" };
+  if (["mp4", "mov", "webm", "mkv", "avi"].includes(ext))
+    return { icon: Video, color: "text-violet-600", bg: "bg-violet-500/10", label: "فيديو" };
   return { icon: FileIcon, color: "text-muted-foreground", bg: "bg-muted", label: "ملف" };
 }
 

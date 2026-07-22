@@ -63,13 +63,6 @@ function ManageCoursePage() {
   const canManage =
     !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
 
-  useEffect(() => {
-    if (!loading && !isLoading && course && !canManage) {
-      toast.error("ما عندك صلاحية إدارة هذا المقرر");
-      navigate({ to: "/courses/$id", params: { id }, search: { tab: undefined } });
-    }
-  }, [loading, isLoading, course, canManage, navigate, id]);
-
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [major, setMajor] = useState("it");
@@ -141,7 +134,30 @@ function ManageCoursePage() {
     return <div className="text-center py-10 text-sm text-muted-foreground">جارِ التحميل...</div>;
   }
 
-  if (!canManage) return null;
+  if (!canManage) {
+    return (
+      <div className="max-w-md mx-auto text-center py-12 space-y-3">
+        <ShieldCheck className="w-10 h-10 mx-auto text-muted-foreground/50" />
+        <h2 className="font-bold">ما عندك صلاحية إدارة هذا المقرر</h2>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          إدارة المقرر مقصورة على الأدمن، أو الأستاذ المعيَّن له، أو الحساب اللي أنشأه.
+          {user ? (
+            <>
+              <br />
+              حسابك الحالي: {isAdmin ? "أدمن" : "مو أدمن"} — منشئ المقرر:{" "}
+              {course.created_by === user.id ? "أنت" : "غيرك"} — الأستاذ المعيَّن:{" "}
+              {course.teacher_id === user.id ? "أنت" : course.teacher_id ? "غيرك" : "لا يوجد"}
+            </>
+          ) : null}
+        </p>
+        <Link to="/courses/$id" params={{ id }} search={{ tab: undefined }}>
+          <Button variant="outline" size="sm">
+            رجوع لصفحة المقرر
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">

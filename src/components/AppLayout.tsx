@@ -13,6 +13,7 @@ import {
   GraduationCap,
   KeyRound,
   Trophy,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -29,7 +30,7 @@ import { RankBadge } from "@/components/RankBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { profile, isAdmin, loading } = useAuth();
+  const { profile, isAdmin, isTeacher, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -55,6 +56,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { to: "/feed", label: "الرئيسية", icon: Home },
     { to: "/courses", label: "الكورسات", icon: BookOpen },
+    ...(isAdmin || isTeacher ? [{ to: "/courses/mine", label: "كورساتي", icon: ShieldCheck }] : []),
     { to: "/leaderboard", label: "لوحة الصدارة", icon: Trophy },
     { to: "/messages", label: "المراسلة", icon: MessageCircle },
     { to: "/saved", label: "المحفوظات", icon: Bookmark },

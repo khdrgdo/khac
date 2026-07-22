@@ -80,7 +80,7 @@ export const Route = createFileRoute("/_authenticated/courses")({
 });
 
 function CoursesPage() {
-  const { user, profile, isTeacher, isAdmin } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const [majorFilter, setMajorFilter] = useState<string>(profile?.major ?? "all");
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -149,7 +149,7 @@ function CoursesPage() {
             </p>
           </div>
         </div>
-        {(isTeacher || isAdmin) && (
+        {isAdmin && (
           <NewCourseDialog
             currentMajor={majorFilter}
             currentYear={yearFilter}
@@ -391,8 +391,24 @@ function NewCourseDialog({
   const [major, setMajor] = useState(currentMajor !== "all" ? currentMajor : "");
   const [year, setYear] = useState(currentYear !== "all" ? currentYear : "");
   const [semester, setSemester] = useState("1");
+  const [teacherId, setTeacherId] = useState<string>("");
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  const { data: teachers } = useQuery({
+    queryKey: ["teachers-list"],
+    enabled: open,
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "teacher");
+      const ids = (roles ?? []).map((r) => r.user_id);
+      if (ids.length === 0) return [];
+      const { data } = await supabase.rpc("get_public_profiles", { _ids: ids });
+      return data ?? [];
+    },
+  });
 
   // Reset or pre-fill state when dialog opens
   useEffect(() => {
@@ -402,6 +418,7 @@ function NewCourseDialog({
       setMajor(currentMajor !== "all" ? currentMajor : "");
       setYear(currentYear !== "all" ? currentYear : "");
       setSemester("1");
+      setTeacherId("");
     }
   }, [open, currentMajor, currentYear]);
 
@@ -415,7 +432,7 @@ function NewCourseDialog({
         year: Number(year),
         semester: Number(semester),
         created_by: user.id,
-        teacher_id: user.id,
+        teacher_id: teacherId || null,
       });
       if (error) throw error;
     },
@@ -509,6 +526,25 @@ function NewCourseDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="font-semibold text-xs text-foreground/80">الأستاذ المسؤول</Label>
+            <Select
+              value={teacherId || "none"}
+              onValueChange={(v) => setTeacherId(v === "none" ? "" : v)}
+            >
+              <SelectTrigger className="rounded-lg">
+                <SelectValue placeholder="بدون أستاذ محدد" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">بدون أستاذ محدد (تعيّنه لاحقًا)</SelectItem>
+                {(teachers ?? []).map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter className="pt-4 gap-2 sm:gap-0">

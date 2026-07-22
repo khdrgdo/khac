@@ -42,6 +42,7 @@ import {
   Search,
   User,
   ShieldCheck,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile, signedUrl } from "@/lib/storage";
@@ -65,6 +66,7 @@ interface CourseFile {
   link_type: string | null;
   created_by: string;
   created_at: string;
+  is_important: boolean;
 }
 interface CourseUpdate {
   id: string;
@@ -412,10 +414,24 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["course_links", courseId] }),
   });
+  const toggleImportant = useMutation({
+    mutationFn: async ({ linkId, next }: { linkId: string; next: boolean }) => {
+      const { error } = await supabase
+        .from("course_links")
+        .update({ is_important: next })
+        .eq("id", linkId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["course_links", courseId] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
 
-  const filtered = (links ?? []).filter((l) =>
-    q.trim() ? l.title.toLowerCase().includes(q.trim().toLowerCase()) : true,
-  );
+  const filtered = (links ?? [])
+    .filter((l) => (q.trim() ? l.title.toLowerCase().includes(q.trim().toLowerCase()) : true))
+    .sort((a, b) => {
+      if (a.is_important !== b.is_important) return a.is_important ? -1 : 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
   return (
     <div className="space-y-2">
@@ -440,7 +456,10 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
           const kind = linkKind(l.url);
           const Icon = kind.icon;
           return (
-            <Card key={l.id} className="hover:shadow-sm transition-shadow">
+            <Card
+              key={l.id}
+              className={`hover:shadow-sm transition-shadow ${l.is_important ? "border-amber-400/60 bg-amber-500/5" : ""}`}
+            >
               <CardContent className="p-3 flex items-center gap-3">
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${kind.bg}`}
@@ -452,9 +471,12 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                     href={l.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-medium hover:underline block truncate"
+                    className="font-medium hover:underline flex items-center gap-1.5 truncate"
                   >
-                    {l.title}
+                    {l.is_important && (
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                    )}
+                    <span className="truncate">{l.title}</span>
                   </a>
                   <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <span className={kind.color}>{kind.label}</span>
@@ -469,6 +491,18 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                     <ExternalLink className="w-4 h-4" />
                   </Button>
                 </a>
+                {canEdit && (isAdmin || l.created_by === user?.id) && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    title={l.is_important ? "إلغاء التمييز" : "تمييز كمهم"}
+                    onClick={() => toggleImportant.mutate({ linkId: l.id, next: !l.is_important })}
+                  >
+                    <Star
+                      className={`w-4 h-4 ${l.is_important ? "text-amber-500 fill-amber-500" : "text-muted-foreground"}`}
+                    />
+                  </Button>
+                )}
                 {(isAdmin || l.created_by === user?.id) && (
                   <Button size="icon" variant="ghost" onClick={() => del.mutate(l.id)}>
                     <Trash2 className="w-4 h-4 text-destructive" />
@@ -568,8 +602,8 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
     setUploading(true);
     try {
       for (const f of Array.from(fileList)) {
-        if (f.size > 20 * 1024 * 1024) {
-          toast.error(`${f.name}: أكبر من 20MB`);
+        if (f.size > 100 * 1024 * 1024) {
+          toast.error(`${f.name}: أكبر من 100MB`);
           continue;
         }
         const path = `${courseId}/${Date.now()}-${f.name}`;
@@ -607,6 +641,17 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["course_files", courseId] }),
   });
+  const toggleImportant = useMutation({
+    mutationFn: async ({ fileId, next }: { fileId: string; next: boolean }) => {
+      const { error } = await supabase
+        .from("course_links")
+        .update({ is_important: next })
+        .eq("id", fileId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["course_files", courseId] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const typeChips = [
     { key: "all", label: "الكل" },
@@ -614,16 +659,22 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
     { key: "ppt|pptx", label: "عروض" },
     { key: "doc|docx", label: "Word" },
     { key: "png|jpg|jpeg|webp|gif", label: "صور" },
+    { key: "mp4|mov|webm|mkv|avi", label: "فيديو" },
     { key: "zip|rar|7z", label: "أرشيف" },
   ];
 
-  const filtered = (files ?? []).filter((f) => {
-    const matchesQuery = q.trim() ? f.title.toLowerCase().includes(q.trim().toLowerCase()) : true;
-    if (!matchesQuery) return false;
-    if (typeFilter === "all") return true;
-    const ext = f.title.split(".").pop()?.toLowerCase() ?? "";
-    return typeFilter.split("|").includes(ext);
-  });
+  const filtered = (files ?? [])
+    .filter((f) => {
+      const matchesQuery = q.trim() ? f.title.toLowerCase().includes(q.trim().toLowerCase()) : true;
+      if (!matchesQuery) return false;
+      if (typeFilter === "all") return true;
+      const ext = f.title.split(".").pop()?.toLowerCase() ?? "";
+      return typeFilter.split("|").includes(ext);
+    })
+    .sort((a, b) => {
+      if (a.is_important !== b.is_important) return a.is_important ? -1 : 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
   return (
     <div className="space-y-2">
@@ -643,7 +694,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
               ref={fileRef}
               type="file"
               multiple
-              accept=".pdf,.ppt,.pptx,.doc,.docx,.zip,.png,.jpg,.jpeg,.webp"
+              accept=".pdf,.ppt,.pptx,.doc,.docx,.zip,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm"
               className="hidden"
               onChange={(e) => handleFiles(e.target.files)}
             />
@@ -690,7 +741,10 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
             const Icon = kind.icon;
             const thumbCandidate = isImageFile(f.title);
             return (
-              <Card key={f.id} className="hover:shadow-sm transition-shadow">
+              <Card
+                key={f.id}
+                className={`hover:shadow-sm transition-shadow ${f.is_important ? "border-amber-400/60 bg-amber-500/5" : ""}`}
+              >
                 <CardContent className="p-3 flex items-center gap-3">
                   <div
                     className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${kind.bg}`}
@@ -698,7 +752,12 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                     <Icon className={`w-5 h-5 ${kind.color}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate text-sm">{f.title}</div>
+                    <div className="font-medium truncate text-sm flex items-center gap-1.5">
+                      {f.is_important && (
+                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                      )}
+                      <span className="truncate">{f.title}</span>
+                    </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                       <span className={kind.color}>{kind.label}</span>
                       {thumbCandidate && <span>· معاينة صورة</span>}
@@ -714,6 +773,20 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                   <Button size="icon" variant="ghost" onClick={() => download(f)}>
                     <Download className="w-4 h-4" />
                   </Button>
+                  {canEdit && (isAdmin || f.created_by === user?.id) && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title={f.is_important ? "إلغاء التمييز" : "تمييز كمهم"}
+                      onClick={() =>
+                        toggleImportant.mutate({ fileId: f.id, next: !f.is_important })
+                      }
+                    >
+                      <Star
+                        className={`w-4 h-4 ${f.is_important ? "text-amber-500 fill-amber-500" : "text-muted-foreground"}`}
+                      />
+                    </Button>
+                  )}
                   {(isAdmin || f.created_by === user?.id) && (
                     <Button size="icon" variant="ghost" onClick={() => del.mutate(f)}>
                       <Trash2 className="w-4 h-4 text-destructive" />
