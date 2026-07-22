@@ -81,7 +81,8 @@ export function createNotification(params: {
   const existing = getStoredNotifications(recipientId);
   // Avoid duplicate exact same notification in short time
   const isDuplicate = existing.some(
-    (n) => n.link === link && n.type === type && Date.now() - new Date(n.createdAt).getTime() < 10000
+    (n) =>
+      n.link === link && n.type === type && Date.now() - new Date(n.createdAt).getTime() < 10000,
   );
 
   if (!isDuplicate) {
