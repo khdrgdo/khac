@@ -67,14 +67,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     async function loadExtras(uid: string) {
-      const [{ data: p }, { data: r }] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", uid).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", uid),
-      ]);
-      if (!mounted) return;
-      setProfile((p as Profile | null) ?? null);
-      setRoles((r ?? []).map((x: { role: AppRole }) => x.role));
-      setLoading(false);
+      try {
+        const [{ data: p }, { data: r }] = await Promise.all([
+          supabase.from("profiles").select("*").eq("id", uid).maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", uid),
+        ]);
+        if (!mounted) return;
+        setProfile((p as Profile | null) ?? null);
+        setRoles((r ?? []).map((x: { role: AppRole }) => x.role));
+      } catch (err) {
+        console.error("Error loading user profile/roles:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     }
 
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
@@ -91,14 +96,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (!mounted) return;
-      sessionRef.current = s;
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s) loadExtras(s.user.id);
-      else setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: s } }) => {
+        if (!mounted) return;
+        sessionRef.current = s;
+        setSession(s);
+        setUser(s?.user ?? null);
+        if (s) loadExtras(s.user.id);
+        else setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error getting session:", err);
+        if (mounted) setLoading(false);
+      });
 
     return () => {
       mounted = false;

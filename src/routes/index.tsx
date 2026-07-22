@@ -11,13 +11,18 @@ function IndexRedirect() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate({ to: "/feed", replace: true });
-      } else {
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (data?.session) {
+          navigate({ to: "/feed", replace: true });
+        } else {
+          navigate({ to: "/auth", replace: true });
+        }
+      })
+      .catch(() => {
         navigate({ to: "/auth", replace: true });
-      }
-    });
+      });
   }, [navigate]);
 
   return (
