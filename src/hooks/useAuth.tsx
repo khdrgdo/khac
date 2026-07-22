@@ -68,11 +68,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function loadExtras(uid: string) {
       try {
-        const [{ data: p }, { data: r }] = await Promise.all([
+        const [{ data: initialP }, { data: r }] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", uid).maybeSingle(),
           supabase.from("user_roles").select("role").eq("user_id", uid),
         ]);
         if (!mounted) return;
+
+        let p = initialP;
+        if (!p && sessionRef.current?.user) {
+          const u = sessionRef.current.user;
+          const meta = u.user_metadata;
+          const tempUniv = "U" + Math.floor(100000 + Math.random() * 900000);
+          const { data: createdP } = await supabase
+            .from("profiles")
+            .upsert({
+              id: uid,
+              full_name: meta?.full_name || meta?.name || "مستخدم جديد",
+              university_number: tempUniv,
+              email: u.email || null,
+            })
+            .select("*")
+            .maybeSingle();
+
+          if (createdP) p = createdP;
+        }
+
         setProfile((p as Profile | null) ?? null);
         setRoles((r ?? []).map((x: { role: AppRole }) => x.role));
       } catch (err) {
