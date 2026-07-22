@@ -28,7 +28,21 @@ import {
   MoreVertical,
   Filter,
   SlidersHorizontal,
+  HelpCircle,
+  Award,
+  Zap,
+  CheckCircle2,
+  FileText,
+  Sparkles,
+  ShieldCheck,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { RankBadge } from "@/components/RankBadge";
 import { majorLabel } from "@/lib/college";
 import { MAJORS, YEARS } from "@/lib/college";
@@ -59,6 +73,7 @@ function LeaderboardPage() {
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const activeFiltersCount =
     (searchQuery.trim() ? 1 : 0) +
@@ -290,14 +305,14 @@ function LeaderboardPage() {
 
       const contributionMap = new Map<string, number>();
 
-      // Count posts (worth 10 points on leaderboard)
+      // Count posts (worth 5 points on leaderboard)
       (posts ?? []).forEach((p) => {
-        contributionMap.set(p.author_id, (contributionMap.get(p.author_id) ?? 0) + 10);
+        contributionMap.set(p.author_id, (contributionMap.get(p.author_id) ?? 0) + 5);
       });
 
-      // Count comments (worth 5 points on leaderboard)
+      // Count comments (worth 2 points on leaderboard)
       (comments ?? []).forEach((c) => {
-        contributionMap.set(c.author_id, (contributionMap.get(c.author_id) ?? 0) + 5);
+        contributionMap.set(c.author_id, (contributionMap.get(c.author_id) ?? 0) + 2);
       });
 
       return profileList
@@ -313,7 +328,7 @@ function LeaderboardPage() {
             university_number: p.university_number,
             verified: p.verified,
             score: contribScore, // Score in this timeframe
-            contributions: Math.round(contribScore / 5), // approximate number of actions
+            contributions: Math.round(contribScore / 2), // approximate number of actions
           };
         })
         .sort((a, b) => b.score - a.score);
@@ -365,8 +380,18 @@ function LeaderboardPage() {
           </div>
         </div>
 
-        {/* 3-Dots Filter Toggle Button */}
+        {/* Top Header Buttons */}
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowGuide(true)}
+            className="h-9 px-3 rounded-xl gap-1.5 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 transition-all shadow-xs"
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">دليل النقاط والرتب</span>
+          </Button>
+
           {activeFiltersCount > 0 && !showFilters && (
             <Badge
               variant="secondary"
@@ -388,6 +413,193 @@ function LeaderboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Points & Ranks Guide Dialog */}
+      <Dialog open={showGuide} onOpenChange={setShowGuide}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl p-5 sm:p-6 space-y-5">
+          <DialogHeader className="text-right space-y-1.5 border-b pb-3">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
+              <Trophy className="w-6 h-6 text-amber-500" />
+              <span>دليل نظام النقاط والرتب الأكاديمية</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              تعرّف على كيفية كسب النقاط العلمية، والارتقاء في رتب الكلية والتنافس مع زملائك على
+              لوحة الصدارة.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 text-right dir-rtl">
+            {/* Standard Activities */}
+            <div className="space-y-2.5">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-primary" />
+                <span>الأنشطة اليومية الأساسية</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="p-3 rounded-2xl bg-muted/40 border space-y-1">
+                  <div className="font-bold text-foreground flex items-center justify-between">
+                    <span>نشر منشور أو سؤال</span>
+                    <span className="text-primary font-black">+5 نقاط</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    عند طرح سؤال دراسي أو فتح موضوع مناقشة مفيد.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-muted/40 border space-y-1">
+                  <div className="font-bold text-foreground flex items-center justify-between">
+                    <span>كتابة تعليق / إجابة</span>
+                    <span className="text-primary font-black">+2 نقطة</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    عند المشاركة بالرد أو الإجابة على استفسارات الزملاء.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-muted/40 border space-y-1">
+                  <div className="font-bold text-foreground flex items-center justify-between">
+                    <span>تفاعل مع محتواك</span>
+                    <span className="text-primary font-black">+1 نقطة</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    لكل إعجاب أو تفاعل يستقبله منشورك من الطلاب.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* High Value Tasks */}
+            <div className="space-y-2.5 pt-1">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>المهام القيّمة والمكافآت العالية (صعبة وقيّمة)</span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+                  <div className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <span>إجابة معتمدة / نموذجية</span>
+                    </span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm">
+                      +20 نقطة
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    عند اختيار إجابتك كـ "أفضل إجابة" أو اعتمادها من قِبل صاحب السؤال أو الأستاذ.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 space-y-1">
+                  <div className="font-bold text-blue-800 dark:text-blue-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-blue-500" />
+                      <span>رفع ملخص / ملحق دراسي</span>
+                    </span>
+                    <span className="text-blue-600 dark:text-blue-400 font-black text-sm">
+                      +30 نقطة
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    عند رفع ملف أو ملخص يستفيد منه الجميع في تبويب الملفات والمصادر للمقرر.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-1">
+                  <div className="font-bold text-purple-800 dark:text-purple-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-purple-500" />
+                      <span>إعلان هام للمقرر</span>
+                    </span>
+                    <span className="text-purple-600 dark:text-purple-400 font-black text-sm">
+                      +15 نقطة
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    للممثلين والأساتذة عند نشر إعلانات وتحديثات هامة يستفيد منها الطلاب.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+                  <div className="font-bold text-amber-800 dark:text-amber-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Trophy className="w-4 h-4 text-amber-500" />
+                      <span>وسام متفاعل الأسبوع الأول</span>
+                    </span>
+                    <span className="text-amber-600 dark:text-amber-400 font-black text-sm">
+                      +50 نقطة
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    تمنح تلقائياً لصاحب المركز الأول على مستوى الكلية في الترتيب الأسبوعي.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Ranks & Tiers */}
+            <div className="space-y-2.5 pt-1">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-cyan-500" />
+                <span>شجرة الرتب الأكاديمية والشرفية</span>
+              </h3>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between p-2.5 rounded-xl border bg-amber-700/10 border-amber-700/20">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🥉</span>
+                    <span className="font-bold text-amber-800 dark:text-amber-200">
+                      الرتبة البرونزية (مبتدئ)
+                    </span>
+                  </div>
+                  <span className="font-semibold text-muted-foreground">0 - 99 نقطة</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl border bg-slate-400/10 border-slate-400/20">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🥈</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                      الرتبة الفضية (مشارك)
+                    </span>
+                  </div>
+                  <span className="font-semibold text-muted-foreground">100 - 299 نقطة</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl border bg-yellow-500/10 border-yellow-500/20">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🥇</span>
+                    <span className="font-bold text-yellow-700 dark:text-yellow-300">
+                      الرتبة الذهبية (متميز)
+                    </span>
+                  </div>
+                  <span className="font-semibold text-muted-foreground">300 - 699 نقطة</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl border bg-cyan-500/10 border-cyan-500/20">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">💠</span>
+                    <span className="font-bold text-cyan-700 dark:text-cyan-300">
+                      الرتبة البلاتينية (خبير)
+                    </span>
+                  </div>
+                  <span className="font-semibold text-muted-foreground">700 - 1499 نقطة</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl border bg-fuchsia-500/10 border-fuchsia-500/20 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">💎</span>
+                    <span className="font-bold text-fuchsia-700 dark:text-fuchsia-300">
+                      الرتبة الماسية (نخبة / عالم)
+                    </span>
+                  </div>
+                  <span className="font-semibold text-fuchsia-600 dark:text-fuchsia-400 font-bold">
+                    1500+ نقطة
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Collapsible Filter Panel */}
       <AnimatePresence>

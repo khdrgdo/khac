@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { REACTIONS, majorLabel, type ReactionType } from "@/lib/college";
+import { createNotification } from "@/lib/notificationsStore";
 import {
   Bookmark,
   Flag,
@@ -111,6 +112,19 @@ export function PostCard({ post }: { post: PostWithMeta }) {
             { post_id: post.id, user_id: user.id, reaction: type },
             { onConflict: "post_id,user_id" },
           );
+
+        if (post.author_id !== user.id) {
+          const matchedReaction = REACTIONS.find((r) => r.type === type);
+          createNotification({
+            recipientId: post.author_id,
+            actorId: user.id,
+            actorName: user.user_metadata?.full_name || "زميل",
+            type: "post_like",
+            title: `تفاعل جديد على منشورك ${matchedReaction?.emoji || "❤️"}`,
+            body: `قام أحد زملائك بالتفاعل بـ ${matchedReaction?.label || "إعجاب"} على منشورك.`,
+            link: `/posts/${post.id}`,
+          });
+        }
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),

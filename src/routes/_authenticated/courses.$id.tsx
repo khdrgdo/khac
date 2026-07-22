@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { majorLabel, MAJORS, YEARS, SEMESTERS } from "@/lib/college";
 import { parseTitleAndNote, formatTitleAndNote, getFileTypeInfo } from "@/lib/courseUtils";
+import { broadcastNotification } from "@/lib/notificationsStore";
 import {
   ArrowRight,
   ExternalLink,
@@ -46,8 +47,13 @@ import {
   MessageSquare,
   UserCheck,
   Play,
+  HelpCircle,
+  Send,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { UserAvatar } from "@/components/UserAvatar";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { signedUrl } from "@/lib/storage";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -232,30 +238,36 @@ function CourseDetailPage() {
 
       {/* Course Detail Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full bg-muted/60 p-1 rounded-xl h-auto">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full bg-muted/60 p-1 rounded-xl h-auto gap-1">
           <TabsTrigger
             value="files"
             className="rounded-lg py-2.5 font-semibold text-xs sm:text-sm gap-1.5"
           >
-            <FileText className="w-4 h-4" /> الملفات والفيديوهات
+            <FileText className="w-4 h-4" /> الملفات
           </TabsTrigger>
           <TabsTrigger
             value="links"
             className="rounded-lg py-2.5 font-semibold text-xs sm:text-sm gap-1.5"
           >
-            <ExternalLink className="w-4 h-4" /> الروابط والمصادر
+            <ExternalLink className="w-4 h-4" /> المصادر
+          </TabsTrigger>
+          <TabsTrigger
+            value="discussions"
+            className="rounded-lg py-2.5 font-semibold text-xs sm:text-sm gap-1.5"
+          >
+            <HelpCircle className="w-4 h-4 text-primary" /> الأسئلة والنقاشات
           </TabsTrigger>
           <TabsTrigger
             value="updates"
             className="rounded-lg py-2.5 font-semibold text-xs sm:text-sm gap-1.5"
           >
-            <Megaphone className="w-4 h-4" /> إعلانات المقرر
+            <Megaphone className="w-4 h-4" /> الإعلانات
           </TabsTrigger>
           <TabsTrigger
             value="schedule"
             className="rounded-lg py-2.5 font-semibold text-xs sm:text-sm gap-1.5"
           >
-            <Calendar className="w-4 h-4" /> مواعيد المحاضرات
+            <Calendar className="w-4 h-4" /> المواعيد
           </TabsTrigger>
         </TabsList>
 
@@ -265,6 +277,10 @@ function CourseDetailPage() {
 
         <TabsContent value="links" className="pt-4">
           <LinksTab courseId={id} canEdit={canModifyCourse} />
+        </TabsContent>
+
+        <TabsContent value="discussions" className="pt-4">
+          <DiscussionsTab courseId={id} teacherId={course.teacher_id} />
         </TabsContent>
 
         <TabsContent value="updates" className="pt-4">
@@ -806,6 +822,18 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
           link_type: "file",
           created_by: user.id,
         });
+
+        if (user) {
+          broadcastNotification({
+            actorId: user.id,
+            actorName: user.user_metadata?.full_name || "الأستاذ",
+            type: "material_added",
+            title: "تحديث جديد في المقرر 📄",
+            body: `تم إضافة ملحق/ملخص جديد (${baseTitle}) في المقرر الدراسي.`,
+            link: `/courses/${courseId}`,
+            currentUserId: user.id,
+          });
+        }
       }
 
       qc.invalidateQueries({ queryKey: ["course_files", courseId] });
@@ -1328,5 +1356,392 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
         </div>
       )}
     </div>
+  );
+}
+
+interface CoursePublicProfile {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  verified?: boolean;
+}
+
+interface CourseQuestionPost {
+  id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+  author?: CoursePublicProfile | null;
+  cleanContent: string;
+}
+
+/* Course Questions & Discussions Tab */
+export function DiscussionsTab({
+  courseId,
+  teacherId,
+}: {
+  courseId: string;
+  teacherId?: string | null;
+}) {
+  const { user, isAdmin } = useAuth();
+  const qc = useQueryClient();
+  const [questionContent, setQuestionContent] = useState("");
+
+  const coursePrefix = `[course:${courseId}]`;
+
+  // Fetch course questions (posts)
+  const { data: questions, isLoading } = useQuery({
+    queryKey: ["course_questions", courseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .ilike("content", `${coursePrefix}%`)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const postsData = data ?? [];
+      const authorIds = Array.from(new Set(postsData.map((p) => p.author_id)));
+      if (!authorIds.length) return [];
+
+      const { data: profiles } = await supabase.rpc("get_public_profiles", { _ids: authorIds });
+      const profileMap = new Map((profiles ?? []).map((p: CoursePublicProfile) => [p.id, p]));
+
+      return postsData.map((p) => ({
+        ...p,
+        author: profileMap.get(p.author_id) ?? null,
+        cleanContent: p.content.replace(coursePrefix, "").trim(),
+      }));
+    },
+  });
+
+  // Post question mutation
+  const postQuestion = useMutation({
+    mutationFn: async () => {
+      if (!user || !questionContent.trim()) throw new Error("يرجى كتابة نص السؤال");
+      const fullText = `${coursePrefix} ${questionContent.trim()}`;
+      const { error } = await supabase.from("posts").insert({
+        author_id: user.id,
+        content: fullText,
+        post_type: "question",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setQuestionContent("");
+      toast.success("تم نشر سؤالك في المقرر بنجاح");
+      qc.invalidateQueries({ queryKey: ["course_questions", courseId] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  // Delete question
+  const deleteQuestion = useMutation({
+    mutationFn: async (qid: string) => {
+      const { error } = await supabase.from("posts").delete().eq("id", qid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم حذف السؤال");
+      qc.invalidateQueries({ queryKey: ["course_questions", courseId] });
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Ask Question Card */}
+      <Card className="border-primary/30 bg-card">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+            <HelpCircle className="w-5 h-5 text-primary" />
+            <span>طرح سؤال أو استفسار حول المقرر</span>
+          </div>
+          <Textarea
+            value={questionContent}
+            onChange={(e) => setQuestionContent(e.target.value)}
+            rows={3}
+            placeholder="اكتب سؤالك هنا ليستطيع الطلاب وأستاذ المقرر الإجابة عليه..."
+            className="resize-none rounded-xl text-xs"
+          />
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => postQuestion.mutate()}
+              disabled={!questionContent.trim() || postQuestion.isPending}
+              className="rounded-xl font-semibold text-xs gap-1.5"
+            >
+              {postQuestion.isPending && <Loader2 className="w-4 h-4 animate-spin" />} إرسال السؤال
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Questions List */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : !questions || questions.length === 0 ? (
+        <div className="text-center py-10 border rounded-2xl border-dashed bg-muted/5">
+          <HelpCircle className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-sm font-semibold text-foreground">
+            لا توجد أسئلة أو نقاشات في هذا المقرر بعد
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            كن أول من يطرح سؤالاً لمناقشته مع الزملاء والمدرس!
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {questions.map((q) => {
+            const isTeacher = q.author_id === teacherId;
+            const canDel = isAdmin || q.author_id === user?.id;
+
+            return (
+              <QuestionCard
+                key={q.id}
+                q={q}
+                isTeacher={isTeacher}
+                canDelete={canDel}
+                onDelete={() => deleteQuestion.mutate(q.id)}
+                teacherId={teacherId}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuestionCard({
+  q,
+  isTeacher,
+  canDelete,
+  onDelete,
+  teacherId,
+}: {
+  q: CourseQuestionPost;
+  isTeacher: boolean;
+  canDelete: boolean;
+  onDelete: () => void;
+  teacherId?: string | null;
+}) {
+  const { user, isAdmin } = useAuth();
+  const qc = useQueryClient();
+  const [replyText, setReplyText] = useState("");
+  const [showReplies, setShowReplies] = useState(true);
+
+  // Fetch comments for this question
+  const { data: comments, isLoading: loadingComments } = useQuery({
+    queryKey: ["course_question_comments", q.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("comments")
+        .select("*")
+        .eq("post_id", q.id)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      const cList = data ?? [];
+      const authorIds = Array.from(new Set(cList.map((c) => c.author_id)));
+      if (!authorIds.length) return [];
+
+      const { data: profiles } = await supabase.rpc("get_public_profiles", { _ids: authorIds });
+      const pMap = new Map((profiles ?? []).map((p: CoursePublicProfile) => [p.id, p]));
+
+      return cList.map((c) => ({
+        ...c,
+        author: pMap.get(c.author_id) ?? null,
+      }));
+    },
+  });
+
+  // Add comment
+  const addComment = useMutation({
+    mutationFn: async () => {
+      if (!user || !replyText.trim()) throw new Error("يرجى كتابة الرد");
+      const { error } = await supabase.from("comments").insert({
+        post_id: q.id,
+        author_id: user.id,
+        content: replyText.trim(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setReplyText("");
+      toast.success("تم إضافة إجابتك/ردك");
+      qc.invalidateQueries({ queryKey: ["course_question_comments", q.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Delete comment
+  const deleteComment = useMutation({
+    mutationFn: async (cid: string) => {
+      const { error } = await supabase.from("comments").delete().eq("id", cid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم حذف الرد");
+      qc.invalidateQueries({ queryKey: ["course_question_comments", q.id] });
+    },
+  });
+
+  const authorName = q.author?.full_name ?? "مستخدم";
+
+  return (
+    <Card className="border-muted/80 shadow-sm">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <UserAvatar
+              avatarUrl={q.author?.avatar_url}
+              fullName={authorName}
+              className="w-9 h-9"
+            />
+            <div className="min-w-0">
+              <div className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
+                <span>{authorName}</span>
+                {q.author?.verified && <VerifiedBadge />}
+                {isTeacher && (
+                  <Badge
+                    variant="secondary"
+                    className="bg-primary/10 text-primary text-[10px] px-1.5 py-0 font-medium"
+                  >
+                    أستاذ المقرر
+                  </Badge>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDistanceToNow(new Date(q.created_at), { addSuffix: true, locale: ar })}
+              </p>
+            </div>
+          </div>
+
+          {canDelete && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+              onClick={onDelete}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+
+        <p className="text-sm font-medium text-foreground whitespace-pre-wrap leading-relaxed">
+          {q.cleanContent}
+        </p>
+
+        {/* Action / Comments Header */}
+        <div className="flex items-center justify-between border-t pt-2 mt-2 text-xs text-muted-foreground">
+          <button
+            onClick={() => setShowReplies(!showReplies)}
+            className="flex items-center gap-1 hover:text-primary font-medium"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>الإجابات والردود ({comments?.length ?? 0})</span>
+          </button>
+        </div>
+
+        {/* Replies / Comments */}
+        {showReplies && (
+          <div className="space-y-3 pt-2">
+            {loadingComments ? (
+              <div className="flex justify-center py-3">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : comments && comments.length > 0 ? (
+              <div className="space-y-2 border-r-2 border-primary/20 pr-3 mr-1">
+                {comments.map((c) => {
+                  const cName = c.author?.full_name ?? "مستخدم";
+                  const isCommentTeacher = c.author_id === teacherId;
+                  const canDelComment = isAdmin || c.author_id === user?.id;
+
+                  return (
+                    <div
+                      key={c.id}
+                      className="p-2.5 rounded-xl bg-muted/30 border border-muted/50 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <UserAvatar
+                            avatarUrl={c.author?.avatar_url}
+                            fullName={cName}
+                            className="w-6 h-6"
+                          />
+                          <span className="font-semibold text-xs text-foreground">{cName}</span>
+                          {isCommentTeacher && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] px-1.5 py-0"
+                            >
+                              أستاذ المقرر
+                            </Badge>
+                          )}
+                          <span className="text-[10px] text-muted-foreground">
+                            •{" "}
+                            {formatDistanceToNow(new Date(c.created_at), {
+                              addSuffix: true,
+                              locale: ar,
+                            })}
+                          </span>
+                        </div>
+
+                        {canDelComment && (
+                          <button
+                            onClick={() => deleteComment.mutate(c.id)}
+                            className="text-muted-foreground hover:text-destructive text-xs"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-foreground/90 whitespace-pre-wrap">{c.content}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {/* Add Answer Input */}
+            <div className="flex gap-2 items-center pt-1">
+              <Input
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="اكتب إجابة أو تعليقاً على هذا السؤال..."
+                className="h-9 text-xs rounded-xl flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (replyText.trim()) addComment.mutate();
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                onClick={() => addComment.mutate()}
+                disabled={!replyText.trim() || addComment.isPending}
+                className="h-9 px-3 rounded-xl gap-1 text-xs font-semibold"
+              >
+                {addComment.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>إجابة</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

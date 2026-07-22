@@ -79,8 +79,8 @@ export const CARD_THEMES: CardThemeConfig[] = [
     id: "moon",
     name: "القمر والكسوف",
     icon: "🌙",
-    minPoints: 250,
-    rankName: "الذهبي (250+ نقطة)",
+    minPoints: 300,
+    rankName: "الذهبي (300+ نقطة)",
     desc: "هالة قمرية ساحرة وتوهج فضي أرجواني ساطع",
     badgeBg: "bg-purple-500/20 text-purple-300 border-purple-400/40",
     accentBorder: "border-purple-400/60",
@@ -92,8 +92,8 @@ export const CARD_THEMES: CardThemeConfig[] = [
     id: "sun",
     name: "الشمس والوهج الشمسي",
     icon: "☀️",
-    minPoints: 500,
-    rankName: "البلاتيني (500+ نقطة)",
+    minPoints: 700,
+    rankName: "البلاتيني (700+ نقطة)",
     desc: "إشعاع شمسي ووهج ناري ذهبي ملكي يمنح هيبة فائقة",
     badgeBg: "bg-orange-500/20 text-orange-300 border-orange-400/40",
     accentBorder: "border-amber-500/70",
@@ -105,8 +105,8 @@ export const CARD_THEMES: CardThemeConfig[] = [
     id: "galaxy",
     name: "السديم الفضائي والأسطورة",
     icon: "🌌",
-    minPoints: 1000,
-    rankName: "الأسطوري (1000+ نقطة)",
+    minPoints: 1500,
+    rankName: "الماسي (1500+ نقطة)",
     desc: "سديم مجرة أسطوري مع صواعق فضائية وهالة نجمية متحركة",
     badgeBg: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-400/50",
     accentBorder: "border-fuchsia-500/80",
@@ -117,9 +117,9 @@ export const CARD_THEMES: CardThemeConfig[] = [
 ];
 
 export function getDefaultThemeForPoints(points: number): CardThemeId {
-  if (points >= 1000) return "galaxy";
-  if (points >= 500) return "sun";
-  if (points >= 250) return "moon";
+  if (points >= 1500) return "galaxy";
+  if (points >= 700) return "sun";
+  if (points >= 300) return "moon";
   if (points >= 100) return "clouds";
   return "stars";
 }

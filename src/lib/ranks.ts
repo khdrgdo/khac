@@ -12,25 +12,25 @@ export const RANKS: Record<RankTier, { label: string; emoji: string; color: stri
       label: "فضي",
       emoji: "🥈",
       color: "bg-slate-400/15 text-slate-500 border-slate-400/30",
-      min: 50,
+      min: 100,
     },
     gold: {
       label: "ذهبي",
       emoji: "🥇",
       color: "bg-yellow-500/15 text-yellow-600 border-yellow-500/30",
-      min: 150,
+      min: 300,
     },
     platinum: {
       label: "بلاتيني",
       emoji: "💠",
       color: "bg-cyan-500/15 text-cyan-600 border-cyan-500/30",
-      min: 400,
+      min: 700,
     },
     diamond: {
       label: "ماسي",
       emoji: "💎",
       color: "bg-fuchsia-500/15 text-fuchsia-600 border-fuchsia-500/30",
-      min: 1000,
+      min: 1500,
     },
   };
 

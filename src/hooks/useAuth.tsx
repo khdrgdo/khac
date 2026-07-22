@@ -29,10 +29,10 @@ export function isSuspended(p: Profile | null): boolean {
 }
 
 export function computeRank(points: number): RankTier {
-  if (points >= 1000) return "diamond";
-  if (points >= 400) return "platinum";
-  if (points >= 150) return "gold";
-  if (points >= 50) return "silver";
+  if (points >= 1500) return "diamond";
+  if (points >= 700) return "platinum";
+  if (points >= 300) return "gold";
+  if (points >= 100) return "silver";
   return "bronze";
 }
 

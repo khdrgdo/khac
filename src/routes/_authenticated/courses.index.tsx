@@ -27,6 +27,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MAJORS, YEARS, SEMESTERS, majorLabel } from "@/lib/college";
 import { parseTitleAndNote, getFileTypeInfo } from "@/lib/courseUtils";
+import { broadcastNotification } from "@/lib/notificationsStore";
 import {
   BookOpen,
   Plus,
@@ -793,6 +794,16 @@ export function NewCourseDialog({
         teacher_id: selectedTeacherId === "none" ? null : selectedTeacherId,
       });
       if (error) throw error;
+
+      broadcastNotification({
+        actorId: user.id,
+        actorName: user.user_metadata?.full_name || "إدارة الكلية",
+        type: "course_added",
+        title: "إضافة مادة جديدة 📚",
+        body: `تم إضافة المقرر الدراسي "${name}" لطلاب قسم ${major.toUpperCase()} السنة ${year}`,
+        link: "/courses",
+        currentUserId: user.id,
+      });
     },
     onSuccess: () => {
       toast.success("تم إنشاء المقرر وتعيين الأستاذ بنجاح");

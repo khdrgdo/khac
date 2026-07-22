@@ -30,6 +30,7 @@ import { RankBadge } from "@/components/RankBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useUnivPrivacy } from "@/hooks/useUnivPrivacy";
 import { GlobalSearchDialog } from "@/components/GlobalSearchDialog";
+import { NotificationsPopover } from "@/components/NotificationsPopover";
 import { motion, AnimatePresence } from "motion/react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -154,9 +155,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </nav>
 
-          {/* Right Actions: Search, Theme, Avatar Menu */}
+          {/* Right Actions: Search, Notifications, Theme, Avatar Menu */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <GlobalSearchDialog />
+            <NotificationsPopover />
             <ThemeToggle />
 
             <DropdownMenu>

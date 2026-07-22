@@ -1,4 +1,4 @@
-import { createFileRoute, useParams, Link } from "@tanstack/react-router";
+import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UserAvatar } from "@/components/UserAvatar";
+import { majorLabel } from "@/lib/college";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,9 @@ import {
   Flag,
   UserMinus,
   UserPlus,
+  Search,
+  MessageSquare,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -58,6 +62,7 @@ interface Prof {
 
 function ChatPage() {
   const { id } = useParams({ from: "/_authenticated/messages/$id" });
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const suspended = isSuspended(profile);
   const qc = useQueryClient();
@@ -76,6 +81,9 @@ function ChatPage() {
   const [reportReason, setReportReason] = useState("محتوى غير لائق أو مسيء");
   const [reportNote, setReportNote] = useState("");
   const [submittingReport, setSubmittingReport] = useState(false);
+
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
 
   useEffect(() => {
     const handleStorage = () => {
@@ -229,15 +237,31 @@ function ChatPage() {
               )}
             </div>
             {conv?.is_group ? (
-              <div className="text-xs text-muted-foreground">
-                {(conv?.profiles ?? []).length} أعضاء
-              </div>
+              <button
+                onClick={() => setMembersOpen(true)}
+                className="text-xs text-muted-foreground hover:text-primary transition flex items-center gap-1 text-right"
+              >
+                <span>{(conv?.profiles ?? []).length} أعضاء</span>
+                <span className="text-[10px] text-primary underline">(عرض الأعضاء)</span>
+              </button>
             ) : (
               <div className="text-xs text-muted-foreground">
                 {isOtherBlocked ? "محظور" : "طالب"}
               </div>
             )}
           </div>
+
+          {conv?.is_group && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMembersOpen(true)}
+              className="h-8 gap-1.5 text-xs rounded-xl font-medium border-primary/20 text-primary hover:bg-primary/5"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>أعضاء المجموعـة</span>
+            </Button>
+          )}
 
           {!conv?.is_group && otherUser && (
             <DropdownMenu>
@@ -468,6 +492,135 @@ function ChatPage() {
               ) : (
                 <span>إرسال البلاغ</span>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Group Members Modal */}
+      <Dialog open={membersOpen} onOpenChange={setMembersOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col p-5">
+          <DialogHeader className="pb-2 border-b">
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <Users className="w-5 h-5 text-primary" />
+              <span>أعضاء المجموعـة ({conv?.profiles?.length ?? 0})</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              قائمة بجميع الطلاب والأشخاص المتواجدين داخل هذه المجموعة
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="pt-3 pb-1">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute right-3 top-3 text-muted-foreground" />
+              <Input
+                placeholder="البحث عن عضو باسمه..."
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                className="pr-9 h-9 text-xs rounded-xl"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-1">
+            {(conv?.profiles ?? [])
+              .filter((m) =>
+                memberSearch.trim()
+                  ? m.full_name.toLowerCase().includes(memberSearch.trim().toLowerCase())
+                  : true,
+              )
+              .map((member) => {
+                const isMe = member.id === user?.id;
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-2.5 rounded-xl border bg-card hover:bg-accent/40 transition gap-2"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <UserAvatar
+                        avatarUrl={member.avatar_url}
+                        fullName={member.full_name}
+                        className="w-10 h-10 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm truncate flex items-center gap-1.5">
+                          <span>{member.full_name}</span>
+                          {isMe && (
+                            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-medium">
+                              أنت
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                          {member.major && <span>{majorLabel(member.major)}</span>}
+                          {member.year && <span>• السنة {member.year}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+                        title="عرض الملف الشخصي"
+                        onClick={() => {
+                          setMembersOpen(false);
+                          navigate({ to: "/profile/$id", params: { id: member.id } });
+                        }}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+
+                      {!isMe && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-8 px-2.5 gap-1 text-xs rounded-lg font-medium"
+                          onClick={async () => {
+                            setMembersOpen(false);
+                            try {
+                              const { data: convId, error } = await supabase.rpc("create_dm", {
+                                _other: member.id,
+                              });
+                              if (error) throw error;
+                              if (convId) {
+                                qc.invalidateQueries({ queryKey: ["conversations"] });
+                                navigate({
+                                  to: "/messages/$id",
+                                  params: { id: convId as string },
+                                });
+                              }
+                            } catch (err: unknown) {
+                              const message =
+                                err instanceof Error ? err.message : "فشل بدء المحادثة";
+                              toast.error(message);
+                            }
+                          }}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">مراسلة</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+            {(conv?.profiles ?? []).length === 0 && (
+              <p className="text-center py-6 text-xs text-muted-foreground">
+                لا يوجد أعضاء في هذه المجموعة.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="pt-2 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setMembersOpen(false)}
+              className="w-full text-xs rounded-xl"
+            >
+              إغلاق
             </Button>
           </DialogFooter>
         </DialogContent>
