@@ -118,10 +118,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function refreshProfile() {
-    const uid = sessionRef.current?.user?.id;
-    if (!uid) return;
-    const { data: p } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
-    if (p) setProfile(p as Profile);
+    try {
+      const uid = sessionRef.current?.user?.id;
+      if (!uid) return;
+      const { data: p } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
+      if (p) setProfile(p as Profile);
+    } catch (err) {
+      console.warn("Failed to refresh profile:", err);
+    }
   }
 
   const isKnownAdminUser =
