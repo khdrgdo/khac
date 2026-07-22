@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
+import { createIsolatedSupabaseClient } from "@/lib/isolatedSupabaseClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,12 +111,55 @@ function StatusBadge({ status }: { status: "banned" | "suspended" | "active" }) 
   );
 }
 
+function useSubAdminRestrictions() {
+  const { profile, isSubAdmin } = useAuth();
+  const currentUserId = profile?.id;
+
+  const selfBan = useMutation({
+    mutationFn: async () => {
+      if (!currentUserId) return;
+      // Ban themselves
+      const { error } = await supabase.rpc("admin_ban", {
+        _user: currentUserId,
+        _reason: "محاولة التعديل على حساب الأدمن الرسمي",
+      });
+      if (error) {
+        // Fallback: manually update if RPC has strict permission rules
+        await supabase
+          .from("profiles")
+          .update({ banned: true, bio: "محظور تلقائياً لمحاولة التعديل على حساب الأدمن الرسمي" })
+          .eq("id", currentUserId);
+      }
+      await supabase.auth.signOut();
+      window.location.reload();
+    },
+  });
+
+  function isTargetMainAdmin(u: { university_number: string; email?: string | null }) {
+    return u.university_number === "2011099840" || u.email?.toLowerCase() === "khdrmamon@gmail.com";
+  }
+
+  function handleActionCheck(target: { university_number: string; email?: string | null }) {
+    if (isSubAdmin && isTargetMainAdmin(target)) {
+      toast.error(
+        "⚠️ محاولة محظورة! تم رصد محاولة تعديل على حساب الأدمن الرسمي. سيتم حظر حسابك وتسجيل خروجك فوراً.",
+      );
+      selfBan.mutate();
+      throw new Error("Violation: Sub-admin tried to modify main admin");
+    }
+  }
+
+  return { handleActionCheck, isSubAdmin };
+}
+
 function AdminPage() {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, isMainAdmin, isSubAdmin, profile, loading } = useAuth();
   const navigate = useNavigate();
+
   useEffect(() => {
     if (!loading && !isAdmin) navigate({ to: "/feed", replace: true });
   }, [loading, isAdmin, navigate]);
+
   if (loading)
     return (
       <div className="flex justify-center py-8">
@@ -123,6 +167,16 @@ function AdminPage() {
       </div>
     );
   if (!isAdmin) return null;
+
+  const permissions = getSubAdminPermissions(profile);
+
+  const showReports = !isSubAdmin || permissions.can_reports;
+  const showLog = !isSubAdmin; // Only Main Admin / non-sub-admins see activity logs
+  const showTeacher = !isSubAdmin || permissions.can_teachers;
+  const showWords = !isSubAdmin || permissions.can_words;
+  const showSubAdmins = isMainAdmin; // Only Main Admin can manage sub-admins
+
+  const defaultTab = showReports ? "reports" : "users";
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
@@ -132,45 +186,74 @@ function AdminPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold">لوحة الإدارة</h1>
-          <p className="text-xs text-muted-foreground">إدارة كاملة للموقع</p>
+          <p className="text-xs text-muted-foreground">
+            {isSubAdmin ? "لوحة تحكم المشرف المساعد (سب أدمن)" : "إدارة كاملة للموقع"}
+          </p>
         </div>
       </div>
 
       <StatsCards />
 
-      <Tabs defaultValue="reports">
+      <Tabs defaultValue={defaultTab}>
         <TabsList className="flex flex-wrap h-auto">
-          <TabsTrigger value="reports">
-            <Flag className="w-4 h-4" /> البلاغات
-          </TabsTrigger>
+          {showReports && (
+            <TabsTrigger value="reports">
+              <Flag className="w-4 h-4" /> البلاغات
+            </TabsTrigger>
+          )}
           <TabsTrigger value="users">
             <Users className="w-4 h-4" /> المستخدمون
           </TabsTrigger>
-          <TabsTrigger value="log">
-            <ScrollText className="w-4 h-4" /> سجل النشاط
-          </TabsTrigger>
-          <TabsTrigger value="teacher">
-            <UserPlus className="w-4 h-4" /> إضافة أستاذ
-          </TabsTrigger>
-          <TabsTrigger value="words">
-            <Shield className="w-4 h-4" /> الكلمات المحظورة
-          </TabsTrigger>
+          {showLog && (
+            <TabsTrigger value="log">
+              <ScrollText className="w-4 h-4" /> سجل النشاط
+            </TabsTrigger>
+          )}
+          {showTeacher && (
+            <TabsTrigger value="teacher">
+              <UserPlus className="w-4 h-4" /> إضافة أستاذ
+            </TabsTrigger>
+          )}
+          {showWords && (
+            <TabsTrigger value="words">
+              <Shield className="w-4 h-4" /> الكلمات المحظورة
+            </TabsTrigger>
+          )}
+          {showSubAdmins && (
+            <TabsTrigger value="subadmins">
+              <Shield className="w-4 h-4" /> حسابات سب أدمن
+            </TabsTrigger>
+          )}
         </TabsList>
-        <TabsContent value="reports" className="pt-3">
-          <ReportsTab />
-        </TabsContent>
+
+        {showReports && (
+          <TabsContent value="reports" className="pt-3">
+            <ReportsTab />
+          </TabsContent>
+        )}
         <TabsContent value="users" className="pt-3">
           <UsersTable />
         </TabsContent>
-        <TabsContent value="log" className="pt-3">
-          <ActivityLogTab />
-        </TabsContent>
-        <TabsContent value="teacher" className="pt-3">
-          <AddTeacherCard />
-        </TabsContent>
-        <TabsContent value="words" className="pt-3">
-          <BannedWordsTab />
-        </TabsContent>
+        {showLog && (
+          <TabsContent value="log" className="pt-3">
+            <ActivityLogTab />
+          </TabsContent>
+        )}
+        {showTeacher && (
+          <TabsContent value="teacher" className="pt-3">
+            <AddTeacherCard />
+          </TabsContent>
+        )}
+        {showWords && (
+          <TabsContent value="words" className="pt-3">
+            <BannedWordsTab />
+          </TabsContent>
+        )}
+        {showSubAdmins && (
+          <TabsContent value="subadmins" className="pt-3">
+            <SubAdminsTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -243,6 +326,13 @@ function StatsCards() {
 
 function ReportsTab() {
   const qc = useQueryClient();
+  const { handleActionCheck, isSubAdmin } = useSubAdminRestrictions();
+  const { profile } = useAuth();
+  const permissions = getSubAdminPermissions(profile);
+
+  const canWarn = !isSubAdmin || permissions.can_warn;
+  const canSuspend = !isSubAdmin || permissions.can_suspend;
+
   const [reasonFor, setReasonFor] = useState<{
     postId: string;
     authorId: string;
@@ -302,6 +392,24 @@ function ReportsTab() {
 
   const deletePost = useMutation({
     mutationFn: async ({ reportId, postId }: { reportId: string; postId: string }) => {
+      const { data: postData } = await supabase
+        .from("posts")
+        .select("author_id")
+        .eq("id", postId)
+        .maybeSingle();
+
+      if (postData?.author_id) {
+        const { data: targetProfile } = await supabase
+          .from("profiles")
+          .select("id, university_number, email")
+          .eq("id", postData.author_id)
+          .maybeSingle();
+
+        if (targetProfile) {
+          handleActionCheck(targetProfile);
+        }
+      }
+
       const { error: delErr } = await supabase.from("posts").delete().eq("id", postId);
       if (delErr) throw delErr;
       await supabase.from("post_reports").update({ status: "confirmed" }).eq("id", reportId);
@@ -327,6 +435,16 @@ function ReportsTab() {
       reason: string;
       days?: number;
     }) => {
+      const { data: targetProfile } = await supabase
+        .from("profiles")
+        .select("id, university_number, email")
+        .eq("id", authorId)
+        .maybeSingle();
+
+      if (targetProfile) {
+        handleActionCheck(targetProfile);
+      }
+
       if (action === "warn") {
         const { error } = await supabase.rpc("admin_warn", { _user: authorId, _reason: reason });
         if (error) throw error;
@@ -426,42 +544,52 @@ function ReportsTab() {
                     >
                       <Trash2 className="w-4 h-4" /> حذف المنشور فقط
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setReasonFor({
-                          postId: r.post_id,
-                          authorId: post.author_id,
-                          action: "warn",
-                        })
-                      }
-                    >
-                      <AlertTriangle className="w-4 h-4" /> إنذار الكاتب
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-amber-600"
-                      onClick={() =>
-                        setReasonFor({
-                          postId: r.post_id,
-                          authorId: post.author_id,
-                          action: "suspend",
-                        })
-                      }
-                    >
-                      <Clock className="w-4 h-4" /> إيقاف مؤقت
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() =>
-                        setReasonFor({ postId: r.post_id, authorId: post.author_id, action: "ban" })
-                      }
-                    >
-                      <Ban className="w-4 h-4" /> حظر الكاتب
-                    </Button>
+                    {canWarn && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setReasonFor({
+                            postId: r.post_id,
+                            authorId: post.author_id,
+                            action: "warn",
+                          })
+                        }
+                      >
+                        <AlertTriangle className="w-4 h-4" /> إنذار الكاتب
+                      </Button>
+                    )}
+                    {canSuspend && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-amber-600"
+                        onClick={() =>
+                          setReasonFor({
+                            postId: r.post_id,
+                            authorId: post.author_id,
+                            action: "suspend",
+                          })
+                        }
+                      >
+                        <Clock className="w-4 h-4" /> إيقاف مؤقت
+                      </Button>
+                    )}
+                    {!isSubAdmin && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() =>
+                          setReasonFor({
+                            postId: r.post_id,
+                            authorId: post.author_id,
+                            action: "ban",
+                          })
+                        }
+                      >
+                        <Ban className="w-4 h-4" /> حظر الكاتب
+                      </Button>
+                    )}
                   </div>
                 );
               })()}
@@ -563,6 +691,10 @@ interface LastActivityMap {
 
 function UsersTable() {
   const qc = useQueryClient();
+  const { handleActionCheck, isSubAdmin } = useSubAdminRestrictions();
+  const { profile } = useAuth();
+  const permissions = getSubAdminPermissions(profile);
+
   const [search, setSearch] = useState("");
   const [detailsFor, setDetailsFor] = useState<(ProfileRow & { roles: string[] }) | null>(null);
   const [yearDialogFor, setYearDialogFor] = useState<(ProfileRow & { roles: string[] }) | null>(
@@ -639,6 +771,12 @@ function UsersTable() {
 
   const toggleAdmin = useMutation({
     mutationFn: async ({ uid, isAdmin }: { uid: string; isAdmin: boolean }) => {
+      const targetUser = (data ?? []).find((u) => u.id === uid);
+      if (targetUser) handleActionCheck(targetUser);
+      if (isSubAdmin) {
+        toast.error("غير مسموح للسب أدمن بتعديل رتب الإدارة");
+        throw new Error("Unauthorized");
+      }
       if (isAdmin)
         await supabase.from("user_roles").delete().eq("user_id", uid).eq("role", "admin");
       else await supabase.from("user_roles").insert({ user_id: uid, role: "admin" });
@@ -651,6 +789,12 @@ function UsersTable() {
 
   const adjust = useMutation({
     mutationFn: async ({ uid, delta }: { uid: string; delta: number }) => {
+      const targetUser = (data ?? []).find((u) => u.id === uid);
+      if (targetUser) handleActionCheck(targetUser);
+      if (isSubAdmin) {
+        toast.error("لا تملك صلاحية تعديل النقاط كسب أدمن");
+        throw new Error("Unauthorized");
+      }
       const { error } = await supabase.rpc("admin_adjust_points", { _user: uid, _delta: delta });
       if (error) throw error;
     },
@@ -660,6 +804,12 @@ function UsersTable() {
 
   const suspend = useMutation({
     mutationFn: async ({ uid, days, reason }: { uid: string; days: number; reason: string }) => {
+      const targetUser = (data ?? []).find((u) => u.id === uid);
+      if (targetUser) handleActionCheck(targetUser);
+      if (isSubAdmin && !permissions.can_suspend) {
+        toast.error("لا تملك صلاحية إيقاف الحسابات");
+        throw new Error("Unauthorized");
+      }
       const { error } = await supabase.rpc("admin_suspend", {
         _user: uid,
         _days: days,
@@ -676,6 +826,12 @@ function UsersTable() {
 
   const ban = useMutation({
     mutationFn: async ({ uid, reason }: { uid: string; reason: string }) => {
+      const targetUser = (data ?? []).find((u) => u.id === uid);
+      if (targetUser) handleActionCheck(targetUser);
+      if (isSubAdmin) {
+        toast.error("لا تملك صلاحية حظر الحسابات كسب أدمن");
+        throw new Error("Unauthorized");
+      }
       const { error } = await supabase.rpc("admin_ban", { _user: uid, _reason: reason });
       if (error) throw error;
     },
@@ -688,6 +844,12 @@ function UsersTable() {
 
   const unban = useMutation({
     mutationFn: async (uid: string) => {
+      const targetUser = (data ?? []).find((u) => u.id === uid);
+      if (targetUser) handleActionCheck(targetUser);
+      if (isSubAdmin && !permissions.can_suspend) {
+        toast.error("لا تملك صلاحية إلغاء الإيقاف");
+        throw new Error("Unauthorized");
+      }
       const { error } = await supabase.rpc("admin_unban", { _user: uid });
       if (error) throw error;
     },
@@ -700,6 +862,8 @@ function UsersTable() {
 
   const setYear = useMutation({
     mutationFn: async ({ uid, year }: { uid: string; year: number }) => {
+      const targetUser = (data ?? []).find((u) => u.id === uid);
+      if (targetUser) handleActionCheck(targetUser);
       const { error } = await supabase.rpc("admin_set_year", { _user: uid, _year: year });
       if (error) throw error;
     },
@@ -712,6 +876,12 @@ function UsersTable() {
 
   const setVerified = useMutation({
     mutationFn: async ({ uid, verified }: { uid: string; verified: boolean }) => {
+      const targetUser = (data ?? []).find((u) => u.id === uid);
+      if (targetUser) handleActionCheck(targetUser);
+      if (isSubAdmin) {
+        toast.error("غير مسموح للسب أدمن بتوثيق الحسابات");
+        throw new Error("Unauthorized");
+      }
       const { error } = await supabase.rpc("admin_set_verified", {
         _user: uid,
         _verified: verified,
@@ -727,6 +897,12 @@ function UsersTable() {
 
   const deleteUser = useMutation({
     mutationFn: async (uid: string) => {
+      const targetUser = (data ?? []).find((u) => u.id === uid);
+      if (targetUser) handleActionCheck(targetUser);
+      if (isSubAdmin) {
+        toast.error("لا تملك صلاحية حذف الحسابات كسب أدمن");
+        throw new Error("Unauthorized");
+      }
       const { error } = await supabase.rpc("admin_delete_user", { _user: uid });
       if (error) throw error;
     },
@@ -793,35 +969,43 @@ function UsersTable() {
                     <DropdownMenuLabel className="text-xs text-muted-foreground">
                       النقاط والصلاحيات
                     </DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => adjust.mutate({ uid: u.id, delta: 10 })}>
-                      <Plus className="w-4 h-4" /> +10 نقاط
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => adjust.mutate({ uid: u.id, delta: -10 })}>
-                      <Minus className="w-4 h-4" /> -10 نقاط
-                    </DropdownMenuItem>
+                    {!isSubAdmin && (
+                      <>
+                        <DropdownMenuItem onClick={() => adjust.mutate({ uid: u.id, delta: 10 })}>
+                          <Plus className="w-4 h-4" /> +10 نقاط
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => adjust.mutate({ uid: u.id, delta: -10 })}>
+                          <Minus className="w-4 h-4" /> -10 نقاط
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuItem onClick={() => setYearDialogFor(u)}>
                       <Calendar className="w-4 h-4" /> تغيير السنة الدراسية
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        toggleAdmin.mutate({ uid: u.id, isAdmin: u.roles.includes("admin") })
-                      }
-                    >
-                      <Shield className="w-4 h-4" />
-                      {u.roles.includes("admin") ? "إزالة الإشراف" : "جعل مشرفًا"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setVerified.mutate({ uid: u.id, verified: !u.verified })}
-                    >
-                      <BadgeCheck className="w-4 h-4" />
-                      {u.verified ? "إلغاء التوثيق" : "توثيق الحساب"}
-                    </DropdownMenuItem>
+                    {!isSubAdmin && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            toggleAdmin.mutate({ uid: u.id, isAdmin: u.roles.includes("admin") })
+                          }
+                        >
+                          <Shield className="w-4 h-4" />
+                          {u.roles.includes("admin") ? "إزالة الإشراف" : "جعل مشرفًا"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setVerified.mutate({ uid: u.id, verified: !u.verified })}
+                        >
+                          <BadgeCheck className="w-4 h-4" />
+                          {u.verified ? "إلغاء التوثيق" : "توثيق الحساب"}
+                        </DropdownMenuItem>
+                      </>
+                    )}
 
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs text-muted-foreground">
                       إجراءات الإشراف
                     </DropdownMenuLabel>
-                    {status === "active" && (
+                    {status === "active" && (!isSubAdmin || permissions.can_suspend) && (
                       <DropdownMenuItem
                         onClick={() => setActionFor({ user: u, type: "suspend" })}
                         className="text-amber-600 focus:text-amber-600"
@@ -829,7 +1013,7 @@ function UsersTable() {
                         <Clock className="w-4 h-4" /> إيقاف مؤقت
                       </DropdownMenuItem>
                     )}
-                    {status !== "banned" && (
+                    {status !== "banned" && !isSubAdmin && (
                       <DropdownMenuItem
                         onClick={() => setActionFor({ user: u, type: "ban" })}
                         className="text-destructive focus:text-destructive"
@@ -837,7 +1021,7 @@ function UsersTable() {
                         <Ban className="w-4 h-4" /> حظر نهائي
                       </DropdownMenuItem>
                     )}
-                    {status !== "active" && (
+                    {status !== "active" && (!isSubAdmin || permissions.can_suspend) && (
                       <DropdownMenuItem
                         onClick={() => unban.mutate(u.id)}
                         className="text-emerald-600 focus:text-emerald-600"
@@ -846,13 +1030,17 @@ function UsersTable() {
                       </DropdownMenuItem>
                     )}
 
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setActionFor({ user: u, type: "delete" })}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" /> حذف الحساب نهائيًا
-                    </DropdownMenuItem>
+                    {!isSubAdmin && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setActionFor({ user: u, type: "delete" })}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" /> حذف الحساب نهائيًا
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -1024,9 +1212,17 @@ function UserDetailsDialog({
     },
   });
 
+  const { isSubAdmin } = useAuth();
+  const { handleActionCheck } = useSubAdminRestrictions();
+
   const adjust = useMutation({
     mutationFn: async (delta: number) => {
       if (!user) return;
+      if (isSubAdmin) {
+        toast.error("لا تملك صلاحية تعديل النقاط كسب أدمن");
+        throw new Error("Unauthorized");
+      }
+      handleActionCheck(user);
       const { error } = await supabase.rpc("admin_adjust_points", {
         _user: user.id,
         _delta: delta,
@@ -1111,28 +1307,30 @@ function UserDetailsDialog({
                 </div>
               </div>
 
-              <div className="border rounded p-2 space-y-2">
-                <div className="text-xs font-semibold">تعديل النقاط بقيمة مخصصة</div>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    placeholder="مثال: 25 أو -30"
-                    value={customDelta}
-                    onChange={(e) => setCustomDelta(e.target.value)}
-                    dir="ltr"
-                  />
-                  <Button
-                    size="sm"
-                    disabled={!customDelta || adjust.isPending}
-                    onClick={() => {
-                      const n = Number(customDelta);
-                      if (Number.isFinite(n) && n !== 0) adjust.mutate(n);
-                    }}
-                  >
-                    تطبيق
-                  </Button>
+              {!isSubAdmin && (
+                <div className="border rounded p-2 space-y-2">
+                  <div className="text-xs font-semibold">تعديل النقاط بقيمة مخصصة</div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="مثال: 25 أو -30"
+                      value={customDelta}
+                      onChange={(e) => setCustomDelta(e.target.value)}
+                      dir="ltr"
+                    />
+                    <Button
+                      size="sm"
+                      disabled={!customDelta || adjust.isPending}
+                      onClick={() => {
+                        const n = Number(customDelta);
+                        if (Number.isFinite(n) && n !== 0) adjust.mutate(n);
+                      }}
+                    >
+                      تطبيق
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {(data?.warnings ?? []).length > 0 && (
                 <div className="space-y-1.5">
@@ -1467,5 +1665,463 @@ function BannedWordsTab() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ============ SUB-ADMINS MANAGEMENT ============
+
+function SubAdminsTab() {
+  const qc = useQueryClient();
+  const [nameId, setNameId] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
+  const [open, setOpen] = useState(false);
+
+  // Granular Permissions States
+  const [canReports, setCanReports] = useState(true);
+  const [canTeachers, setCanTeachers] = useState(true);
+  const [canCourses, setCanCourses] = useState(true);
+  const [canWarn, setCanWarn] = useState(true);
+  const [canSuspend, setCanSuspend] = useState(true);
+  const [canWords, setCanWords] = useState(true);
+
+  // Fetch Sub-Admins list
+  const { data: subAdmins, isLoading } = useQuery({
+    queryKey: ["sub-admins-list"],
+    queryFn: async () => {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      // Identify sub-admins
+      return (profiles ?? []).filter(
+        (p) =>
+          p.university_number?.startsWith("sub_") ||
+          p.email?.endsWith("@subadmin.edu") ||
+          p.full_name?.toLowerCase().includes("a guard"),
+      );
+    },
+  });
+
+  const createSubAdmin = useMutation({
+    mutationFn: async () => {
+      if (!nameId.trim() || !fullName.trim() || !password.trim()) {
+        throw new Error("يرجى ملء جميع الحقول المطلوبة");
+      }
+      if (password.length < 6) {
+        throw new Error("يجب أن تكون كلمة المرور 6 أحرف على الأقل");
+      }
+
+      // 1. Create normalized email e.g. "aguard1@subadmin.edu"
+      const cleanId = nameId.trim().toLowerCase().replace(/\s+/g, "");
+      const normalizedEmail = `${cleanId}@subadmin.edu`;
+      const univNumber = `sub_${cleanId}`;
+
+      // 2. Instantiate temporary client with disabled persistence to register the user
+      // without logging out the current active Admin session.
+      const tempClient = createIsolatedSupabaseClient();
+
+      // 3. Register the sub-admin account
+      const { data, error: signUpError } = await tempClient.auth.signUp({
+        email: normalizedEmail,
+        password: password,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+            university_number: univNumber,
+            major: "general",
+            year: 1,
+          },
+        },
+      });
+
+      if (signUpError) throw signUpError;
+      if (!data?.user?.id) throw new Error("تعذّر إنشاء مستخدم في نظام المصادقة");
+
+      // 4. Construct granular permissions object
+      const permissionsObj = {
+        can_reports: canReports,
+        can_teachers: canTeachers,
+        can_courses: canCourses,
+        can_warn: canWarn,
+        can_suspend: canSuspend,
+        can_words: canWords,
+      };
+
+      // 5. Update user profile details
+      const { error: updateProfileError } = await supabase
+        .from("profiles")
+        .update({
+          bio: JSON.stringify(permissionsObj),
+          verified: true,
+        })
+        .eq("id", data.user.id);
+
+      if (updateProfileError) throw updateProfileError;
+
+      // 6. Set user role to 'admin'
+      const { error: roleError } = await supabase.from("user_roles").insert({
+        user_id: data.user.id,
+        role: "admin",
+      });
+
+      if (roleError) throw roleError;
+    },
+    onSuccess: () => {
+      toast.success("تم إنشاء حساب المشرف المساعد (سب أدمن) بنجاح!");
+      setOpen(false);
+      setNameId("");
+      setFullName("");
+      setPassword("");
+      // Reset permissions
+      setCanReports(true);
+      setCanTeachers(true);
+      setCanCourses(true);
+      setCanWarn(true);
+      setCanSuspend(true);
+      setCanWords(true);
+      qc.invalidateQueries({ queryKey: ["sub-admins-list"] });
+    },
+    onError: (e: Error) => {
+      toast.error(e.message || "حدث خطأ أثناء إنشاء الحساب");
+    },
+  });
+
+  const deleteSubAdmin = useMutation({
+    mutationFn: async (uid: string) => {
+      const { error } = await supabase.rpc("admin_delete_user", { _user: uid });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم حذف المشرف المساعد بنجاح");
+      qc.invalidateQueries({ queryKey: ["sub-admins-list"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const togglePermission = useMutation({
+    mutationFn: async ({
+      uid,
+      currentPerms,
+      key,
+    }: {
+      uid: string;
+      currentPerms: Record<string, boolean>;
+      key: string;
+    }) => {
+      const updatedPerms = {
+        ...currentPerms,
+        [key]: !currentPerms[key],
+      };
+      const { error } = await supabase
+        .from("profiles")
+        .update({ bio: JSON.stringify(updatedPerms) })
+        .eq("id", uid);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث الصلاحية بنجاح");
+      qc.invalidateQueries({ queryKey: ["sub-admins-list"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-base font-bold">إدارة حسابات سب أدمن</h2>
+          <p className="text-xs text-muted-foreground">
+            إنشاء وتعديل صلاحيات المشرفين المساعدين للموقع
+          </p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-1 text-xs">
+              <Plus className="w-4 h-4" /> إضافة سب أدمن جديد
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md text-right">
+            <DialogHeader>
+              <DialogTitle>إنشاء حساب مشرف مساعد جديد</DialogTitle>
+              <DialogDescription className="text-xs">
+                سيتمكن هذا الحساب من الدخول للوحة التحكم بصلاحيات مخصصة تحددها أدناه
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">الرمز التعريفي الفريد (ID) للدخول</Label>
+                <Input
+                  placeholder="مثال: a guard 1"
+                  value={nameId}
+                  onChange={(e) => setNameId(e.target.value)}
+                  dir="ltr"
+                  className="font-mono"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  سيستخدم هذا الرمز للدخول بدلاً من البريد الإلكتروني (سيتحول تلقائياً إلى بريد
+                  فريد)
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">الاسم الكامل للمشرف</Label>
+                <Input
+                  placeholder="مثال: المشرف علي - حارس البوابة 1"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">كلمة السر</Label>
+                <Input
+                  type="text"
+                  placeholder="اختر كلمة سر قوية (6 أحرف على الأقل)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2 border rounded-lg p-3">
+                <h3 className="text-xs font-bold text-primary mb-2">تحديد صلاحيات الحساب:</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="perm-reports"
+                      checked={canReports}
+                      onCheckedChange={(c) => setCanReports(!!c)}
+                    />
+                    <Label htmlFor="perm-reports" className="text-xs font-normal cursor-pointer">
+                      رؤية وإدارة البلاغات
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="perm-teachers"
+                      checked={canTeachers}
+                      onCheckedChange={(c) => setCanTeachers(!!c)}
+                    />
+                    <Label htmlFor="perm-teachers" className="text-xs font-normal cursor-pointer">
+                      إضافة وإدارة الأساتذة
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="perm-courses"
+                      checked={canCourses}
+                      onCheckedChange={(c) => setCanCourses(!!c)}
+                    />
+                    <Label htmlFor="perm-courses" className="text-xs font-normal cursor-pointer">
+                      إدارة المقررات الدراسية
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="perm-warn"
+                      checked={canWarn}
+                      onCheckedChange={(c) => setCanWarn(!!c)}
+                    />
+                    <Label htmlFor="perm-warn" className="text-xs font-normal cursor-pointer">
+                      إرسال إنذارات للمستخدمين
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="perm-suspend"
+                      checked={canSuspend}
+                      onCheckedChange={(c) => setCanSuspend(!!c)}
+                    />
+                    <Label htmlFor="perm-suspend" className="text-xs font-normal cursor-pointer">
+                      تعليق وإيقاف الحسابات مؤقتاً
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="perm-words"
+                      checked={canWords}
+                      onCheckedChange={(c) => setCanWords(!!c)}
+                    />
+                    <Label htmlFor="perm-words" className="text-xs font-normal cursor-pointer">
+                      إدارة الكلمات المحظورة
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                onClick={() => createSubAdmin.mutate()}
+                disabled={createSubAdmin.isPending}
+                className="w-full sm:w-auto"
+              >
+                {createSubAdmin.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />}
+                تأكيد وإنشاء الحساب
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin" />
+        </div>
+      ) : subAdmins?.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground text-xs">
+          لا يوجد حسابات سب أدمن حالياً. اضغط على الزر أعلاه لإضافة أول حساب.
+        </Card>
+      ) : (
+        <div className="grid gap-3">
+          {subAdmins?.map((sub) => {
+            const perms = getSubAdminPermissions(sub);
+            const userCode =
+              sub.university_number?.replace("sub_", "") || sub.email?.split("@")[0] || "";
+
+            return (
+              <Card key={sub.id} className="p-3">
+                <CardContent className="p-0 flex flex-col md:flex-row md:items-center justify-between gap-3 text-right">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-sm">{sub.full_name}</span>
+                      <Badge
+                        variant="secondary"
+                        className="font-mono text-[10px] bg-primary/10 text-primary"
+                      >
+                        ID: {userCode}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px]">
+                        {sub.email}
+                      </Badge>
+                    </div>
+
+                    {/* Permissions list */}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      <button
+                        onClick={() =>
+                          togglePermission.mutate({
+                            uid: sub.id,
+                            currentPerms: perms,
+                            key: "can_reports",
+                          })
+                        }
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                          perms.can_reports
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
+                        }`}
+                      >
+                        إدارة البلاغات
+                      </button>
+                      <button
+                        onClick={() =>
+                          togglePermission.mutate({
+                            uid: sub.id,
+                            currentPerms: perms,
+                            key: "can_teachers",
+                          })
+                        }
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                          perms.can_teachers
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
+                        }`}
+                      >
+                        إدارة الأساتذة
+                      </button>
+                      <button
+                        onClick={() =>
+                          togglePermission.mutate({
+                            uid: sub.id,
+                            currentPerms: perms,
+                            key: "can_courses",
+                          })
+                        }
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                          perms.can_courses
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
+                        }`}
+                      >
+                        إدارة المقررات
+                      </button>
+                      <button
+                        onClick={() =>
+                          togglePermission.mutate({
+                            uid: sub.id,
+                            currentPerms: perms,
+                            key: "can_warn",
+                          })
+                        }
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                          perms.can_warn
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
+                        }`}
+                      >
+                        إرسال إنذارات
+                      </button>
+                      <button
+                        onClick={() =>
+                          togglePermission.mutate({
+                            uid: sub.id,
+                            currentPerms: perms,
+                            key: "can_suspend",
+                          })
+                        }
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                          perms.can_suspend
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
+                        }`}
+                      >
+                        تعليق الحسابات
+                      </button>
+                      <button
+                        onClick={() =>
+                          togglePermission.mutate({
+                            uid: sub.id,
+                            currentPerms: perms,
+                            key: "can_words",
+                          })
+                        }
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                          perms.can_words
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400"
+                            : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
+                        }`}
+                      >
+                        إدارة الكلمات المحظورة
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 items-center self-end md:self-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive border-destructive/20 hover:bg-destructive/5 text-xs gap-1"
+                      onClick={() => {
+                        if (
+                          confirm(`هل أنت متأكد من حذف حساب المشرف المساعد "${sub.full_name}"؟`)
+                        ) {
+                          deleteSubAdmin.mutate(sub.id);
+                        }
+                      }}
+                      disabled={deleteSubAdmin.isPending}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> حذف الحساب
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

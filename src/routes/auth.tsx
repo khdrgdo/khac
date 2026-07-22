@@ -193,7 +193,17 @@ function LoginForm({ initialId = "" }: { initialId?: string }) {
     setUnconfirmedEmail(null);
     try {
       const value = id.trim();
-      const email = value.includes("@") ? value : universityNumberToEmail(value);
+      let email = value;
+      if (!value.includes("@")) {
+        const isNumericOnly = /^\d+$/.test(value);
+        if (isNumericOnly) {
+          email = universityNumberToEmail(value);
+        } else {
+          // It's a sub-admin ID (e.g. "a guard 1" -> "aguard1@subadmin.edu")
+          const normalized = value.toLowerCase().replace(/\s+/g, "");
+          email = `${normalized}@subadmin.edu`;
+        }
+      }
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {

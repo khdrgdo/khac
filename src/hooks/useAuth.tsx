@@ -43,6 +43,8 @@ interface AuthContextValue {
   profile: Profile | null;
   roles: AppRole[];
   isAdmin: boolean;
+  isMainAdmin: boolean;
+  isSubAdmin: boolean;
   isTeacher: boolean;
   rank: RankTier;
   loading: boolean;
@@ -152,10 +154,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const isKnownAdminUser =
-    roles.includes("admin") ||
+  const isMainAdmin =
     profile?.university_number === "2011099840" ||
-    profile?.email === "khdrmamon@gmail.com" ||
+    profile?.email?.toLowerCase() === "khdrmamon@gmail.com";
+
+  const isSubAdmin =
+    roles.includes("sub_admin" as AppRole) ||
+    (profile?.university_number
+      ? profile.university_number.startsWith("SUBADMIN_") ||
+        profile.university_number.toLowerCase().includes("guard")
+      : false) ||
+    (profile?.email ? profile.email.toLowerCase().includes("@subadmin.") : false) ||
+    (profile?.full_name ? profile.full_name.toLowerCase().includes("guard") : false);
+
+  const isKnownAdminUser =
+    isMainAdmin ||
+    isSubAdmin ||
+    roles.includes("admin") ||
     (profile?.email ? profile.email.toLowerCase().includes("admin") : false) ||
     (profile?.full_name
       ? profile.full_name.toLowerCase().includes("أدمن") ||
@@ -174,6 +189,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile,
     roles,
     isAdmin,
+    isMainAdmin,
+    isSubAdmin,
     isTeacher,
     rank,
     loading,
@@ -181,6 +198,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export interface SubAdminPermissions {
+  can_warn: boolean;
+  can_suspend: boolean;
+  can_courses: boolean;
+  can_reports: boolean;
+  can_words: boolean;
+  can_teachers: boolean;
+}
+
+export function getSubAdminPermissions(profile: Profile | null): SubAdminPermissions {
+  const defaults: SubAdminPermissions = {
+    can_warn: true,
+    can_suspend: true,
+    can_courses: true,
+    can_reports: true,
+    can_words: true,
+    can_teachers: true,
+  };
+  if (!profile || !profile.bio) return defaults;
+  try {
+    if (profile.bio.trim().startsWith("{")) {
+      const parsed = JSON.parse(profile.bio);
+      if (parsed && typeof parsed === "object") {
+        return {
+          can_warn: parsed.can_warn !== false,
+          can_suspend: parsed.can_suspend !== false,
+          can_courses: parsed.can_courses !== false,
+          can_reports: parsed.can_reports !== false,
+          can_words: parsed.can_words !== false,
+          can_teachers: parsed.can_teachers !== false,
+        };
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  return defaults;
 }
 
 export function useAuth(): AuthContextValue {
