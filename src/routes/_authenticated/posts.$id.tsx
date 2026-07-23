@@ -36,7 +36,7 @@ interface Comment {
 
 function PostDetailPage() {
   const { id } = useParams({ from: "/_authenticated/posts/$id" });
-  const { user, isAdmin, profile } = useAuth();
+  const { user, isAdmin, isSubAdmin, profile } = useAuth();
   const suspended = isSuspended(profile);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -121,6 +121,10 @@ function PostDetailPage() {
   const commentMut = useMutation({
     mutationFn: async () => {
       if (!user) return;
+      if (isSubAdmin)
+        throw new Error(
+          "حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط من لوحة التحكم، ولا يملك صلاحية التعليق.",
+        );
       if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن التعليق");
       const commentContent = text.trim();
       const { error } = await supabase.from("comments").insert({
@@ -280,38 +284,46 @@ function PostDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-3 space-y-3">
-          {replyTo && (
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
-              يجري الرد على تعليق{" "}
-              <button className="text-primary" onClick={() => setReplyTo(null)}>
-                إلغاء
-              </button>
+      {isSubAdmin ? (
+        <Card>
+          <CardContent className="p-4 text-center text-xs text-muted-foreground font-semibold">
+            حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط ولا يملك صلاحية التعليق.
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-3 space-y-3">
+            {replyTo && (
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                يجري الرد على تعليق{" "}
+                <button className="text-primary" onClick={() => setReplyTo(null)}>
+                  إلغاء
+                </button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={2}
+                placeholder="اكتب تعليقًا..."
+                className="resize-none"
+              />
+              <Button
+                onClick={() => commentMut.mutate()}
+                disabled={!text.trim() || commentMut.isPending}
+                size="sm"
+              >
+                {commentMut.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
             </div>
-          )}
-          <div className="flex gap-2">
-            <Textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={2}
-              placeholder="اكتب تعليقًا..."
-              className="resize-none"
-            />
-            <Button
-              onClick={() => commentMut.mutate()}
-              disabled={!text.trim() || commentMut.isPending}
-              size="sm"
-            >
-              {commentMut.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-2">
         {roots.length === 0 && (

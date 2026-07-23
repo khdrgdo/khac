@@ -1383,7 +1383,7 @@ export function DiscussionsTab({
   courseId: string;
   teacherId?: string | null;
 }) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isSubAdmin } = useAuth();
   const qc = useQueryClient();
   const [questionContent, setQuestionContent] = useState("");
 
@@ -1420,6 +1420,10 @@ export function DiscussionsTab({
   const postQuestion = useMutation({
     mutationFn: async () => {
       if (!user || !questionContent.trim()) throw new Error("يرجى كتابة نص السؤال");
+      if (isSubAdmin)
+        throw new Error(
+          "حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط من لوحة التحكم، ولا يملك صلاحية طرح أسئلة.",
+        );
       const fullText = `${coursePrefix} ${questionContent.trim()}`;
       const { error } = await supabase.from("posts").insert({
         author_id: user.id,
@@ -1451,31 +1455,41 @@ export function DiscussionsTab({
   return (
     <div className="space-y-4">
       {/* Ask Question Card */}
-      <Card className="border-primary/30 bg-card">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-bold text-foreground">
-            <HelpCircle className="w-5 h-5 text-primary" />
-            <span>طرح سؤال أو استفسار حول المقرر</span>
-          </div>
-          <Textarea
-            value={questionContent}
-            onChange={(e) => setQuestionContent(e.target.value)}
-            rows={3}
-            placeholder="اكتب سؤالك هنا ليستطيع الطلاب وأستاذ المقرر الإجابة عليه..."
-            className="resize-none rounded-xl text-xs"
-          />
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={() => postQuestion.mutate()}
-              disabled={!questionContent.trim() || postQuestion.isPending}
-              className="rounded-xl font-semibold text-xs gap-1.5"
-            >
-              {postQuestion.isPending && <Loader2 className="w-4 h-4 animate-spin" />} إرسال السؤال
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {isSubAdmin ? (
+        <Card className="border-muted bg-card">
+          <CardContent className="p-4 text-center text-xs text-muted-foreground font-semibold">
+            حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط ولا يملك صلاحية طرح الأسئلة أو
+            المشاركة.
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-primary/30 bg-card">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <HelpCircle className="w-5 h-5 text-primary" />
+              <span>طرح سؤال أو استفسار حول المقرر</span>
+            </div>
+            <Textarea
+              value={questionContent}
+              onChange={(e) => setQuestionContent(e.target.value)}
+              rows={3}
+              placeholder="اكتب سؤالك هنا ليستطيع الطلاب وأستاذ المقرر الإجابة عليه..."
+              className="resize-none rounded-xl text-xs"
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => postQuestion.mutate()}
+                disabled={!questionContent.trim() || postQuestion.isPending}
+                className="rounded-xl font-semibold text-xs gap-1.5"
+              >
+                {postQuestion.isPending && <Loader2 className="w-4 h-4 animate-spin" />} إرسال
+                السؤال
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Questions List */}
       {isLoading ? (
@@ -1528,7 +1542,8 @@ function QuestionCard({
   onDelete: () => void;
   teacherId?: string | null;
 }) {
-  const { user, isAdmin } = useAuth();
+  const { id: courseId } = useParams({ from: "/_authenticated/courses/$id" });
+  const { user, isAdmin, isSubAdmin } = useAuth();
   const qc = useQueryClient();
   const [replyText, setReplyText] = useState("");
   const [showReplies, setShowReplies] = useState(true);
@@ -1562,6 +1577,10 @@ function QuestionCard({
   const addComment = useMutation({
     mutationFn: async () => {
       if (!user || !replyText.trim()) throw new Error("يرجى كتابة الرد");
+      if (isSubAdmin)
+        throw new Error(
+          "حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط ولا يملك صلاحية المشاركة أو التعليق.",
+        );
       const { error } = await supabase.from("comments").insert({
         post_id: q.id,
         author_id: user.id,
@@ -1722,35 +1741,42 @@ function QuestionCard({
             ) : null}
 
             {/* Add Answer Input */}
-            <div className="flex gap-2 items-center pt-1">
-              <Input
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="اكتب إجابة أو تعليقاً على هذا السؤال..."
-                className="h-9 text-xs rounded-xl flex-1"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    if (replyText.trim()) addComment.mutate();
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                onClick={() => addComment.mutate()}
-                disabled={!replyText.trim() || addComment.isPending}
-                className="h-9 px-3 rounded-xl gap-1 text-xs font-semibold"
-              >
-                {addComment.isPending ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="w-3.5 h-3.5" />
-                    <span>إجابة</span>
-                  </>
-                )}
-              </Button>
-            </div>
+            {isSubAdmin ? (
+              <p className="text-xs text-muted-foreground font-semibold py-2">
+                حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط ولا يملك صلاحية المشاركة أو
+                التعليق.
+              </p>
+            ) : (
+              <div className="flex gap-2 items-center pt-1">
+                <Input
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="اكتب إجابة أو تعليقاً على هذا السؤال..."
+                  className="h-9 text-xs rounded-xl flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (replyText.trim()) addComment.mutate();
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => addComment.mutate()}
+                  disabled={!replyText.trim() || addComment.isPending}
+                  className="h-9 px-3 rounded-xl gap-1 text-xs font-semibold"
+                >
+                  {addComment.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>إجابة</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

@@ -19,7 +19,7 @@ function findBannedWords(text: string, words: string[]): string[] {
 }
 
 export function CreatePost() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, isSubAdmin } = useAuth();
   const [content, setContent] = useState("");
   const [isQuestion, setIsQuestion] = useState(false);
   const [imagePaths, setImagePaths] = useState<string[]>([]);
@@ -87,6 +87,20 @@ export function CreatePost() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  if (isSubAdmin) {
+    return (
+      <Card>
+        <CardContent className="p-4 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+          <ShieldAlert className="w-5 h-5 text-muted-foreground shrink-0" />
+          <span>
+            حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط من لوحة التحكم، ولا يملك صلاحية
+            النشر.
+          </span>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (suspended) {
     const until = profile?.suspended_until;

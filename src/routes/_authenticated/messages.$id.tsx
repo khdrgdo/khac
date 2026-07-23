@@ -58,12 +58,14 @@ interface Prof {
   full_name: string;
   university_number: string;
   avatar_url?: string | null;
+  major?: string | null;
+  year?: number | null;
 }
 
 function ChatPage() {
   const { id } = useParams({ from: "/_authenticated/messages/$id" });
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, isSubAdmin } = useAuth();
   const suspended = isSuspended(profile);
   const qc = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -190,6 +192,7 @@ function ChatPage() {
     mutationFn: async () => {
       if (!user || !text.trim()) return;
       if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن إرسال الرسائل");
+      if (isSubAdmin) throw new Error("حساب المشرف المساعد مخصص للمراقبة فقط ولا يمكنه المراسلة");
       if (isOtherBlocked) throw new Error("لا يمكنك مراسلة مستخدم قمت بحظره");
       const { error } = await supabase.from("messages").insert({
         conversation_id: id,

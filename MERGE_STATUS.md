@@ -32,9 +32,7 @@
 ```json
 {
   "additions": {
-    "dependencies": [
-      "motion: ^12.42.2"
-    ],
+    "dependencies": ["motion: ^12.42.2"],
     "scripts": {
       "dev": "vite dev --port 3000 --host 0.0.0.0"
     },
@@ -50,11 +48,13 @@
 ```
 
 ### الملفات المُرفوعة:
+
 - ✅ `package.json` - تحديث dependencies
 - ✅ `HISTORY.md` - تحديث سجل التغييرات
 - ✅ `src/lib/courseMaterialKind.ts` - helper functions جديد
 
 ### الخطوات التالية:
+
 1. اختبار البناء: `npm run build`
 2. التحقق من عدم وجود أخطاء TypeScript: `npx tsc --noEmit`
 3. تطبيق Migrations على قاعدة البيانات (Supabase)
@@ -70,4 +70,4 @@
 
 ---
 
-*آخر تحديث: 2026-07-21T16:06:30Z*
+_آخر تحديث: 2026-07-21T16:06:30Z_

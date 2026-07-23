@@ -34,7 +34,7 @@ import { NotificationsPopover } from "@/components/NotificationsPopover";
 import { motion, AnimatePresence } from "motion/react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { profile, isAdmin, loading } = useAuth();
+  const { profile, isAdmin, isSubAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -53,12 +53,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Redirect Google/incomplete users to complete-profile
   useEffect(() => {
-    if (loading || !profile) return;
+    if (loading || !profile || isAdmin) return;
     if (path.startsWith("/complete-profile")) return;
     const needs =
       !profile.major || !profile.year || (profile.university_number?.startsWith("U") ?? false);
     if (needs) navigate({ to: "/complete-profile", replace: true });
-  }, [loading, profile, path, navigate]);
+  }, [loading, profile, isAdmin, path, navigate]);
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -201,7 +201,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
                 <DropdownMenuSeparator />
 
-                {profile && (
+                {profile && !isSubAdmin && (
                   <DropdownMenuItem
                     onClick={() => navigate({ to: "/profile/$id", params: { id: profile.id } })}
                     className="rounded-xl cursor-pointer py-2 px-2.5 gap-2 text-xs font-semibold"

@@ -6,7 +6,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { PostList } from "@/components/PostList";
 import { ProfileCardFrame } from "@/components/ProfileCardFrame";
-import { Loader2, Flame, Trophy, CheckCircle2, Award, Calendar, Activity } from "lucide-react";
+import {
+  Loader2,
+  Flame,
+  Trophy,
+  CheckCircle2,
+  Award,
+  Calendar,
+  Activity,
+  KeyRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile, signedUrl } from "@/lib/storage";
 
@@ -43,13 +52,17 @@ function ProfilePage() {
 
       const universityNumber = (data.university_number as string) || "";
       const emailStr = (data.email as string) || "";
+      const userRoles = (roles ?? []).map((r: { role: string }) => r.role);
       const isSubAdminProfile =
+        userRoles.includes("sub_admin") ||
         universityNumber.startsWith("sub_") ||
+        universityNumber.startsWith("SUBADMIN_") ||
         emailStr.endsWith("@subadmin.edu") ||
+        emailStr.includes("@subadmin.") ||
         ((data.full_name as string) || "").toLowerCase().includes("a guard");
 
-      // Hide sub-admins from public view: only self or main admin can view them.
-      if (isSubAdminProfile && !isSelf && !isMainAdmin) {
+      // Hide sub-admins' profiles completely: only main admin can view them. Even the sub-admin themselves should not have/view a profile.
+      if (isSubAdminProfile && !isMainAdmin) {
         return {
           full_name: "",
           university_number: "",

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { bindAccountToDevice } from "@/lib/deviceGuard";
 import type { Session, User } from "@supabase/supabase-js";
 
-export type AppRole = "student" | "teacher" | "admin";
+export type AppRole = "student" | "teacher" | "admin" | "sub_admin";
 export type RankTier = "bronze" | "silver" | "gold" | "platinum" | "diamond";
 
 export interface Profile {
@@ -49,6 +49,7 @@ interface AuthContextValue {
   rank: RankTier;
   loading: boolean;
   refreshProfile: () => Promise<void>;
+  subAdminPermissions: SubAdminPermissions;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -64,6 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subAdminPermissions, setSubAdminPermissions] = useState<SubAdminPermissions>({
+    can_warn: true,
+    can_suspend: true,
+    can_courses: true,
+    can_reports: true,
+    can_words: true,
+    can_teachers: true,
+  });
   const sessionRef = useRef<Session | null>(null);
 
   useEffect(() => {
@@ -96,8 +105,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (createdP) p = createdP;
         }
 
+        const parsedRoles = (r ?? []).map((x: { role: AppRole }) => x.role);
         setProfile((p as Profile | null) ?? null);
-        setRoles((r ?? []).map((x: { role: AppRole }) => x.role));
+        setRoles(parsedRoles);
+
+        // Fetch sub-admin permissions if they are a sub-admin
+        const isUserSubAdmin =
+          parsedRoles.includes("sub_admin") ||
+          p?.university_number?.startsWith("sub_") ||
+          p?.email?.endsWith("@subadmin.edu");
+
+        if (isUserSubAdmin && uid) {
+          setSubAdminPermissions(getSubAdminPermissions(p as Profile));
+        }
+
         if (uid && sessionRef.current?.user?.email) {
           bindAccountToDevice(uid, sessionRef.current.user.email);
         }
@@ -148,7 +169,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const uid = sessionRef.current?.user?.id;
       if (!uid) return;
       const { data: p } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
-      if (p) setProfile(p as Profile);
+      if (p) {
+        setProfile(p as Profile);
+        // Refresh subadmin permissions as well if applicable
+        if (
+          roles.includes("sub_admin") ||
+          p.university_number?.startsWith("sub_") ||
+          p.email?.endsWith("@subadmin.edu")
+        ) {
+          setSubAdminPermissions(getSubAdminPermissions(p as Profile));
+        }
+      }
     } catch (err) {
       console.warn("Failed to refresh profile:", err);
     }
@@ -156,7 +187,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isMainAdmin =
     profile?.university_number === "2011099840" ||
-    profile?.email?.toLowerCase() === "khdrmamon@gmail.com";
+    profile?.email?.toLowerCase() === "khdrmamon@gmail.com" ||
+    user?.email?.toLowerCase() === "khdrmamon@gmail.com";
 
   const isSubAdmin =
     roles.includes("sub_admin" as AppRole) ||
@@ -165,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile.university_number.toLowerCase().includes("guard")
       : false) ||
     (profile?.email ? profile.email.toLowerCase().includes("@subadmin.") : false) ||
+    (user?.email ? user.email.toLowerCase().includes("@subadmin.") : false) ||
     (profile?.full_name ? profile.full_name.toLowerCase().includes("guard") : false);
 
   const isKnownAdminUser =
@@ -172,6 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isSubAdmin ||
     roles.includes("admin") ||
     (profile?.email ? profile.email.toLowerCase().includes("admin") : false) ||
+    (user?.email ? user.email.toLowerCase().includes("admin") : false) ||
     (profile?.full_name
       ? profile.full_name.toLowerCase().includes("أدمن") ||
         profile.full_name.toLowerCase().includes("ادمن") ||
@@ -195,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     rank,
     loading,
     refreshProfile,
+    subAdminPermissions,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -207,6 +242,7 @@ export interface SubAdminPermissions {
   can_reports: boolean;
   can_words: boolean;
   can_teachers: boolean;
+  [key: string]: boolean;
 }
 
 export function getSubAdminPermissions(profile: Profile | null): SubAdminPermissions {

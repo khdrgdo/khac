@@ -10,18 +10,21 @@
 ## 📋 قائمة التحقق (Checklist)
 
 ### 1️⃣ الملفات المرفوعة ✅
+
 - [x] `package.json` - تحديث dependencies (motion package)
 - [x] `HISTORY.md` - توثيق جميع التغييرات
 - [x] `src/lib/courseMaterialKind.ts` - helper functions جديد
 - [x] `MERGE_STATUS.md` - حالة الدمج الكاملة
 
 ### 2️⃣ الفروع المدمجة ✅
+
 - [x] `feature/courses-classroom-redesign`
 - [x] `feature/admin-row-dropdown-redesign`
 - [x] `fix/auth-context-and-password-label`
 - [x] `fix/phase-0-security`
 
 ### 3️⃣ التغييرات الرئيسية ✅
+
 - [x] إضافة `motion` package (^12.42.2)
 - [x] تحديث dev script: `vite dev --port 3000 --host 0.0.0.0`
 - [x] توحيد جميع dependencies
@@ -32,6 +35,7 @@
 ## 🔍 التحقق من البناء (Build Verification)
 
 ### الأوامر المطلوبة للاختبار:
+
 ```bash
 # 1. التحقق من عدم وجود أخطاء TypeScript
 npx tsc --noEmit
@@ -51,12 +55,14 @@ npm run dev
 ## 📊 ملخص التعديلات
 
 ### `package.json`
-| الحقل | التغيير |
-|-------|--------|
-| scripts.dev | أضيف: `--port 3000 --host 0.0.0.0` |
-| dependencies | أضيف: `motion: ^12.42.2` |
+
+| الحقل        | التغيير                            |
+| ------------ | ---------------------------------- |
+| scripts.dev  | أضيف: `--port 3000 --host 0.0.0.0` |
+| dependencies | أضيف: `motion: ^12.42.2`           |
 
 ### `src/lib/courseMaterialKind.ts` (جديد)
+
 ```typescript
 ✅ fileKind(name) - اكتشاف نوع الملف بناءً على الامتداد
 ✅ linkKind(url) - اكتشاف نوع الرابط بناءً على المصدر
@@ -65,7 +71,9 @@ npm run dev
 ```
 
 ### الأيقونات المدعومة
+
 **أنواع الملفات:**
+
 - PDF (أحمر)
 - PowerPoint (برتقالي)
 - Word (أزرق)
@@ -74,6 +82,7 @@ npm run dev
 - Images (وردي)
 
 **أنواع الروابط:**
+
 - YouTube (أحمر)
 - Google Drive/Docs (أزرق)
 - Zoom/Meet/Teams (بنفسجي)
@@ -86,6 +95,7 @@ npm run dev
 ### قبل النشر على الموقع المباشر:
 
 1. **تطبيق Migrations على Supabase:**
+
    ```sql
    -- يجب تطبيق الـ migrations التالية عبر Supabase SQL editor:
    - supabase/migrations/20260726000000_restore_course_ownership_restrictions.sql
@@ -109,11 +119,13 @@ npm run dev
 ## 🚀 الخطوات التالية
 
 ### ✅ تم إنجازها:
+
 1. دمج جميع الفروع في `main`
 2. رفع جميع التعديلات على GitHub
 3. توثيق التغييرات كاملة
 
 ### ⏳ المتبقي:
+
 1. [ ] اختبار البناء محلياً
 2. [ ] اختبار على بيئة التطوير
 3. [ ] تطبيق Migrations على قاعدة البيانات
@@ -123,12 +135,12 @@ npm run dev
 
 ## 📝 ملف السجل
 
-| Commit SHA | الرسالة | التاريخ |
-|-----------|--------|--------|
-| 4df7cc3ca | feat: merge all feature branches | 2026-07-21 16:08 |
-| fee2ca1a9 | docs: update HISTORY.md | 2026-07-21 16:06 |
-| 6b88c967b | merge: combine all feature branches | 2026-07-21 16:04 |
-| 49ccbae92 | CRITICAL FIX: remove foreign index.html | 2026-07-21 10:10 |
+| Commit SHA | الرسالة                                 | التاريخ          |
+| ---------- | --------------------------------------- | ---------------- |
+| 4df7cc3ca  | feat: merge all feature branches        | 2026-07-21 16:08 |
+| fee2ca1a9  | docs: update HISTORY.md                 | 2026-07-21 16:06 |
+| 6b88c967b  | merge: combine all feature branches     | 2026-07-21 16:04 |
+| 49ccbae92  | CRITICAL FIX: remove foreign index.html | 2026-07-21 10:10 |
 
 ---
 
@@ -136,15 +148,17 @@ npm run dev
 
 **الحالة:** ✅ جميع التعديلات تم رفعها بنجاح إلى `main`
 
-**المحتوى:** 
+**المحتوى:**
+
 - 4 فروع مدمجة بنجاح
 - 0 تعارضات (Conflicts)
 - 0 أخطاء معروفة
 - جميع الملفات الضرورية تم رفعها
 
-**الإجراء التالي:** 
+**الإجراء التالي:**
+
 > انتظر تأكيدك للاختبار على الموقع المباشر بعد تطبيق Migrations على Supabase
 
 ---
 
-*تم إعداد هذا التقرير تلقائياً في 21 يوليو 2026*
+_تم إعداد هذا التقرير تلقائياً في 21 يوليو 2026_

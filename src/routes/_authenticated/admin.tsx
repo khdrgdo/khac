@@ -23,6 +23,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -61,6 +62,7 @@ import {
   X,
   Trash2,
   Eye,
+  GraduationCap,
   Calendar,
   Ban,
   AlertTriangle,
@@ -162,8 +164,8 @@ function AdminPage() {
 
   if (loading)
     return (
-      <div className="flex justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin" />
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
       </div>
     );
   if (!isAdmin) return null;
@@ -179,81 +181,120 @@ function AdminPage() {
   const defaultTab = showReports ? "reports" : "users";
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-          <Shield className="w-5 h-5" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold">لوحة الإدارة</h1>
-          <p className="text-xs text-muted-foreground">
-            {isSubAdmin ? "لوحة تحكم المشرف المساعد (سب أدمن)" : "إدارة كاملة للموقع"}
-          </p>
-        </div>
+    <div className="max-w-7xl mx-auto space-y-8 pb-12 pt-6">
+      {/* Header Section */}
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight">لوحة الإدارة</h1>
+        <p className="text-muted-foreground text-sm">
+          {isSubAdmin
+            ? "إدارة الصلاحيات المخصصة للمشرف المساعد"
+            : "نظرة عامة وإدارة شاملة للنظام الأكاديمي"}
+        </p>
       </div>
 
       <StatsCards />
 
-      <Tabs defaultValue={defaultTab}>
-        <TabsList className="flex flex-wrap h-auto">
+      {/* Main Layout: Horizontal Tabs */}
+      <Tabs defaultValue={defaultTab} className="flex flex-col gap-6 w-full items-start">
+        <div className="w-full border-b border-border/40">
+          <TabsList className="flex flex-row h-auto w-full justify-start bg-transparent p-0 gap-6 overflow-x-auto shrink-0 pb-px">
+            {showReports && (
+              <TabsTrigger
+                value="reports"
+                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
+              >
+                <Flag className="w-4 h-4 ml-2" /> البلاغات
+              </TabsTrigger>
+            )}
+            <TabsTrigger
+              value="users"
+              className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
+            >
+              <Users className="w-4 h-4 ml-2" /> المستخدمون
+            </TabsTrigger>
+            {showLog && (
+              <TabsTrigger
+                value="log"
+                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
+              >
+                <ScrollText className="w-4 h-4 ml-2" /> سجل النشاط
+              </TabsTrigger>
+            )}
+            {showTeacher && (
+              <TabsTrigger
+                value="teacher"
+                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
+              >
+                <UserPlus className="w-4 h-4 ml-2" /> إضافة أستاذ
+              </TabsTrigger>
+            )}
+            {showWords && (
+              <TabsTrigger
+                value="words"
+                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
+              >
+                <Shield className="w-4 h-4 ml-2" /> الكلمات المحظورة
+              </TabsTrigger>
+            )}
+            {showSubAdmins && (
+              <TabsTrigger
+                value="subadmins"
+                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
+              >
+                <Shield className="w-4 h-4 ml-2" /> حسابات المشرف المساعد
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
+
+        <div className="flex-1 w-full min-w-0">
           {showReports && (
-            <TabsTrigger value="reports">
-              <Flag className="w-4 h-4" /> البلاغات
-            </TabsTrigger>
+            <TabsContent
+              value="reports"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+            >
+              <ReportsTab />
+            </TabsContent>
           )}
-          <TabsTrigger value="users">
-            <Users className="w-4 h-4" /> المستخدمون
-          </TabsTrigger>
+          <TabsContent
+            value="users"
+            className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+          >
+            <UsersTable />
+          </TabsContent>
           {showLog && (
-            <TabsTrigger value="log">
-              <ScrollText className="w-4 h-4" /> سجل النشاط
-            </TabsTrigger>
+            <TabsContent
+              value="log"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+            >
+              <ActivityLogTab />
+            </TabsContent>
           )}
           {showTeacher && (
-            <TabsTrigger value="teacher">
-              <UserPlus className="w-4 h-4" /> إضافة أستاذ
-            </TabsTrigger>
+            <TabsContent
+              value="teacher"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+            >
+              <AddTeacherCard />
+            </TabsContent>
           )}
           {showWords && (
-            <TabsTrigger value="words">
-              <Shield className="w-4 h-4" /> الكلمات المحظورة
-            </TabsTrigger>
+            <TabsContent
+              value="words"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+            >
+              <BannedWordsTab />
+            </TabsContent>
           )}
           {showSubAdmins && (
-            <TabsTrigger value="subadmins">
-              <Shield className="w-4 h-4" /> حسابات سب أدمن
-            </TabsTrigger>
+            <TabsContent
+              value="subadmins"
+              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
+            >
+              <SubAdminsTab />
+            </TabsContent>
           )}
-        </TabsList>
-
-        {showReports && (
-          <TabsContent value="reports" className="pt-3">
-            <ReportsTab />
-          </TabsContent>
-        )}
-        <TabsContent value="users" className="pt-3">
-          <UsersTable />
-        </TabsContent>
-        {showLog && (
-          <TabsContent value="log" className="pt-3">
-            <ActivityLogTab />
-          </TabsContent>
-        )}
-        {showTeacher && (
-          <TabsContent value="teacher" className="pt-3">
-            <AddTeacherCard />
-          </TabsContent>
-        )}
-        {showWords && (
-          <TabsContent value="words" className="pt-3">
-            <BannedWordsTab />
-          </TabsContent>
-        )}
-        {showSubAdmins && (
-          <TabsContent value="subadmins" className="pt-3">
-            <SubAdminsTab />
-          </TabsContent>
-        )}
+        </div>
       </Tabs>
     </div>
   );
@@ -280,49 +321,54 @@ function StatsCards() {
   const items = [
     {
       icon: Users,
-      label: "المستخدمون",
+      label: "إجمالي المستخدمين",
       value: data?.users ?? 0,
-      color: "text-blue-600 bg-blue-500/10",
+      color: "text-blue-600",
+      bg: "bg-blue-500/10",
     },
     {
       icon: FileText,
       label: "المنشورات",
       value: data?.posts ?? 0,
-      color: "text-emerald-600 bg-emerald-500/10",
+      color: "text-indigo-600",
+      bg: "bg-indigo-500/10",
     },
     {
       icon: Flag,
-      label: "بلاغات معلّقة",
+      label: "بلاغات قيد المراجعة",
       value: data?.reports ?? 0,
-      color: "text-red-600 bg-red-500/10",
+      color: "text-rose-600",
+      bg: "bg-rose-500/10",
     },
     {
       icon: MessageSquare,
-      label: "الرسائل",
+      label: "الرسائل المتبادلة",
       value: data?.msgs ?? 0,
-      color: "text-purple-600 bg-purple-500/10",
+      color: "text-emerald-600",
+      bg: "bg-emerald-500/10",
     },
   ];
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {items.map((it) => (
-        <Card key={it.label}>
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${it.color}`}>
-              <it.icon className="w-5 h-5" />
+        <Card key={it.label} className="shadow-none border-border/40 bg-card">
+          <CardContent className="p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-sm font-medium text-muted-foreground">{it.label}</span>
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center ${it.bg} ${it.color}`}
+              >
+                <it.icon className="w-4 h-4" />
+              </div>
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground">{it.label}</div>
-              <div className="text-lg font-bold">{it.value}</div>
-            </div>
+            <div className="text-3xl font-bold tracking-tight text-foreground">{it.value}</div>
           </CardContent>
         </Card>
       ))}
     </div>
   );
 }
-
-// ============ REPORTS ============
 
 function ReportsTab() {
   const qc = useQueryClient();
@@ -485,117 +531,138 @@ function ReportsTab() {
       {!isLoading && (data ?? []).length === 0 && (
         <div className="text-sm text-muted-foreground text-center py-8">لا توجد بلاغات</div>
       )}
-      {(data ?? []).map((r) => (
-        <Card key={r.id}>
-          <CardContent className="p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="text-sm">
-                <span className="text-muted-foreground">من:</span>{" "}
-                <b>{r.reporter?.full_name ?? "—"}</b>
-              </div>
-              <Badge
-                variant={
-                  r.status === "pending"
-                    ? "default"
+      <Card className="border-border/40 shadow-none bg-card">
+        <div className="divide-y divide-border/40">
+          {(data ?? []).map((r) => (
+            <div key={r.id} className="p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-sm flex items-center gap-2">
+                  <span className="text-muted-foreground">بلاغ من:</span>
+                  <span className="font-semibold text-foreground">
+                    {r.reporter?.full_name ?? "—"}
+                  </span>
+                </div>
+                <Badge
+                  variant="secondary"
+                  className={
+                    r.status === "pending"
+                      ? "bg-amber-500/10 text-amber-600 border-none"
+                      : r.status === "confirmed"
+                        ? "bg-emerald-500/10 text-emerald-600 border-none"
+                        : "bg-muted text-muted-foreground border-none"
+                  }
+                >
+                  {r.status === "pending"
+                    ? "قيد المراجعة"
                     : r.status === "confirmed"
-                      ? "destructive"
-                      : "secondary"
-                }
-              >
-                {r.status === "pending"
-                  ? "معلّق"
-                  : r.status === "confirmed"
-                    ? "تمت المعالجة"
-                    : "مرفوض"}
-              </Badge>
-            </div>
-            <div className="text-sm bg-muted/50 rounded p-2 whitespace-pre-wrap">
-              <div className="text-xs text-muted-foreground mb-1">السبب:</div>
-              {r.reason}
-            </div>
-            {r.post ? (
-              <div className="text-sm border rounded p-2">
-                <div className="text-xs text-muted-foreground mb-1">المنشور:</div>
-                <p className="line-clamp-3 whitespace-pre-wrap">{r.post.content}</p>
+                      ? "تمت المعالجة"
+                      : "مرفوض"}
+                </Badge>
               </div>
-            ) : (
-              <div className="text-xs text-muted-foreground italic">المنشور محذوف مسبقًا</div>
-            )}
-            {r.status === "pending" &&
-              r.post &&
-              (() => {
-                const post = r.post;
-                return (
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => dismiss.mutate(r.id)}
-                      disabled={dismiss.isPending}
-                    >
-                      <X className="w-4 h-4" /> رفض البلاغ
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-destructive"
-                      onClick={() => deletePost.mutate({ reportId: r.id, postId: r.post_id })}
-                      disabled={deletePost.isPending}
-                    >
-                      <Trash2 className="w-4 h-4" /> حذف المنشور فقط
-                    </Button>
-                    {canWarn && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setReasonFor({
-                            postId: r.post_id,
-                            authorId: post.author_id,
-                            action: "warn",
-                          })
-                        }
-                      >
-                        <AlertTriangle className="w-4 h-4" /> إنذار الكاتب
-                      </Button>
-                    )}
-                    {canSuspend && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-amber-600"
-                        onClick={() =>
-                          setReasonFor({
-                            postId: r.post_id,
-                            authorId: post.author_id,
-                            action: "suspend",
-                          })
-                        }
-                      >
-                        <Clock className="w-4 h-4" /> إيقاف مؤقت
-                      </Button>
-                    )}
-                    {!isSubAdmin && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() =>
-                          setReasonFor({
-                            postId: r.post_id,
-                            authorId: post.author_id,
-                            action: "ban",
-                          })
-                        }
-                      >
-                        <Ban className="w-4 h-4" /> حظر الكاتب
-                      </Button>
-                    )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="text-sm bg-muted/30 border border-border/40 rounded-lg p-3">
+                  <div className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                    <Flag className="w-3.5 h-3.5" /> سبب البلاغ
                   </div>
-                );
-              })()}
-          </CardContent>
-        </Card>
-      ))}
+                  <p className="whitespace-pre-wrap text-foreground/90">{r.reason}</p>
+                </div>
+
+                {r.post ? (
+                  <div className="text-sm bg-card border border-border/40 shadow-sm rounded-lg p-3">
+                    <div className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5" /> محتوى المنشور
+                    </div>
+                    <p className="line-clamp-3 whitespace-pre-wrap text-foreground/90">
+                      {r.post.content}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-sm bg-muted/30 border border-border/40 rounded-lg p-3 flex items-center text-muted-foreground italic">
+                    المنشور محذوف مسبقًا
+                  </div>
+                )}
+              </div>
+
+              {r.status === "pending" &&
+                r.post &&
+                (() => {
+                  const post = r.post;
+                  return (
+                    <div className="flex items-center gap-2 flex-wrap pt-2 mt-2 border-t border-border/40">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-muted-foreground hover:bg-muted"
+                        onClick={() => dismiss.mutate(r.id)}
+                        disabled={dismiss.isPending}
+                      >
+                        <X className="w-4 h-4 ml-1.5" /> رفض البلاغ
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() => deletePost.mutate({ reportId: r.id, postId: r.post_id })}
+                        disabled={deletePost.isPending}
+                      >
+                        <Trash2 className="w-4 h-4 ml-1.5" /> حذف المنشور
+                      </Button>
+                      {canWarn && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-amber-600 hover:bg-amber-500/10"
+                          onClick={() =>
+                            setReasonFor({
+                              postId: r.post_id,
+                              authorId: post.author_id,
+                              action: "warn",
+                            })
+                          }
+                        >
+                          <AlertTriangle className="w-4 h-4 ml-1.5" /> إنذار
+                        </Button>
+                      )}
+                      {canSuspend && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-orange-600 hover:bg-orange-500/10"
+                          onClick={() =>
+                            setReasonFor({
+                              postId: r.post_id,
+                              authorId: post.author_id,
+                              action: "suspend",
+                            })
+                          }
+                        >
+                          <Clock className="w-4 h-4 ml-1.5" /> إيقاف
+                        </Button>
+                      )}
+                      {canSuspend && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() =>
+                            setReasonFor({
+                              postId: r.post_id,
+                              authorId: post.author_id,
+                              action: "ban",
+                            })
+                          }
+                        >
+                          <Ban className="w-4 h-4 ml-1.5" /> حظر
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })()}
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <Dialog open={!!reasonFor} onOpenChange={(o) => !o && setReasonFor(null)}>
         <DialogContent>
@@ -754,11 +821,23 @@ function UsersTable() {
         (lastMsgs ?? []).forEach((m) => consider(m.sender_id, m.created_at));
       }
 
-      return (profs ?? []).map((p) => ({
-        ...p,
-        roles: roleMap.get(p.id) ?? [],
-        lastActivity: lastActivity[p.id] ?? null,
-      }));
+      return (profs ?? [])
+        .map((p) => ({
+          ...p,
+          roles: roleMap.get(p.id) ?? [],
+          lastActivity: lastActivity[p.id] ?? null,
+        }))
+        .filter((u) => {
+          const isSubAdminUser =
+            u.roles.includes("sub_admin") ||
+            (u.university_number
+              ? u.university_number.startsWith("SUBADMIN_") ||
+                u.university_number.toLowerCase().includes("guard")
+              : false) ||
+            (u.email ? u.email.toLowerCase().includes("@subadmin.") : false) ||
+            (u.full_name ? u.full_name.toLowerCase().includes("guard") : false);
+          return !isSubAdminUser;
+        });
     },
   });
 
@@ -828,8 +907,8 @@ function UsersTable() {
     mutationFn: async ({ uid, reason }: { uid: string; reason: string }) => {
       const targetUser = (data ?? []).find((u) => u.id === uid);
       if (targetUser) handleActionCheck(targetUser);
-      if (isSubAdmin) {
-        toast.error("لا تملك صلاحية حظر الحسابات كسب أدمن");
+      if (isSubAdmin && !permissions.can_suspend) {
+        toast.error("لا تملك صلاحية حظر الحسابات");
         throw new Error("Unauthorized");
       }
       const { error } = await supabase.rpc("admin_ban", { _user: uid, _reason: reason });
@@ -921,150 +1000,230 @@ function UsersTable() {
   });
 
   return (
-    <div className="space-y-2">
-      <Input
-        placeholder="ابحث بالاسم أو الرقم الجامعي"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-      {isLoading && (
-        <div className="flex justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="relative w-full max-w-sm">
+          <Input
+            placeholder="بحث بالاسم أو الرقم الجامعي..."
+            className="pr-10 bg-card border-border/40 shadow-none focus-visible:ring-1"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Users className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2" />
         </div>
-      )}
-      {filtered.map((u) => {
-        const status = userStatus(u);
-        return (
-          <Card key={u.id}>
-            <CardContent className="p-3 space-y-1">
-              <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm truncate max-w-[9rem]">
-                      {u.full_name}
-                    </span>
-                    {u.verified && <VerifiedBadge />}
-                    <StatusBadge status={status} />
-                    {u.roles.includes("admin") && <Badge variant="default">مشرف</Badge>}
-                    {u.roles.includes("teacher") && <Badge variant="secondary">أستاذ</Badge>}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
+        </div>
+      ) : (
+        <Card className="border-border/40 shadow-none overflow-hidden bg-card">
+          {filtered.length > 0 && (
+            <div className="hidden sm:flex items-center justify-between p-4 bg-muted/30 border-b border-border/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="flex-1">المستخدم</div>
+              <div className="w-[300px] flex justify-end gap-12 pr-8">
+                <span>الحالة والتخصص</span>
+                <span>النقاط</span>
+                <span className="w-8"></span>
+              </div>
+            </div>
+          )}
+          <div className="divide-y divide-border/40">
+            {filtered.length === 0 && (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                لا توجد نتائج للبحث
+              </div>
+            )}
+            {filtered.map((u) => {
+              const status = userStatus(u);
+              return (
+                <div
+                  key={u.id}
+                  className="group p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                    <div className="w-10 h-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center border border-primary/10">
+                      <span className="text-primary font-medium text-sm">
+                        {u.full_name?.charAt(0) || "U"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm text-foreground truncate max-w-[12rem]">
+                          {u.full_name}
+                        </span>
+                        {u.verified && <VerifiedBadge />}
+                        {u.roles.includes("admin") && (
+                          <Badge
+                            variant="secondary"
+                            className="h-5 px-1.5 text-[10px] bg-blue-500/10 text-blue-600 border-none hover:bg-blue-500/20"
+                          >
+                            مشرف
+                          </Badge>
+                        )}
+                        {u.roles.includes("teacher") && (
+                          <Badge
+                            variant="outline"
+                            className="h-5 px-1.5 text-[10px] bg-purple-500/10 text-purple-600 border-none hover:bg-purple-500/20"
+                          >
+                            أستاذ
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground" dir="ltr">
+                        {u.university_number}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground" dir="ltr">
-                    {u.university_number}
+
+                  <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto">
+                    <div className="hidden lg:flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <StatusBadge status={status} />
+                        {u.major && (
+                          <span className="flex items-center gap-1">
+                            <GraduationCap className="w-3 h-3" /> {majorLabel(u.major)}
+                          </span>
+                        )}
+                        {u.year && <span>السنة {u.year}</span>}
+                      </div>
+                      <div className="flex gap-3 opacity-60">
+                        <span>
+                          انضم: {u.created_at ? format(new Date(u.created_at), "yyyy/MM/dd") : "—"}
+                        </span>
+                        <span>
+                          نشاط:{" "}
+                          {u.lastActivity
+                            ? format(new Date(u.lastActivity), "yyyy/MM/dd HH:mm")
+                            : "—"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="hidden sm:block">
+                        <RankBadge points={u.points ?? 0} />
+                      </div>
+                      {u.warning_count > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="h-6 px-2 bg-red-500/10 text-red-600 border-none hover:bg-red-500/20 shadow-none hidden sm:inline-flex"
+                        >
+                          {u.warning_count} إنذار
+                        </Badge>
+                      )}
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem onClick={() => setDetailsFor(u)}>
+                            <Eye className="w-4 h-4" /> التفاصيل الكاملة
+                          </DropdownMenuItem>
+
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">
+                            النقاط والصلاحيات
+                          </DropdownMenuLabel>
+                          {!isSubAdmin && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() => adjust.mutate({ uid: u.id, delta: 10 })}
+                              >
+                                <Plus className="w-4 h-4" /> +10 نقاط
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => adjust.mutate({ uid: u.id, delta: -10 })}
+                              >
+                                <Minus className="w-4 h-4" /> -10 نقاط
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          <DropdownMenuItem onClick={() => setYearDialogFor(u)}>
+                            <Calendar className="w-4 h-4" /> تغيير السنة الدراسية
+                          </DropdownMenuItem>
+                          {!isSubAdmin && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  toggleAdmin.mutate({
+                                    uid: u.id,
+                                    isAdmin: u.roles.includes("admin"),
+                                  })
+                                }
+                              >
+                                <Shield className="w-4 h-4" />
+                                {u.roles.includes("admin") ? "إزالة الإشراف" : "جعل مشرفًا"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setVerified.mutate({ uid: u.id, verified: !u.verified })
+                                }
+                              >
+                                <BadgeCheck className="w-4 h-4" />
+                                {u.verified ? "إلغاء التوثيق" : "توثيق الحساب"}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">
+                            إجراءات الإشراف
+                          </DropdownMenuLabel>
+                          {status === "active" && (!isSubAdmin || permissions.can_suspend) && (
+                            <DropdownMenuItem
+                              onClick={() => setActionFor({ user: u, type: "suspend" })}
+                              className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
+                            >
+                              <Clock className="w-4 h-4" /> إيقاف مؤقت
+                            </DropdownMenuItem>
+                          )}
+                          {status !== "banned" && (!isSubAdmin || permissions.can_suspend) && (
+                            <DropdownMenuItem
+                              onClick={() => setActionFor({ user: u, type: "ban" })}
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
+                              <Ban className="w-4 h-4" /> حظر نهائي
+                            </DropdownMenuItem>
+                          )}
+                          {status !== "active" && (!isSubAdmin || permissions.can_suspend) && (
+                            <DropdownMenuItem
+                              onClick={() => unban.mutate(u.id)}
+                              className="text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50"
+                            >
+                              <ShieldOff className="w-4 h-4" /> إلغاء الإيقاف/الحظر
+                            </DropdownMenuItem>
+                          )}
+
+                          {!isSubAdmin && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setActionFor({ user: u, type: "delete" })}
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                              >
+                                <Trash2 className="w-4 h-4" /> حذف الحساب نهائيًا
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
-                <RankBadge points={u.points ?? 0} />
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => setDetailsFor(u)}>
-                      <Eye className="w-4 h-4" /> التفاصيل الكاملة
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                      النقاط والصلاحيات
-                    </DropdownMenuLabel>
-                    {!isSubAdmin && (
-                      <>
-                        <DropdownMenuItem onClick={() => adjust.mutate({ uid: u.id, delta: 10 })}>
-                          <Plus className="w-4 h-4" /> +10 نقاط
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => adjust.mutate({ uid: u.id, delta: -10 })}>
-                          <Minus className="w-4 h-4" /> -10 نقاط
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuItem onClick={() => setYearDialogFor(u)}>
-                      <Calendar className="w-4 h-4" /> تغيير السنة الدراسية
-                    </DropdownMenuItem>
-                    {!isSubAdmin && (
-                      <>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            toggleAdmin.mutate({ uid: u.id, isAdmin: u.roles.includes("admin") })
-                          }
-                        >
-                          <Shield className="w-4 h-4" />
-                          {u.roles.includes("admin") ? "إزالة الإشراف" : "جعل مشرفًا"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setVerified.mutate({ uid: u.id, verified: !u.verified })}
-                        >
-                          <BadgeCheck className="w-4 h-4" />
-                          {u.verified ? "إلغاء التوثيق" : "توثيق الحساب"}
-                        </DropdownMenuItem>
-                      </>
-                    )}
-
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs text-muted-foreground">
-                      إجراءات الإشراف
-                    </DropdownMenuLabel>
-                    {status === "active" && (!isSubAdmin || permissions.can_suspend) && (
-                      <DropdownMenuItem
-                        onClick={() => setActionFor({ user: u, type: "suspend" })}
-                        className="text-amber-600 focus:text-amber-600"
-                      >
-                        <Clock className="w-4 h-4" /> إيقاف مؤقت
-                      </DropdownMenuItem>
-                    )}
-                    {status !== "banned" && !isSubAdmin && (
-                      <DropdownMenuItem
-                        onClick={() => setActionFor({ user: u, type: "ban" })}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Ban className="w-4 h-4" /> حظر نهائي
-                      </DropdownMenuItem>
-                    )}
-                    {status !== "active" && (!isSubAdmin || permissions.can_suspend) && (
-                      <DropdownMenuItem
-                        onClick={() => unban.mutate(u.id)}
-                        className="text-emerald-600 focus:text-emerald-600"
-                      >
-                        <ShieldOff className="w-4 h-4" /> إلغاء الإيقاف/الحظر
-                      </DropdownMenuItem>
-                    )}
-
-                    {!isSubAdmin && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setActionFor({ user: u, type: "delete" })}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" /> حذف الحساب نهائيًا
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
-                {u.major && <span>{majorLabel(u.major)}</span>}
-                {u.year && <span>السنة {u.year}</span>}
-                {u.warning_count > 0 && (
-                  <span className="text-amber-600">{u.warning_count} إنذار</span>
-                )}
-                <span>
-                  انضم: {u.created_at ? format(new Date(u.created_at), "yyyy/MM/dd") : "—"}
-                </span>
-                <span>
-                  آخر نشاط:{" "}
-                  {u.lastActivity
-                    ? format(new Date(u.lastActivity), "yyyy/MM/dd HH:mm")
-                    : "لا يوجد نشاط بعد"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       <UserDetailsDialog user={detailsFor} onOpenChange={(o) => !o && setDetailsFor(null)} />
 
@@ -1425,35 +1584,48 @@ function ActivityLogTab() {
       {!isLoading && (data ?? []).length === 0 && (
         <div className="text-sm text-muted-foreground text-center py-8">لا يوجد نشاط إداري بعد</div>
       )}
-      {(data ?? []).map((a) => (
-        <Card key={a.id}>
-          <CardContent className="p-3 text-sm space-y-1">
-            <div className="flex items-center justify-between flex-wrap gap-1">
-              <div>
-                <b>{a.adminName}</b>
-                <span className="text-muted-foreground"> نفّذ </span>
-                <Badge variant="outline">{actionLabel[a.action] ?? a.action}</Badge>
-                {a.targetName && (
-                  <>
-                    {" "}
-                    <span className="text-muted-foreground">على</span> <b>{a.targetName}</b>
-                  </>
-                )}
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {format(new Date(a.created_at), "yyyy/MM/dd HH:mm")}
-              </span>
-            </div>
-            {a.details &&
-              typeof a.details === "object" &&
-              "reason" in (a.details as Record<string, unknown>) && (
-                <div className="text-xs text-muted-foreground bg-muted/40 rounded p-1.5">
-                  {String((a.details as Record<string, unknown>).reason)}
+      <Card className="border-border/40 shadow-none bg-card">
+        <div className="divide-y divide-border/40">
+          {(data ?? []).map((a) => (
+            <div key={a.id} className="p-4 flex flex-col gap-2">
+              <div className="flex items-center justify-between text-sm flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs text-primary font-medium shrink-0">
+                    {a.adminName?.charAt(0) || "A"}
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-semibold text-foreground">{a.adminName}</span>
+                    <span className="text-muted-foreground">أجرى</span>
+                    <Badge
+                      variant="secondary"
+                      className="font-normal text-xs bg-muted text-foreground hover:bg-muted"
+                    >
+                      {actionLabel[a.action] ?? a.action}
+                    </Badge>
+                    {a.targetName && (
+                      <>
+                        <span className="text-muted-foreground">على</span>
+                        <span className="font-semibold text-foreground">{a.targetName}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              )}
-          </CardContent>
-        </Card>
-      ))}
+                <span className="text-xs text-muted-foreground font-mono">
+                  {format(new Date(a.created_at), "yyyy/MM/dd HH:mm")}
+                </span>
+              </div>
+              {a.details &&
+                typeof a.details === "object" &&
+                "reason" in (a.details as Record<string, unknown>) && (
+                  <div className="text-sm text-foreground/90 bg-muted/30 border border-border/40 rounded-md p-2 mt-1 w-full md:w-3/4">
+                    <span className="text-xs text-muted-foreground mr-1">السبب:</span>
+                    {String((a.details as Record<string, unknown>).reason)}
+                  </div>
+                )}
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }
@@ -1495,6 +1667,36 @@ function AddTeacherCard() {
       if (error) throw error;
       if (!data.user) throw new Error("لم يتم إنشاء الحساب");
 
+      // Promote user to teacher role securely using RPC, falling back to direct table write if RPC fails
+      let roleError;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await supabase.rpc("admin_set_teacher_role" as any, {
+          _user: data.user.id,
+        });
+        roleError = error;
+      } catch (e) {
+        roleError = e;
+      }
+
+      if (roleError) {
+        console.warn(
+          "RPC admin_set_teacher_role failed, trying direct table write fallback...",
+          roleError,
+        );
+        const { error: deleteError } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", data.user.id);
+        if (deleteError) throw deleteError;
+
+        const { error: insertError } = await supabase.from("user_roles").insert({
+          user_id: data.user.id,
+          role: "teacher",
+        });
+        if (insertError) throw insertError;
+      }
+
       // Assign selected courses to the teacher
       if (selectedCourses.length > 0) {
         const { error: coursesError } = await supabase
@@ -1520,7 +1722,7 @@ function AddTeacherCard() {
   });
 
   return (
-    <Card>
+    <Card className="border-border/40 shadow-none bg-card">
       <CardContent className="p-4">
         <p className="text-sm text-muted-foreground mb-3">
           أنشئ حساب أستاذ يدخل بالبريد الإلكتروني، وحدد المقررات التي يدرسها.
@@ -1641,7 +1843,7 @@ function BannedWordsTab() {
   });
 
   return (
-    <Card>
+    <Card className="border-border/40 shadow-none bg-card">
       <CardContent className="p-4 space-y-3">
         <div className="flex gap-2">
           <Input
@@ -1684,23 +1886,57 @@ function SubAdminsTab() {
   const [canWarn, setCanWarn] = useState(true);
   const [canSuspend, setCanSuspend] = useState(true);
   const [canWords, setCanWords] = useState(true);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Fetch Sub-Admins list
   const { data: subAdmins, isLoading } = useQuery({
     queryKey: ["sub-admins-list"],
     queryFn: async () => {
-      const { data: profiles } = await supabase
+      // 1. Fetch user_roles for sub_admin
+      const { data: subAdminRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "sub_admin");
+
+      const roleSubAdminIds = new Set((subAdminRoles ?? []).map((r) => r.user_id));
+
+      // 2. Fetch all profiles
+      const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
         .order("created_at", { ascending: false });
 
-      // Identify sub-admins
-      return (profiles ?? []).filter(
+      if (profilesError) throw profilesError;
+
+      // 3. Filter to sub-admins
+      const filteredProfiles = (profiles ?? []).filter(
         (p) =>
+          roleSubAdminIds.has(p.id) ||
           p.university_number?.startsWith("sub_") ||
+          p.university_number?.startsWith("SUBADMIN_") ||
           p.email?.endsWith("@subadmin.edu") ||
+          p.email?.includes("@subadmin.") ||
           p.full_name?.toLowerCase().includes("a guard"),
       );
+
+      if (filteredProfiles.length === 0) return [];
+
+      // Auto-heal missing roles
+      for (const p of filteredProfiles) {
+        if (!roleSubAdminIds.has(p.id)) {
+          console.log(`Auto-healing role for sub-admin ${p.full_name}...`);
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await supabase.rpc("admin_set_user_role" as any, { _user: p.id, _role: "sub_admin" });
+          } catch (err) {
+            await supabase.from("user_roles").delete().eq("user_id", p.id);
+            await supabase.from("user_roles").insert({ user_id: p.id, role: "sub_admin" });
+          }
+        }
+      }
+
+      // Permissions are already in bio, so we just return the profiles
+      return filteredProfiles;
     },
   });
 
@@ -1736,7 +1972,17 @@ function SubAdminsTab() {
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        const msg = signUpError.message?.toLowerCase() || "";
+        if (
+          msg.includes("already registered") ||
+          msg.includes("already exists") ||
+          msg.includes("unique constraint")
+        ) {
+          throw new Error("اسم المستخدم (أو الحساب) هذا مسجل بالفعل. يرجى اختيار اسم مستخدم آخر.");
+        }
+        throw signUpError;
+      }
       if (!data?.user?.id) throw new Error("تعذّر إنشاء مستخدم في نظام المصادقة");
 
       // 4. Construct granular permissions object
@@ -1749,6 +1995,27 @@ function SubAdminsTab() {
         can_words: canWords,
       };
 
+      // 4.5. Wait for the profile row to be created by the AFTER INSERT auth trigger
+      let profileExists = false;
+      for (let i = 0; i < 15; i++) {
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", data.user.id)
+          .maybeSingle();
+        if (existingProfile) {
+          profileExists = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      if (!profileExists) {
+        throw new Error(
+          "تعذّر تهيئة الملف الشخصي للمشرف المساعد في الوقت المحدد، يرجى المحاولة مرة أخرى.",
+        );
+      }
+
       // 5. Update user profile details
       const { error: updateProfileError } = await supabase
         .from("profiles")
@@ -1760,13 +2027,38 @@ function SubAdminsTab() {
 
       if (updateProfileError) throw updateProfileError;
 
-      // 6. Set user role to 'admin'
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: data.user.id,
-        role: "admin",
-      });
+      // 6. Set user role to 'sub_admin' securely using the RPC, falling back to direct table write if RPC fails
+      let roleError;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await supabase.rpc("admin_set_user_role" as any, {
+          _user: data.user.id,
+          _role: "sub_admin",
+        });
+        roleError = error;
+      } catch (e) {
+        roleError = e;
+      }
 
-      if (roleError) throw roleError;
+      if (roleError) {
+        console.warn(
+          "RPC admin_set_user_role failed, trying direct table write fallback...",
+          roleError,
+        );
+        const { error: deleteError } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", data.user.id);
+        if (deleteError) throw deleteError;
+
+        const { error: insertError } = await supabase.from("user_roles").insert({
+          user_id: data.user.id,
+          role: "sub_admin",
+        });
+        if (insertError) throw insertError;
+      }
+
+      // 7. (Removed: store actual permissions in the subadmin_permissions table, rely only on bio)
     },
     onSuccess: () => {
       toast.success("تم إنشاء حساب المشرف المساعد (سب أدمن) بنجاح!");
@@ -1971,7 +2263,7 @@ function SubAdminsTab() {
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
       ) : subAdmins?.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground text-xs">
+        <Card className="border-border/40 shadow-none bg-card p-8 text-center text-muted-foreground text-xs">
           لا يوجد حسابات سب أدمن حالياً. اضغط على الزر أعلاه لإضافة أول حساب.
         </Card>
       ) : (
@@ -1982,7 +2274,10 @@ function SubAdminsTab() {
               sub.university_number?.replace("sub_", "") || sub.email?.split("@")[0] || "";
 
             return (
-              <Card key={sub.id} className="p-3">
+              <Card
+                key={sub.id}
+                className="border-border/40 shadow-none bg-card p-4 hover:shadow-sm transition-all"
+              >
                 <CardContent className="p-0 flex flex-col md:flex-row md:items-center justify-between gap-3 text-right">
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -2097,21 +2392,44 @@ function SubAdminsTab() {
                   </div>
 
                   <div className="flex gap-2 items-center self-end md:self-center">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-destructive border-destructive/20 hover:bg-destructive/5 text-xs gap-1"
-                      onClick={() => {
-                        if (
-                          confirm(`هل أنت متأكد من حذف حساب المشرف المساعد "${sub.full_name}"؟`)
-                        ) {
-                          deleteSubAdmin.mutate(sub.id);
-                        }
-                      }}
-                      disabled={deleteSubAdmin.isPending}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> حذف الحساب
-                    </Button>
+                    {deleteConfirmId === sub.id ? (
+                      <div className="flex items-center gap-1.5 bg-destructive/5 border border-destructive/20 rounded-lg p-1 animate-in fade-in zoom-in-95 duration-200">
+                        <span className="text-[10px] font-bold text-destructive px-1.5">
+                          {"متأكد؟"}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 px-2.5 text-[10px]"
+                          onClick={() => {
+                            deleteSubAdmin.mutate(sub.id);
+                            setDeleteConfirmId(null);
+                          }}
+                          disabled={deleteSubAdmin.isPending}
+                        >
+                          نعم، حذف
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[10px]"
+                          onClick={() => setDeleteConfirmId(null)}
+                          disabled={deleteSubAdmin.isPending}
+                        >
+                          إلغاء
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive border-destructive/20 hover:bg-destructive/5 text-xs gap-1"
+                        onClick={() => setDeleteConfirmId(sub.id)}
+                        disabled={deleteSubAdmin.isPending}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> حذف الحساب
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

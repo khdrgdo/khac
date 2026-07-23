@@ -499,6 +499,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      subadmin_permissions: {
+        Row: {
+          can_courses: boolean;
+          can_reports: boolean;
+          can_suspend: boolean;
+          can_teachers: boolean;
+          can_warn: boolean;
+          can_words: boolean;
+          created_at: string;
+          user_id: string;
+        };
+        Insert: {
+          can_courses?: boolean;
+          can_reports?: boolean;
+          can_suspend?: boolean;
+          can_teachers?: boolean;
+          can_warn?: boolean;
+          can_words?: boolean;
+          created_at?: string;
+          user_id: string;
+        };
+        Update: {
+          can_courses?: boolean;
+          can_reports?: boolean;
+          can_suspend?: boolean;
+          can_teachers?: boolean;
+          can_warn?: boolean;
+          can_words?: boolean;
+          created_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       user_warnings: {
         Row: {
           created_at: string;
@@ -613,7 +646,7 @@ export type Database = {
       };
     };
     Enums: {
-      app_role: "student" | "teacher" | "admin";
+      app_role: "student" | "teacher" | "admin" | "sub_admin";
       major_code: "it" | "is" | "se";
       post_type: "general" | "question";
       rank_tier: "bronze" | "silver" | "gold" | "platinum" | "diamond";
@@ -744,7 +777,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["student", "teacher", "admin"],
+      app_role: ["student", "teacher", "admin", "sub_admin"],
       major_code: ["it", "is", "se"],
       post_type: ["general", "question"],
       rank_tier: ["bronze", "silver", "gold", "platinum", "diamond"],

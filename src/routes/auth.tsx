@@ -199,8 +199,11 @@ function LoginForm({ initialId = "" }: { initialId?: string }) {
         if (isNumericOnly) {
           email = universityNumberToEmail(value);
         } else {
-          // It's a sub-admin ID (e.g. "a guard 1" -> "aguard1@subadmin.edu")
-          const normalized = value.toLowerCase().replace(/\s+/g, "");
+          // It's a sub-admin ID (e.g. "a guard 1" -> "aguard1@subadmin.edu" or "sub_aguard1" -> "aguard1@subadmin.edu")
+          let normalized = value.toLowerCase().replace(/\s+/g, "");
+          if (normalized.startsWith("sub_")) {
+            normalized = normalized.substring(4);
+          }
           email = `${normalized}@subadmin.edu`;
         }
       }
