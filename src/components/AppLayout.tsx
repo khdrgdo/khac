@@ -32,6 +32,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useUnivPrivacy } from "@/hooks/useUnivPrivacy";
 import { GlobalSearchDialog } from "@/components/GlobalSearchDialog";
 import { NotificationsPopover } from "@/components/NotificationsPopover";
+import { InstallPWAButton } from "@/components/InstallPWAButton";
 import { motion, AnimatePresence } from "motion/react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -146,11 +147,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </nav>
 
-          {/* Right Actions: Search, Notifications, Theme, Avatar Menu */}
+          {/* Right Actions: Search, Notifications, Theme, Install PWA, Avatar Menu */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <GlobalSearchDialog />
             <NotificationsPopover />
             <ThemeToggle />
+            <InstallPWAButton variant="button" className="hidden lg:inline-flex" />
 
             <DropdownMenu>
               <DropdownMenuTrigger className="outline-none group">
@@ -216,6 +218,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <Shield className="w-4 h-4" /> لوحة الإدارة
                   </DropdownMenuItem>
                 )}
+
+                <InstallPWAButton variant="menu" />
 
                 <DropdownMenuSeparator />
 
