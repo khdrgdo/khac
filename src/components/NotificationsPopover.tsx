@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { NotificationItem, NotificationType } from "@/types/notification";
 import {
-  getStoredNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification,
+  fetchRealtimeNotifications,
+  setNotificationAsRead,
+  setReadAllAtTimestamp,
+  setNotificationAsDeleted,
   clearAllNotifications,
   formatArabicTimeAgo,
 } from "@/lib/notificationsStore";
@@ -39,9 +40,9 @@ export function NotificationsPopover() {
   const [open, setOpen] = useState(false);
   const [filterTab, setFilterTab] = useState<"all" | "unread">("all");
 
-  const loadNotifications = useCallback(() => {
+  const loadNotifications = useCallback(async () => {
     if (!userId) return;
-    const items = getStoredNotifications(userId);
+    const items = await fetchRealtimeNotifications(userId);
     setNotifications(items);
   }, [userId]);
 
@@ -52,20 +53,49 @@ export function NotificationsPopover() {
       loadNotifications();
     };
 
+    // Realtime channel for live notifications
+    const channel = supabase
+      .channel("live_notifications_feed")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "comments" }, () => {
+        loadNotifications();
+      })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "post_reactions" },
+        () => {
+          loadNotifications();
+        },
+      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
+        loadNotifications();
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "user_warnings" }, () => {
+        loadNotifications();
+      })
+      .subscribe((status, err) => {
+        if (err) {
+          console.warn("[Notifications Channel Sub Error]", err);
+        }
+      });
+
+    const interval = setInterval(loadNotifications, 12000);
+
     window.addEventListener("notifications_updated", handleUpdate);
     window.addEventListener("storage", handleUpdate);
 
     return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
       window.removeEventListener("notifications_updated", handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
-  }, [loadNotifications]);
+  }, [userId, loadNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkAllRead = () => {
     if (!userId) return;
-    markAllNotificationsAsRead(userId);
+    setReadAllAtTimestamp(userId);
     loadNotifications();
     toast.success("تم تحديد جميع الإشعارات كأنها قُرئت ✔️");
   };
@@ -80,7 +110,7 @@ export function NotificationsPopover() {
   const handleItemClick = (item: NotificationItem) => {
     if (!userId) return;
     if (!item.read) {
-      markNotificationAsRead(userId, item.id);
+      setNotificationAsRead(userId, item.id);
       loadNotifications();
     }
     setOpen(false);
@@ -93,7 +123,7 @@ export function NotificationsPopover() {
   const handleDeleteItem = (e: React.MouseEvent, item: NotificationItem) => {
     e.stopPropagation();
     if (!userId) return;
-    deleteNotification(userId, item.id);
+    setNotificationAsDeleted(userId, item.id);
     loadNotifications();
   };
 

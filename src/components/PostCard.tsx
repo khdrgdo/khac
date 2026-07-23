@@ -36,6 +36,7 @@ import {
 import { RankBadge } from "@/components/RankBadge";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { StorageImage } from "@/components/StorageImage";
+import { ExpandableText } from "@/components/ExpandableText";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -236,9 +237,7 @@ export function PostCard({ post }: { post: PostWithMeta }) {
         </div>
 
         <Link to="/posts/$id" params={{ id: post.id }}>
-          {post.content && (
-            <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{post.content}</p>
-          )}
+          {post.content && <ExpandableText text={post.content} className="mt-3" />}
           {post.images && post.images.length > 0 && (
             <div
               className={cn(

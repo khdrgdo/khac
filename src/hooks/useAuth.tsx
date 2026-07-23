@@ -1,4 +1,13 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { bindAccountToDevice } from "@/lib/deviceGuard";
 import type { Session, User } from "@supabase/supabase-js";
@@ -164,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function refreshProfile() {
+  const refreshProfile = useCallback(async () => {
     try {
       const uid = sessionRef.current?.user?.id;
       if (!uid) return;
@@ -183,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.warn("Failed to refresh profile:", err);
     }
-  }
+  }, [roles]);
 
   const isMainAdmin =
     profile?.university_number === "2011099840" ||
@@ -217,20 +226,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isTeacher = roles.includes("teacher");
   const rank = profile ? computeRank(profile.points ?? 0) : "bronze";
 
-  const value: AuthContextValue = {
-    session,
-    user,
-    profile,
-    roles,
-    isAdmin,
-    isMainAdmin,
-    isSubAdmin,
-    isTeacher,
-    rank,
-    loading,
-    refreshProfile,
-    subAdminPermissions,
-  };
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      session,
+      user,
+      profile,
+      roles,
+      isAdmin,
+      isMainAdmin,
+      isSubAdmin,
+      isTeacher,
+      rank,
+      loading,
+      refreshProfile,
+      subAdminPermissions,
+    }),
+    [
+      session,
+      user,
+      profile,
+      roles,
+      isAdmin,
+      isMainAdmin,
+      isSubAdmin,
+      isTeacher,
+      rank,
+      loading,
+      refreshProfile,
+      subAdminPermissions,
+    ],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

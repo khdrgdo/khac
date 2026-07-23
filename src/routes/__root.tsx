@@ -79,22 +79,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "منصة الكلية — كورسات ومنشورات ومراسلة" },
+      { title: "NEXUS — المنصة الأكاديمية الذكية" },
       {
         name: "description",
-        content: "منصة كلية للطلاب والأساتذة: كورسات، منشورات، تفاعل، محادثات.",
+        content:
+          "NEXUS المنصة الأكاديمية للطلاب والأساتذة: كورسات، مسابقات، منشورات وتواصل تفاعلي.",
       },
-      { property: "og:title", content: "منصة الكلية — كورسات ومنشورات ومراسلة" },
+      { property: "og:title", content: "NEXUS — المنصة الأكاديمية الذكية" },
       {
         property: "og:description",
-        content: "منصة كلية للطلاب والأساتذة: كورسات، منشورات، تفاعل، محادثات.",
+        content:
+          "NEXUS المنصة الأكاديمية للطلاب والأساتذة: كورسات، مسابقات، منشورات وتواصل تفاعلي.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "منصة الكلية — كورسات ومنشورات ومراسلة" },
+      { name: "twitter:title", content: "NEXUS — المنصة الأكاديمية الذكية" },
       {
         name: "twitter:description",
-        content: "منصة كلية للطلاب والأساتذة: كورسات، منشورات، تفاعل، محادثات.",
+        content:
+          "NEXUS المنصة الأكاديمية للطلاب والأساتذة: كورسات، مسابقات، منشورات وتواصل تفاعلي.",
       },
       {
         property: "og:image",
@@ -150,9 +153,8 @@ function RootComponent() {
     document.documentElement.classList.toggle("dark", t === "dark");
 
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
         router.invalidate();
-        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
       }
     });
     return () => sub.subscription.unsubscribe();

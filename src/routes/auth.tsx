@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { MAJORS, YEARS, universityNumberToEmail } from "@/lib/college";
 import { bindAccountToDevice, isSignupAllowedOnDevice } from "@/lib/deviceGuard";
+import { NexusLogo } from "@/components/NexusLogo";
 import {
   GraduationCap,
   Loader2,
@@ -78,11 +79,13 @@ function AuthPage() {
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground mb-3 shadow-lg shadow-primary/20">
-            <GraduationCap className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-extrabold tracking-tight">منصة الكلية الجامعية</h1>
+        <div className="text-center mb-6 flex flex-col items-center justify-center">
+          <NexusLogo
+            size="lg"
+            showTagline={true}
+            taglineText="المنصة الأكاديمية الذكية"
+            className="mb-2"
+          />
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             البوابة الأكاديمية والتواصل الاجتماعي للطلاب والأساتذة
           </p>
@@ -501,7 +504,7 @@ function SignupForm({
               </span>
               <div>
                 <strong className="text-foreground">افحص صندوق الوارد (Inbox):</strong> ابحث عن
-                رسالة عنوانها "تأكيد الحساب" أو "Confirm Email" قادمة من منصة الكلية.
+                رسالة عنوانها "تأكيد الحساب" أو "Confirm Email" قادمة من منصة NEXUS.
               </div>
             </li>
 

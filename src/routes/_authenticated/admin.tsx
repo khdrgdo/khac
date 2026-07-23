@@ -23,9 +23,15 @@ import {
   CartesianGrid,
 } from "recharts";
 
-import { Download, Sparkles } from "lucide-react";
+import { Download, Sparkles, UserCheck } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  getNameChangeRequests,
+  approveNameChangeRequest,
+  rejectNameChangeRequest,
+  type NameChangeRequest,
+} from "@/lib/nameChangeRequests";
 import {
   Select,
   SelectContent,
@@ -91,6 +97,9 @@ import { toast } from "sonner";
 import { majorLabel } from "@/lib/college";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { RankBadge } from "@/components/RankBadge";
+import { UserAvatar } from "@/components/UserAvatar";
+import { formatArabicTimeAgo } from "@/lib/notificationsStore";
+import { PinnedCardAdminTab } from "@/components/PinnedCardAdminTab";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -326,6 +335,20 @@ function AdminPage() {
                   حسابات المساعدين
                 </TabsTrigger>
               )}
+              <TabsTrigger
+                value="pinned_card"
+                className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>الكارد المثبت والأحداث</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="name_requests"
+                className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors flex items-center gap-1.5"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-amber-500" />
+                <span>طلبات تغيير الأسماء</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -358,6 +381,12 @@ function AdminPage() {
                 <SubAdminsTab />
               </TabsContent>
             )}
+            <TabsContent value="pinned_card" className="mt-0 focus-visible:outline-none">
+              <PinnedCardAdminTab />
+            </TabsContent>
+            <TabsContent value="name_requests" className="mt-0 focus-visible:outline-none">
+              <NameRequestsTab />
+            </TabsContent>
           </div>
         </Tabs>
       </div>
@@ -962,6 +991,7 @@ function UsersTable() {
   const [actionReason, setActionReason] = useState("");
   const [actionDays, setActionDays] = useState("3");
   const [userFilter, setUserFilter] = useState("all"); // 'all', 'students', 'teachers', 'admins', 'banned'
+  const [yearFilter, setYearFilter] = useState("all");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -1183,9 +1213,16 @@ function UsersTable() {
   });
 
   const searched = (data ?? []).filter((u) => {
-    if (!search.trim()) return true;
-    const q = search.trim().toLowerCase();
-    return u.full_name?.toLowerCase().includes(q) || u.university_number?.toLowerCase().includes(q);
+    let match = true;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      match = (u.full_name?.toLowerCase().includes(q) ||
+        u.university_number?.toLowerCase().includes(q)) as boolean;
+    }
+    if (match && yearFilter !== "all" && String(u.year) !== yearFilter) {
+      match = false;
+    }
+    return match;
   });
 
   const filtered = searched.filter((u) => {
@@ -1291,14 +1328,30 @@ function UsersTable() {
           </Button>
         </div>
 
-        <div className="relative w-full sm:w-[300px] shrink-0">
-          <Input
-            placeholder="بحث بالاسم أو الرقم الجامعي..."
-            className="pr-10 bg-muted/30 border-none shadow-sm rounded-full h-10 focus-visible:ring-1 focus-visible:ring-indigo-500 text-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <Search className="w-4 h-4 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2" />
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger className="w-[100px] bg-muted/30 border-none shadow-sm rounded-full h-10 text-sm">
+              <SelectValue placeholder="السنة" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل السنوات</SelectItem>
+              <SelectItem value="1">السنة 1</SelectItem>
+              <SelectItem value="2">السنة 2</SelectItem>
+              <SelectItem value="3">السنة 3</SelectItem>
+              <SelectItem value="4">السنة 4</SelectItem>
+              <SelectItem value="5">السنة 5</SelectItem>
+              <SelectItem value="6">السنة 6</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="relative w-full sm:w-[250px]">
+            <Input
+              placeholder="بحث بالاسم أو الرقم الجامعي..."
+              className="pr-10 bg-muted/30 border-none shadow-sm rounded-full h-10 focus-visible:ring-1 focus-visible:ring-indigo-500 text-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Search className="w-4 h-4 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2" />
+          </div>
         </div>
       </div>
 
@@ -1823,7 +1876,129 @@ function UserDetailsDialog({
 // ============ ACTIVITY LOG ============
 
 function ActivityLogTab() {
-  const { data, isLoading } = useQuery({
+  const [subTab, setSubTab] = useState<"new_users" | "recent_activity" | "admin_actions">(
+    "new_users",
+  );
+  const [search, setSearch] = useState("");
+
+  // 1. Fetch New Registered Users (sorted by created_at desc)
+  const { data: newUsers = [], isLoading: loadingNewUsers } = useQuery({
+    queryKey: ["admin-activity-new-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "id, full_name, email, university_id, academic_year, major, is_verified, created_at, avatar_url, points",
+        )
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // 2. Fetch Recent System Activity & Interactions
+  const { data: recentActivities = [], isLoading: loadingActivities } = useQuery({
+    queryKey: ["admin-activity-recent-timeline"],
+    queryFn: async () => {
+      const { data: posts } = await supabase
+        .from("posts")
+        .select("id, author_id, title, content, created_at")
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      const { data: comments } = await supabase
+        .from("comments")
+        .select("id, post_id, author_id, content, created_at")
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      const { data: reactions } = await supabase
+        .from("post_reactions")
+        .select("post_id, user_id, reaction, created_at")
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      const profIds = new Set<string>();
+      (posts || []).forEach((p) => profIds.add(p.author_id));
+      (comments || []).forEach((c) => profIds.add(c.author_id));
+      (reactions || []).forEach((r) => profIds.add(r.user_id));
+
+      const { data: profs } = profIds.size
+        ? await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url, academic_year")
+            .in("id", Array.from(profIds))
+        : { data: [] };
+
+      const nameMap = new Map((profs || []).map((p) => [p.id, p]));
+
+      const timeline: Array<{
+        id: string;
+        userId: string;
+        userName: string;
+        userAvatar?: string | null;
+        year?: number | null;
+        type: "post" | "comment" | "reaction";
+        title: string;
+        details?: string;
+        createdAt: string;
+      }> = [];
+
+      (posts || []).forEach((p) => {
+        const u = nameMap.get(p.author_id);
+        timeline.push({
+          id: `post_${p.id}`,
+          userId: p.author_id,
+          userName: u?.full_name || "مستخدم",
+          userAvatar: u?.avatar_url,
+          year: u?.academic_year,
+          type: "post",
+          title: "نشر منشوراً جديداً",
+          details: p.title || p.content.slice(0, 60),
+          createdAt: p.created_at,
+        });
+      });
+
+      (comments || []).forEach((c) => {
+        const u = nameMap.get(c.author_id);
+        timeline.push({
+          id: `comment_${c.id}`,
+          userId: c.author_id,
+          userName: u?.full_name || "مستخدم",
+          userAvatar: u?.avatar_url,
+          year: u?.academic_year,
+          type: "comment",
+          title: "أضاف تعليقاً",
+          details: c.content.slice(0, 60),
+          createdAt: c.created_at,
+        });
+      });
+
+      (reactions || []).forEach((r) => {
+        const u = nameMap.get(r.user_id);
+        timeline.push({
+          id: `react_${r.post_id}_${r.user_id}_${r.reaction}`,
+          userId: r.user_id,
+          userName: u?.full_name || "مستخدم",
+          userAvatar: u?.avatar_url,
+          year: u?.academic_year,
+          type: "reaction",
+          title: "تفاعل مع منشور",
+          details: `نوع التفاعل: ${r.reaction}`,
+          createdAt: r.created_at,
+        });
+      });
+
+      return timeline.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    },
+  });
+
+  // 3. Admin Actions Log
+  const { data: adminActions = [], isLoading: loadingAdminActions } = useQuery({
     queryKey: ["admin-log"],
     queryFn: async () => {
       const { data: rows } = await supabase
@@ -1850,6 +2025,25 @@ function ActivityLogTab() {
     },
   });
 
+  const filteredNewUsers = newUsers.filter(
+    (u) =>
+      u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.university_id?.includes(search) ||
+      u.email?.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const filteredTimeline = recentActivities.filter(
+    (a) =>
+      a.userName.toLowerCase().includes(search.toLowerCase()) ||
+      a.title.toLowerCase().includes(search.toLowerCase()) ||
+      (a.details && a.details.toLowerCase().includes(search.toLowerCase())),
+  );
+
+  const isNewUser = (createdAt: string) => {
+    const diffHours = (new Date().getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
+    return diffHours <= 168; // 7 days
+  };
+
   const actionLabel: Record<string, string> = {
     warn: "إنذار",
     suspend: "إيقاف مؤقت",
@@ -1862,57 +2056,304 @@ function ActivityLogTab() {
   };
 
   return (
-    <div className="space-y-2">
-      {isLoading && (
-        <div className="flex justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin" />
+    <div className="space-y-4 dir-rtl">
+      {/* Sub-navigation & Search Header */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card p-3 rounded-2xl border border-border/50 shadow-xs">
+        <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-xl flex-wrap">
+          <button
+            onClick={() => setSubTab("new_users")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subTab === "new_users"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>أحدث المسجلين الجدد ({newUsers.length})</span>
+          </button>
+          <button
+            onClick={() => setSubTab("recent_activity")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subTab === "recent_activity"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>سجل النشاط والتواجد</span>
+          </button>
+          <button
+            onClick={() => setSubTab("admin_actions")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              subTab === "admin_actions"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ScrollText className="w-3.5 h-3.5" />
+            <span>السجل الإداري</span>
+          </button>
         </div>
-      )}
-      {!isLoading && (data ?? []).length === 0 && (
-        <div className="text-sm text-muted-foreground text-center py-8">لا يوجد نشاط إداري بعد</div>
-      )}
-      <Card className="border-border/40 shadow-none bg-card">
-        <div className="divide-y divide-border/40">
-          {(data ?? []).map((a) => (
-            <div key={a.id} className="p-4 flex flex-col gap-2">
-              <div className="flex items-center justify-between text-sm flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs text-primary font-medium shrink-0">
-                    {a.adminName?.charAt(0) || "A"}
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-semibold text-foreground">{a.adminName}</span>
-                    <span className="text-muted-foreground">أجرى</span>
-                    <Badge
-                      variant="secondary"
-                      className="font-normal text-xs bg-muted text-foreground hover:bg-muted"
-                    >
-                      {actionLabel[a.action] ?? a.action}
-                    </Badge>
-                    {a.targetName && (
-                      <>
-                        <span className="text-muted-foreground">على</span>
-                        <span className="font-semibold text-foreground">{a.targetName}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <span className="text-xs text-muted-foreground font-mono">
-                  {format(new Date(a.created_at), "yyyy/MM/dd HH:mm")}
-                </span>
-              </div>
-              {a.details &&
-                typeof a.details === "object" &&
-                "reason" in (a.details as Record<string, unknown>) && (
-                  <div className="text-sm text-foreground/90 bg-muted/30 border border-border/40 rounded-md p-2 mt-1 w-full md:w-3/4">
-                    <span className="text-xs text-muted-foreground mr-1">السبب:</span>
-                    {String((a.details as Record<string, unknown>).reason)}
-                  </div>
-                )}
+
+        <div className="relative max-w-xs w-full">
+          <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="بحث في السجل..."
+            className="pr-9 h-9 text-xs rounded-xl"
+          />
+        </div>
+      </div>
+
+      {/* SUB-TAB 1: NEW REGISTERED USERS */}
+      {subTab === "new_users" && (
+        <Card className="border-border/40 shadow-xs bg-card overflow-hidden rounded-2xl">
+          <div className="p-3.5 bg-muted/30 border-b border-border/40 flex items-center justify-between">
+            <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-emerald-500" />
+              <span>قائمة أحدث حسابات المستخدمين الجدد والتسجيلات</span>
+            </h4>
+            <Badge
+              variant="outline"
+              className="text-[11px] font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+            >
+              {filteredNewUsers.length} مستخدم
+            </Badge>
+          </div>
+
+          {loadingNewUsers ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
-          ))}
-        </div>
-      </Card>
+          ) : filteredNewUsers.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-xs">
+              لا يوجد مستخدمون مطابقون للبحث
+            </div>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {filteredNewUsers.map((u) => {
+                const fresh = isNewUser(u.created_at);
+                return (
+                  <div
+                    key={u.id}
+                    className="p-3.5 flex items-center justify-between gap-3 hover:bg-muted/20 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <UserAvatar
+                          avatarUrl={u.avatar_url}
+                          fullName={u.full_name || "مستخدم"}
+                          className="w-10 h-10 border border-border/60"
+                        />
+                        {fresh && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-background rounded-full animate-pulse" />
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-extrabold text-sm text-foreground">
+                            {u.full_name}
+                          </span>
+                          {u.is_verified && <VerifiedBadge />}
+                          {fresh && (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-none text-[10px] px-2 py-0.5 rounded-full font-bold">
+                              عضو جديد 🎉
+                            </Badge>
+                          )}
+                          {u.academic_year && (
+                            <Badge variant="outline" className="text-[10px] px-2 py-0">
+                              السنة {u.academic_year}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                          <span>
+                            الرقم الجامعي:{" "}
+                            <strong className="font-mono text-foreground/90">
+                              {u.university_id || "غير محدد"}
+                            </strong>
+                          </span>
+                          {u.major && (
+                            <span>
+                              التخصص:{" "}
+                              <strong className="text-foreground/90">
+                                {majorLabel[u.major] || u.major}
+                              </strong>
+                            </span>
+                          )}
+                          {u.email && (
+                            <span className="font-mono text-[11px] dir-ltr text-muted-foreground">
+                              {u.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-left shrink-0">
+                      <span className="text-[11px] text-muted-foreground font-mono block">
+                        انضم: {format(new Date(u.created_at), "yyyy/MM/dd HH:mm")}
+                      </span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 block">
+                        {formatArabicTimeAgo(u.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* SUB-TAB 2: RECENT TIMELINE & LOGINS */}
+      {subTab === "recent_activity" && (
+        <Card className="border-border/40 shadow-xs bg-card overflow-hidden rounded-2xl">
+          <div className="p-3.5 bg-muted/30 border-b border-border/40 flex items-center justify-between">
+            <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" />
+              <span>سجل التفاعل والتواجد الأخير بالمنصة</span>
+            </h4>
+            <Badge
+              variant="outline"
+              className="text-[11px] font-mono bg-primary/10 text-primary border-primary/20"
+            >
+              {filteredTimeline.length} نشاط
+            </Badge>
+          </div>
+
+          {loadingActivities ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : filteredTimeline.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-xs">
+              لا يوجد نشاط مسجل بعد
+            </div>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {filteredTimeline.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3.5 flex items-center justify-between gap-3 hover:bg-muted/20 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <UserAvatar
+                      avatarUrl={item.userAvatar}
+                      fullName={item.userName}
+                      className="w-9 h-9 border border-border/50"
+                    />
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-foreground">{item.userName}</span>
+                        {item.year && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            سنة {item.year}
+                          </Badge>
+                        )}
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] px-2 py-0 border-none font-semibold ${
+                            item.type === "post"
+                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                              : item.type === "comment"
+                                ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                                : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                          }`}
+                        >
+                          {item.title}
+                        </Badge>
+                      </div>
+                      {item.details && (
+                        <p className="text-xs text-muted-foreground line-clamp-1 max-w-md">
+                          {item.details}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="text-[11px] text-muted-foreground font-mono shrink-0">
+                    {formatArabicTimeAgo(item.createdAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* SUB-TAB 3: ADMIN ACTIONS */}
+      {subTab === "admin_actions" && (
+        <Card className="border-border/40 shadow-xs bg-card overflow-hidden rounded-2xl">
+          <div className="p-3.5 bg-muted/30 border-b border-border/40 flex items-center justify-between">
+            <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+              <ScrollText className="w-4 h-4 text-amber-500" />
+              <span>سجل الإجراءات والتعديلات الإدارية</span>
+            </h4>
+            <Badge
+              variant="outline"
+              className="text-[11px] font-mono bg-amber-500/10 text-amber-600 border-amber-500/20"
+            >
+              {adminActions.length} إجراء
+            </Badge>
+          </div>
+
+          {loadingAdminActions ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+            </div>
+          ) : adminActions.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-xs">
+              لا يوجد نشاط إداري بعد
+            </div>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {adminActions.map((a) => (
+                <div
+                  key={a.id}
+                  className="p-3.5 flex flex-col gap-2 hover:bg-muted/20 transition-colors"
+                >
+                  <div className="flex items-center justify-between text-xs flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-amber-500/15 flex items-center justify-center text-xs text-amber-600 font-bold shrink-0">
+                        {a.adminName?.charAt(0) || "A"}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-foreground">{a.adminName}</span>
+                        <span className="text-muted-foreground">أجرى</span>
+                        <Badge
+                          variant="secondary"
+                          className="font-bold text-[10px] bg-muted text-foreground"
+                        >
+                          {actionLabel[a.action] ?? a.action}
+                        </Badge>
+                        {a.targetName && (
+                          <>
+                            <span className="text-muted-foreground">على</span>
+                            <span className="font-bold text-foreground">{a.targetName}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground font-mono">
+                      {format(new Date(a.created_at), "yyyy/MM/dd HH:mm")}
+                    </span>
+                  </div>
+                  {a.details &&
+                    typeof a.details === "object" &&
+                    "reason" in (a.details as Record<string, unknown>) && (
+                      <div className="text-xs text-foreground/90 bg-muted/40 border border-border/40 rounded-xl p-2.5 mt-0.5 w-full md:w-3/4">
+                        <span className="text-muted-foreground mr-1">السبب:</span>
+                        {String((a.details as Record<string, unknown>).reason)}
+                      </div>
+                    )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
@@ -2725,5 +3166,205 @@ function SubAdminsTab() {
         </div>
       )}
     </div>
+  );
+}
+
+function NameRequestsTab() {
+  const qc = useQueryClient();
+  const [requests, setRequests] = useState<NameChangeRequest[]>(() => getNameChangeRequests());
+  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setRequests(getNameChangeRequests());
+    };
+    window.addEventListener("name_change_requests_updated", handleUpdate);
+    return () => window.removeEventListener("name_change_requests_updated", handleUpdate);
+  }, []);
+
+  const handleApprove = async (req: NameChangeRequest) => {
+    setProcessingId(req.id);
+    try {
+      await approveNameChangeRequest(req.id);
+      toast.success(
+        `تمت الموافقة على تغيير اسم "${req.current_name}" إلى "${req.requested_name}" بنجاح!`,
+      );
+      setRequests(getNameChangeRequests());
+      qc.invalidateQueries({ queryKey: ["profiles"] });
+      qc.invalidateQueries({ queryKey: ["public-profiles"] });
+    } catch (e) {
+      toast.error((e as Error).message || "حدث خطأ أثناء تنفيذ الطلب");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReject = (req: NameChangeRequest) => {
+    rejectNameChangeRequest(req.id);
+    toast.info(`تم رفض طلب تغيير الاسم للمستخدم "${req.current_name}"`);
+    setRequests(getNameChangeRequests());
+  };
+
+  const filtered = requests.filter((r) => {
+    if (filter === "all") return true;
+    return r.status === filter;
+  });
+
+  const pendingCount = requests.filter((r) => r.status === "pending").length;
+
+  return (
+    <Card className="border-border/60 shadow-xs">
+      <CardContent className="p-5 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <UserCheck className="w-5 h-5 text-amber-500" />
+              طلبات تغيير الأسماء
+              {pendingCount > 0 && (
+                <Badge className="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 text-xs">
+                  {pendingCount} قيد الانتظار
+                </Badge>
+              )}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              مراجعة طلبات تغيير الأسماء المقدمة من الطلاب والأساتذة، وقبولها أو رفضها مع إعادة
+              تفعيل التغيير المباشر
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-lg flex-wrap">
+            <Button
+              size="sm"
+              variant={filter === "pending" ? "default" : "ghost"}
+              onClick={() => setFilter("pending")}
+              className="h-7 text-xs"
+            >
+              قيد الانتظار ({pendingCount})
+            </Button>
+            <Button
+              size="sm"
+              variant={filter === "approved" ? "default" : "ghost"}
+              onClick={() => setFilter("approved")}
+              className="h-7 text-xs"
+            >
+              المقبولة
+            </Button>
+            <Button
+              size="sm"
+              variant={filter === "rejected" ? "default" : "ghost"}
+              onClick={() => setFilter("rejected")}
+              className="h-7 text-xs"
+            >
+              المرقوضة
+            </Button>
+            <Button
+              size="sm"
+              variant={filter === "all" ? "default" : "ghost"}
+              onClick={() => setFilter("all")}
+              className="h-7 text-xs"
+            >
+              الكل ({requests.length})
+            </Button>
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="text-center py-12 text-sm text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-border/60">
+            لا توجد طلبات تغيير أسماء لهذا الفلتر حالياً
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map((req) => (
+              <div
+                key={req.id}
+                className="p-4 rounded-xl border border-border/60 bg-card hover:border-amber-500/40 transition-all space-y-3"
+              >
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground font-mono">الاسم الحالي:</span>
+                      <span className="font-bold text-sm text-foreground">{req.current_name}</span>
+                      <span className="text-amber-500 font-bold">←</span>
+                      <span className="text-xs text-muted-foreground font-mono">المطلوب:</span>
+                      <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold">
+                        {req.requested_name}
+                      </Badge>
+                    </div>
+
+                    {req.university_number && (
+                      <div className="text-xs font-mono text-muted-foreground">
+                        الرقم الجامعي: {req.university_number}
+                      </div>
+                    )}
+                  </div>
+
+                  <Badge
+                    variant={
+                      req.status === "approved"
+                        ? "default"
+                        : req.status === "rejected"
+                          ? "destructive"
+                          : "outline"
+                    }
+                    className="text-xs"
+                  >
+                    {req.status === "approved"
+                      ? "تم القبول وتحديث الاسم"
+                      : req.status === "rejected"
+                        ? "مرفوض"
+                        : "قيد المراجعة"}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs bg-muted/30 p-2.5 rounded-lg border border-border/40">
+                  <div>
+                    <span className="font-semibold text-muted-foreground block mb-0.5">
+                      سبب الطلب:
+                    </span>
+                    <span className="text-foreground leading-relaxed">{req.reason}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-muted-foreground block mb-0.5">
+                      معلومات التواصل:
+                    </span>
+                    <span className="text-foreground font-mono font-medium">
+                      {req.contact_info}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 flex-wrap gap-2">
+                  <span>تاريخ الطلب: {new Date(req.created_at).toLocaleString("ar-EG")}</span>
+
+                  {req.status === "pending" && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleReject(req)}
+                        disabled={processingId === req.id}
+                        className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                      >
+                        رفض الطلب
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleApprove(req)}
+                        disabled={processingId === req.id}
+                        className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 font-bold"
+                      >
+                        {processingId === req.id && <Loader2 className="w-3 h-3 animate-spin" />}
+                        قبول وتحديث الاسم
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

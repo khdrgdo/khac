@@ -44,6 +44,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { RankBadge } from "@/components/RankBadge";
+import { CoronationPodium } from "@/components/CoronationPodium";
+import { UserRankProgressCard } from "@/components/UserRankProgressCard";
 import { majorLabel } from "@/lib/college";
 import { MAJORS, YEARS } from "@/lib/college";
 import { motion, AnimatePresence } from "motion/react";
@@ -749,26 +751,14 @@ function LeaderboardPage() {
         )}
       </AnimatePresence>
 
-      {/* Current User Quick Status */}
-      {currentUserData && !isAdmin && timeframe === "all" && (
-        <Card className="border-primary/20 bg-primary/5 shadow-sm overflow-hidden">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-primary text-lg">
-                #{currentUserRank}
-              </div>
-              <div>
-                <div className="font-bold text-foreground">مركزك الحالي في لوحة الصدارة</div>
-                <div className="text-xs text-muted-foreground">
-                  لديك {currentUserData.points} نقطة علمية وتستحق الرتبة المتميزة
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <RankBadge points={currentUserData.points} />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Current User Quick Status & Rank Progress Card */}
+      {currentUserData && !isAdmin && (
+        <UserRankProgressCard
+          points={currentUserData.points}
+          userRank={currentUserRank}
+          totalUsers={filteredLeaderboard.length}
+          onOpenGuide={() => setShowGuide(true)}
+        />
       )}
 
       {isLoading ? (
@@ -786,158 +776,8 @@ function LeaderboardPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {/* Podium Top 3 */}
-          {podium.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 pt-6 items-end max-w-xl mx-auto">
-              {/* Second Place (Podium Left/Right) */}
-              {podium[1] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="flex flex-col items-center"
-                >
-                  <Link
-                    to="/profile/$id"
-                    params={{ id: podium[1].id }}
-                    className="flex flex-col items-center group cursor-pointer"
-                  >
-                    <div className="relative mb-2">
-                      <UserAvatar
-                        avatarUrl={podium[1].avatar_url}
-                        fullName={podium[1].full_name}
-                        className="w-16 h-16 ring-4 ring-slate-300 dark:ring-slate-700 group-hover:ring-primary transition"
-                      />
-                      <div className="absolute -bottom-1 -right-1 bg-slate-400 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs shadow">
-                        ٢
-                      </div>
-                    </div>
-                    <span className="font-semibold text-sm text-center line-clamp-1 max-w-[110px] group-hover:underline flex items-center gap-1">
-                      {podium[1].full_name}
-                      {podium[1].verified && (
-                        <Badge
-                          variant="secondary"
-                          className="px-1 py-0 text-[9px] bg-sky-500/10 text-sky-600 border-none"
-                        >
-                          موثق
-                        </Badge>
-                      )}
-                    </span>
-                    <span className="text-xs text-muted-foreground mb-3">
-                      {majorLabel(podium[1].major)}
-                    </span>
-                  </Link>
-                  <div className="bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-t-xl w-full h-24 flex flex-col justify-center items-center shadow-sm">
-                    <Medal className="w-5 h-5 text-slate-400 mb-1" />
-                    <span className="font-bold text-base text-slate-700 dark:text-slate-300">
-                      {podium[1].score}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">نقطة</span>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* First Place (Center Podium) */}
-              {podium[0] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center"
-                >
-                  <Link
-                    to="/profile/$id"
-                    params={{ id: podium[0].id }}
-                    className="flex flex-col items-center group cursor-pointer"
-                  >
-                    <div className="relative mb-3">
-                      <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-amber-500 animate-bounce">
-                        <Trophy className="w-6 h-6 fill-amber-500" />
-                      </div>
-                      <UserAvatar
-                        avatarUrl={podium[0].avatar_url}
-                        fullName={podium[0].full_name}
-                        className="w-20 h-20 ring-4 ring-amber-400 group-hover:ring-amber-500 transition"
-                      />
-                      <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm shadow border border-white">
-                        ١
-                      </div>
-                    </div>
-                    <span className="font-bold text-base text-center line-clamp-1 max-w-[120px] group-hover:underline flex items-center gap-1">
-                      {podium[0].full_name}
-                      {podium[0].verified && (
-                        <Badge
-                          variant="secondary"
-                          className="px-1 py-0 text-[9px] bg-sky-500/10 text-sky-600 border-none"
-                        >
-                          موثق
-                        </Badge>
-                      )}
-                    </span>
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-3">
-                      {majorLabel(podium[0].major)}
-                    </span>
-                  </Link>
-                  <div className="bg-amber-500/10 dark:bg-amber-500/5 border-2 border-amber-300 dark:border-amber-900/50 rounded-t-2xl w-full h-32 flex flex-col justify-center items-center shadow-md">
-                    <Trophy className="w-6 h-6 text-amber-500 mb-1" />
-                    <span className="font-black text-xl text-amber-600 dark:text-amber-400">
-                      {podium[0].score}
-                    </span>
-                    <span className="text-xs font-semibold text-amber-700/80 dark:text-amber-500">
-                      نقطة
-                    </span>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Third Place (Podium Left/Right) */}
-              {podium[2] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
-                  className="flex flex-col items-center"
-                >
-                  <Link
-                    to="/profile/$id"
-                    params={{ id: podium[2].id }}
-                    className="flex flex-col items-center group cursor-pointer"
-                  >
-                    <div className="relative mb-2">
-                      <UserAvatar
-                        avatarUrl={podium[2].avatar_url}
-                        fullName={podium[2].full_name}
-                        className="w-16 h-16 ring-4 ring-amber-700/30 group-hover:ring-amber-700 transition"
-                      />
-                      <div className="absolute -bottom-1 -right-1 bg-amber-700 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs shadow">
-                        ٣
-                      </div>
-                    </div>
-                    <span className="font-semibold text-sm text-center line-clamp-1 max-w-[110px] group-hover:underline flex items-center gap-1">
-                      {podium[2].full_name}
-                      {podium[2].verified && (
-                        <Badge
-                          variant="secondary"
-                          className="px-1 py-0 text-[9px] bg-sky-500/10 text-sky-600 border-none"
-                        >
-                          موثق
-                        </Badge>
-                      )}
-                    </span>
-                    <span className="text-xs text-muted-foreground mb-3">
-                      {majorLabel(podium[2].major)}
-                    </span>
-                  </Link>
-                  <div className="bg-amber-900/5 dark:bg-amber-900/5 border border-amber-800/10 dark:border-amber-900/20 rounded-t-xl w-full h-20 flex flex-col justify-center items-center shadow-sm">
-                    <Medal className="w-5 h-5 text-amber-600 mb-1" />
-                    <span className="font-bold text-base text-amber-700 dark:text-amber-500">
-                      {podium[2].score}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">نقطة</span>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          )}
+          {/* New Luxury Coronation Stage Card (Podium Top 3) */}
+          <CoronationPodium podium={podium} timeframe={timeframe} />
 
           {/* List remainder of students */}
           <Card className="border-muted/60 shadow-sm overflow-hidden">

@@ -42,16 +42,20 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
   });
 
   useEffect(() => {
+    let lastRaw = localStorage.getItem("blocked_users");
     const handleStorage = () => {
       try {
         const stored = localStorage.getItem("blocked_users");
-        setBlockedUsers(stored ? JSON.parse(stored) : []);
+        if (stored !== lastRaw) {
+          lastRaw = stored;
+          setBlockedUsers(stored ? JSON.parse(stored) : []);
+        }
       } catch (e) {
         console.warn(e);
       }
     };
     window.addEventListener("storage", handleStorage);
-    const interval = setInterval(handleStorage, 1000);
+    const interval = setInterval(handleStorage, 3000);
     return () => {
       window.removeEventListener("storage", handleStorage);
       clearInterval(interval);

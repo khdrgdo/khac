@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { CreatePost } from "@/components/CreatePost";
 import { PostList } from "@/components/PostList";
+import { PinnedEventCard } from "@/components/PinnedEventCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { majorLabel } from "@/lib/college";
@@ -32,6 +33,8 @@ function FeedPage() {
   return (
     <div className="grid md:grid-cols-3 gap-4">
       <div className="md:col-span-2 space-y-4">
+        {/* Admin Pinned Event / Announcement / Poll Card */}
+        <PinnedEventCard />
         <CreatePost />
         <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
           <TabsList>

@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
+import { NexusLogo } from "@/components/NexusLogo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,37 +78,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background selection:bg-primary/20 selection:text-primary">
-      {/* Sleek Top Navigation Bar */}
+      {/* Sleek Top Navigation Bar with Ultra-Translucent Glassmorphism */}
       <header
         className={cn(
-          "sticky top-0 z-40 w-full transition-all duration-300 border-b border-border/40",
-          scrolled
-            ? "bg-background/80 backdrop-blur-xl shadow-xs border-border/70 py-0"
-            : "bg-background/90 backdrop-blur-md py-0.5",
+          "sticky top-0 z-40 w-full transition-all duration-200 border-b border-border/40",
+          "bg-background/80 backdrop-blur-md shadow-xs",
+          scrolled ? "py-1 shadow-xs bg-background/95" : "py-2",
         )}
       >
-        <div className="max-w-6xl mx-auto px-3 sm:px-4 h-15 flex items-center justify-between gap-3">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-3">
           {/* Brand Logo & Title */}
           <Link
             to="/feed"
             className="flex items-center gap-2.5 group shrink-0 transition-transform active:scale-95"
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary via-primary/90 to-primary/70 text-primary-foreground flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-105 group-hover:shadow-primary/30 transition-all duration-300">
-              <GraduationCap className="w-5 h-5 transition-transform duration-300 group-hover:-rotate-6" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-extrabold text-sm sm:text-base tracking-tight leading-none text-foreground group-hover:text-primary transition-colors">
-                منصة الكلية
-              </span>
-              <span className="text-[10px] font-medium text-muted-foreground/80 leading-tight hidden sm:flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                تواصل أكاديمي
-              </span>
-            </div>
+            <NexusLogo size="md" showTagline={true} taglineText="المنصة الأكاديمية" />
           </Link>
 
-          {/* Desktop Navigation Links with Animated Pill Effect */}
-          <nav className="hidden md:flex items-center gap-1 bg-muted/40 p-1 rounded-2xl border border-border/40">
+          {/* Desktop Navigation Links with Translucent Floating Pill Effect */}
+          <nav className="hidden md:flex items-center gap-1 bg-muted/20 dark:bg-muted/15 backdrop-blur-2xl p-1.5 rounded-2xl border border-white/20 dark:border-white/10 shadow-lg shadow-black/5">
             {navItems.map((it) => {
               const active = path.startsWith(it.to);
               return (
@@ -115,23 +104,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   key={it.to}
                   to={it.to}
                   className={cn(
-                    "relative px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors z-10",
+                    "relative px-4 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-200 z-10 hover:text-foreground",
                     active
                       ? "text-primary dark:text-primary-foreground font-bold"
-                      : "text-muted-foreground hover:text-foreground",
+                      : "text-muted-foreground hover:bg-background/20",
                   )}
                 >
                   {active && (
                     <motion.div
                       layoutId="activeNavTab"
-                      className="absolute inset-0 bg-background dark:bg-primary/20 rounded-xl shadow-xs border border-primary/10 dark:border-primary/30 -z-10"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      className="absolute inset-0 bg-background/80 dark:bg-primary/30 backdrop-blur-md rounded-xl shadow-xs border border-primary/25 dark:border-primary/40 -z-10"
+                      transition={{ type: "spring", stiffness: 420, damping: 32 }}
                     />
                   )}
                   <it.icon
                     className={cn(
                       "w-4 h-4 transition-transform duration-200",
-                      active ? "scale-110" : "opacity-80 group-hover:opacity-100",
+                      active
+                        ? "scale-110 text-primary dark:text-primary-foreground"
+                        : "opacity-75 group-hover:opacity-100",
                     )}
                   />
                   <span>{it.label}</span>
@@ -143,10 +134,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Link
                 to="/admin"
                 className={cn(
-                  "relative px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors z-10",
+                  "relative px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 z-10",
                   path.startsWith("/admin")
-                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/20"
-                    : "text-amber-600/80 dark:text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-600",
+                    ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/35 shadow-xs"
+                    : "text-amber-600/80 dark:text-amber-400/80 hover:bg-amber-500/15 hover:text-amber-600",
                 )}
               >
                 <Shield className="w-4 h-4" />
@@ -243,9 +234,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main Page Layout Wrapper */}
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 pb-24 md:pb-8">{children}</main>
 
-      {/* Floating Mobile Bottom Navigation Bar */}
+      {/* Floating Translucent Mobile Bottom Navigation Bar */}
       <div className="fixed bottom-3 inset-x-3 md:hidden z-50 pointer-events-none">
-        <nav className="pointer-events-auto bg-card/85 dark:bg-card/90 backdrop-blur-2xl border border-border/60 shadow-2xl rounded-2xl p-1.5 max-w-md mx-auto flex items-center justify-around gap-1">
+        <nav className="pointer-events-auto bg-background/25 dark:bg-background/30 backdrop-blur-3xl backdrop-saturate-200 border border-white/25 dark:border-white/10 shadow-2xl shadow-primary/15 rounded-3xl p-1.5 max-w-md mx-auto flex items-center justify-around gap-1">
           {navItems.map((it) => {
             const active = path.startsWith(it.to);
             return (
@@ -253,21 +244,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 key={it.to}
                 to={it.to}
                 className={cn(
-                  "relative flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-200",
-                  active ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground",
+                  "relative flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-2xl transition-all duration-200 active:scale-95",
+                  active
+                    ? "text-primary dark:text-primary-foreground font-bold"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {active && (
                   <motion.div
                     layoutId="mobileNavTab"
-                    className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-xl -z-10"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    className="absolute inset-0 bg-primary/20 dark:bg-primary/30 backdrop-blur-md rounded-2xl border border-primary/25 dark:border-primary/40 -z-10"
+                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
                   />
                 )}
                 <it.icon
-                  className={cn("w-5 h-5 transition-transform duration-200", active && "scale-110")}
+                  className={cn(
+                    "w-5 h-5 transition-transform duration-200",
+                    active && "scale-110 text-primary dark:text-primary-foreground",
+                  )}
                 />
                 <span className="text-[10px] leading-tight mt-0.5">{it.label}</span>
+                {active && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -bottom-0.5 w-1 h-1 bg-primary rounded-full shadow-xs shadow-primary"
+                  />
+                )}
               </Link>
             );
           })}

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { RankBadge } from "@/components/RankBadge";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { majorLabel } from "@/lib/college";
@@ -25,12 +26,21 @@ import {
   Award,
   Eye,
   EyeOff,
+  Share2,
+  UserCheck,
+  AlertCircle,
+  Send,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUnivPrivacy } from "@/hooks/useUnivPrivacy";
+import {
+  hasUserUsedDirectChange,
+  setUserUsedDirectChange,
+  submitNameChangeRequest,
+} from "@/lib/nameChangeRequests";
 
 export type CardThemeId = "stars" | "clouds" | "moon" | "sun" | "galaxy";
 
@@ -174,6 +184,84 @@ export function ProfileCardFrame({
   const [bioText, setBioText] = useState(profile.bio ?? "");
   const [savingBio, setSavingBio] = useState(false);
 
+  // Name Change state & logic
+  const [nameDialogOpen, setNameDialogOpen] = useState(false);
+  const [newNameText, setNewNameText] = useState(profile.full_name);
+  const [changeReason, setChangeReason] = useState("");
+  const [contactInfo, setContactInfo] = useState("");
+  const [savingName, setSavingName] = useState(false);
+
+  const hasUsedDirectNameChange = hasUserUsedDirectChange(profile.id);
+
+  const handleCopyProfileLink = () => {
+    const url = `${window.location.origin}/profile/${profile.id}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      toast.success("تم نسخ رابط الملف الشخصي بنجاح! 📋");
+    } else {
+      toast.info(`رابط البروفايل: ${url}`);
+    }
+  };
+
+  const handleSaveName = async () => {
+    if (!isMe) return;
+    const trimmedNew = newNameText.trim();
+    if (!trimmedNew || trimmedNew.length < 2) {
+      toast.error("يرجى إدخال اسم صحيح يتكون من حرفين على الأقل");
+      return;
+    }
+
+    setSavingName(true);
+    try {
+      if (!hasUsedDirectNameChange) {
+        // Direct 1-time change
+        const { error } = await supabase
+          .from("profiles")
+          .update({ full_name: trimmedNew })
+          .eq("id", profile.id);
+
+        if (error) throw error;
+
+        setUserUsedDirectChange(profile.id, true);
+        toast.success("تم تغيير اسمك بنجاح! لقد استنفدت الفرصة المباشرة لتغيير الاسم.");
+        qc.invalidateQueries({ queryKey: ["profile", profile.id] });
+        qc.invalidateQueries({ queryKey: ["profile"] });
+        qc.invalidateQueries({ queryKey: ["posts"] });
+        setNameDialogOpen(false);
+      } else {
+        // Submit request to Admin
+        if (!changeReason.trim()) {
+          toast.error("يرجى كتابة سبب طلب تغيير الاسم");
+          setSavingName(false);
+          return;
+        }
+        if (!contactInfo.trim()) {
+          toast.error("يرجى كتابة معلومات التواصل ليتمكن المشرف من مراجعة الطلب");
+          setSavingName(false);
+          return;
+        }
+
+        submitNameChangeRequest({
+          user_id: profile.id,
+          current_name: profile.full_name,
+          requested_name: trimmedNew,
+          reason: changeReason.trim(),
+          contact_info: contactInfo.trim(),
+          university_number: profile.university_number,
+        });
+
+        toast.success("تم إرسال طلب تغيير الاسم للإدارة بنجاح! سيتم مراجعة الطلب والتواصل معك.");
+        setNameDialogOpen(false);
+        setChangeReason("");
+        setContactInfo("");
+      }
+    } catch (e) {
+      toast.error((e as Error).message || "تعذر حفظ أو إرسال طلب تغيير الاسم");
+    } finally {
+      setSavingName(false);
+    }
+  };
+
   const { isHidden: isUnivHidden, togglePrivacy } = useUnivPrivacy(profile.id);
 
   const handleToggleUnivPrivacy = () => {
@@ -272,7 +360,7 @@ export function ProfileCardFrame({
         )}
 
         {/* Theme Badge & Customizer Trigger */}
-        <div className="relative z-10 flex items-center justify-between mb-4">
+        <div className="relative z-10 flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-1.5">
             <span className="text-lg">{activeTheme.icon}</span>
             <Badge
@@ -283,17 +371,30 @@ export function ProfileCardFrame({
             </Badge>
           </div>
 
-          {isMe && (
+          <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => setThemeDialogOpen(true)}
+              onClick={handleCopyProfileLink}
               className="h-8 gap-1.5 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-md shadow-sm transition"
+              title="نسخ الرابط المباشر للملف الشخصي"
             >
-              <Palette className="w-3.5 h-3.5 text-amber-300" />
-              تغيير مظهر الكارد
+              <Share2 className="w-3.5 h-3.5 text-cyan-300" />
+              <span>نسخ الرابط</span>
             </Button>
-          )}
+
+            {isMe && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setThemeDialogOpen(true)}
+                className="h-8 gap-1.5 text-xs bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-md shadow-sm transition"
+              >
+                <Palette className="w-3.5 h-3.5 text-amber-300" />
+                تغيير المظهر
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Profile Details Header */}
@@ -339,6 +440,21 @@ export function ProfileCardFrame({
                 {profile.full_name}
                 {profile.verified && <VerifiedBadge size="md" />}
               </h1>
+
+              {isMe && (
+                <button
+                  onClick={() => {
+                    setNewNameText(profile.full_name);
+                    setNameDialogOpen(true);
+                  }}
+                  className="text-xs text-amber-300/90 hover:text-amber-200 bg-white/10 hover:bg-white/20 px-2 py-1 rounded-md border border-amber-300/30 flex items-center gap-1 transition"
+                  title="تغيير الاسم"
+                >
+                  <Edit3 className="w-3 h-3 text-amber-300" />
+                  <span>تغيير الاسم</span>
+                </button>
+              )}
+
               <RankBadge points={profile.points ?? 0} />
             </div>
 
@@ -612,6 +728,124 @@ export function ProfileCardFrame({
               >
                 {savingBio && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 حفظ النبذة
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Name Change Dialog (1-time direct change or Request to Admin) */}
+      <Dialog open={nameDialogOpen} onOpenChange={setNameDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <UserCheck className="w-4 h-4 text-amber-500" />
+              {!hasUsedDirectNameChange
+                ? "تغيير الاسم الشخصي (الفرصة المباشرة)"
+                : "طلب تغيير الاسم الشخصي (عبر الإدارة)"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3.5 mt-2">
+            {!hasUsedDirectNameChange ? (
+              <>
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-600 dark:text-amber-400 leading-relaxed flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+                  <div>
+                    <span className="font-bold block mb-0.5">فرصة تغيير سريعة لمرة واحدة ⚡</span>
+                    يمكنك تعديل اسمك الكامل مباشرةً وبدون انتظار موافقة. يرجى الملاحظة أنه بعد
+                    استخدام هذه الفرصة، ستتطلب أي تغييرات قادمة تقديم طلب رسمي للإدارة.
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">الاسم الكامل الجديد</label>
+                  <Input
+                    value={newNameText}
+                    onChange={(e) => setNewNameText(e.target.value)}
+                    placeholder="مثال: أحمد محمد علي"
+                    maxLength={60}
+                    className="text-sm"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-600 dark:text-amber-400 leading-relaxed flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+                  <div>
+                    <span className="font-bold block mb-0.5">
+                      لقد استنفدت فرصة التغيير المباشرة 🔒
+                    </span>
+                    لقد قمت بتغيير اسمك سابقاً. لتغيير اسمك مجدداً، يرجى تقديم طلب للإدارة مع توضيح
+                    السبب ومعلومات التواصل. عند قبول الطلب من المشرف، سيتم تغيير اسمك واستعادة
+                    إمكانية التغيير المباشر!
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    الاسم الجديد المطلوب
+                  </label>
+                  <Input
+                    value={newNameText}
+                    onChange={(e) => setNewNameText(e.target.value)}
+                    placeholder="مثال: د. محمد العبدالله"
+                    maxLength={60}
+                    className="text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">سبب طلب التغيير</label>
+                  <Textarea
+                    value={changeReason}
+                    onChange={(e) => setChangeReason(e.target.value)}
+                    placeholder="توضيح سبب تعديل الاسم (مثلاً: تصحيح خطأ إملائي، إضافة اللقب الأكاديمي...)"
+                    rows={2}
+                    className="text-sm resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    معلومات التواصل contigo
+                  </label>
+                  <Input
+                    value={contactInfo}
+                    onChange={(e) => setContactInfo(e.target.value)}
+                    placeholder="رقم الهاتف أو حساب التلغرام أو الإيميل"
+                    className="text-sm"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setNameDialogOpen(false)}
+                disabled={savingName}
+              >
+                إلغاء
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveName}
+                disabled={savingName}
+                className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold"
+              >
+                {savingName ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : !hasUsedDirectNameChange ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
+                {!hasUsedDirectNameChange ? "تغيير الاسم مباشرة" : "إرسال الطلب للإدارة"}
               </Button>
             </div>
           </div>
