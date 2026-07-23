@@ -11,6 +11,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  CartesianGrid,
+} from "recharts";
+
+import { Download, Sparkles } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -54,6 +67,7 @@ import {
   Loader2,
   Flag,
   Users,
+  Search,
   MessageSquare,
   FileText,
   Plus,
@@ -173,129 +187,288 @@ function AdminPage() {
   const permissions = getSubAdminPermissions(profile);
 
   const showReports = !isSubAdmin || permissions.can_reports;
-  const showLog = !isSubAdmin; // Only Main Admin / non-sub-admins see activity logs
+  const showLog = !isSubAdmin;
   const showTeacher = !isSubAdmin || permissions.can_teachers;
   const showWords = !isSubAdmin || permissions.can_words;
-  const showSubAdmins = isMainAdmin; // Only Main Admin can manage sub-admins
+  const showSubAdmins = isMainAdmin;
 
   const defaultTab = showReports ? "reports" : "users";
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-12 pt-6">
-      {/* Header Section */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">لوحة الإدارة</h1>
-        <p className="text-muted-foreground text-sm">
-          {isSubAdmin
-            ? "إدارة الصلاحيات المخصصة للمشرف المساعد"
-            : "نظرة عامة وإدارة شاملة للنظام الأكاديمي"}
-        </p>
+    <div className="max-w-[1400px] mx-auto space-y-8 pb-12 pt-6">
+      {/* Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 p-8 text-white shadow-lg">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white backdrop-blur-sm mb-2">
+              <Sparkles className="mr-2 h-4 w-4" />
+              ميزات الإدارة المتقدمة
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {isSubAdmin ? "لوحة المشرف المساعد" : "لوحة الإدارة الشاملة"}
+            </h1>
+            <p className="text-white/80 max-w-xl">
+              {isSubAdmin
+                ? "تتيح لك هذه اللوحة إدارة الصلاحيات المخصصة لك ومتابعة نشاط النظام ضمن النطاق المسموح."
+                : "راقب الإحصائيات في الوقت الفعلي، وتتبع المبيعات والتقارير، وأدِر المستخدمين بكفاءة عالية للحصول على رؤى غير محدودة."}
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            className="whitespace-nowrap bg-white text-indigo-600 hover:bg-white/90"
+          >
+            ترقية للنظام الاحترافي
+          </Button>
+        </div>
+        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
+        <div className="absolute left-0 bottom-0 -ml-16 -mb-16 h-48 w-48 rounded-full bg-white/10 blur-2xl"></div>
       </div>
 
+      {/* Overview Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-xl font-bold tracking-tight">نظرة عامة</h2>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-card text-xs text-muted-foreground h-8 border-border/40"
+          >
+            <Calendar className="w-3.5 h-3.5 ml-2" />
+            آخر 30 يوماً
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-card text-xs text-muted-foreground h-8 border-border/40"
+          >
+            <Download className="w-3.5 h-3.5 ml-2" />
+            تصدير
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
       <StatsCards />
 
-      {/* Main Layout: Horizontal Tabs */}
-      <Tabs defaultValue={defaultTab} className="flex flex-col gap-6 w-full items-start">
-        <div className="w-full border-b border-border/40">
-          <TabsList className="flex flex-row h-auto w-full justify-start bg-transparent p-0 gap-6 overflow-x-auto shrink-0 pb-px">
-            {showReports && (
-              <TabsTrigger
-                value="reports"
-                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
-              >
-                <Flag className="w-4 h-4 ml-2" /> البلاغات
-              </TabsTrigger>
-            )}
-            <TabsTrigger
-              value="users"
-              className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
+      {/* Charts */}
+      <DashboardCharts />
+
+      {/* Main Layout: Horizontal Tabs (styled like table filters) */}
+      <div className="pt-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold tracking-tight">إدارة النظام</h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-card text-xs text-muted-foreground h-8 border-border/40"
             >
-              <Users className="w-4 h-4 ml-2" /> المستخدمون
-            </TabsTrigger>
-            {showLog && (
-              <TabsTrigger
-                value="log"
-                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
-              >
-                <ScrollText className="w-4 h-4 ml-2" /> سجل النشاط
-              </TabsTrigger>
-            )}
-            {showTeacher && (
-              <TabsTrigger
-                value="teacher"
-                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
-              >
-                <UserPlus className="w-4 h-4 ml-2" /> إضافة أستاذ
-              </TabsTrigger>
-            )}
-            {showWords && (
-              <TabsTrigger
-                value="words"
-                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
-              >
-                <Shield className="w-4 h-4 ml-2" /> الكلمات المحظورة
-              </TabsTrigger>
-            )}
-            {showSubAdmins && (
-              <TabsTrigger
-                value="subadmins"
-                className="relative rounded-none border-b-2 border-transparent bg-transparent px-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:shadow-none transition-colors"
-              >
-                <Shield className="w-4 h-4 ml-2" /> حسابات المشرف المساعد
-              </TabsTrigger>
-            )}
-          </TabsList>
+              <Calendar className="w-3.5 h-3.5 ml-2" />
+              آخر 30 يوماً
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-card text-xs text-muted-foreground h-8 border-border/40"
+            >
+              <Download className="w-3.5 h-3.5 ml-2" />
+              تصدير
+            </Button>
+          </div>
         </div>
 
-        <div className="flex-1 w-full min-w-0">
-          {showReports && (
-            <TabsContent
-              value="reports"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
-            >
-              <ReportsTab />
+        <Tabs defaultValue={defaultTab} className="flex flex-col gap-4 w-full items-start">
+          <div className="w-full border-b border-border/40">
+            <TabsList className="flex flex-row h-auto w-full justify-start bg-transparent p-0 gap-8 overflow-x-auto shrink-0 pb-px">
+              {showReports && (
+                <TabsTrigger
+                  value="reports"
+                  className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors"
+                >
+                  البلاغات
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="users"
+                className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors"
+              >
+                المستخدمون
+              </TabsTrigger>
+              {showLog && (
+                <TabsTrigger
+                  value="log"
+                  className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors"
+                >
+                  سجل النشاط
+                </TabsTrigger>
+              )}
+              {showTeacher && (
+                <TabsTrigger
+                  value="teacher"
+                  className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors"
+                >
+                  الأساتذة
+                </TabsTrigger>
+              )}
+              {showWords && (
+                <TabsTrigger
+                  value="words"
+                  className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors"
+                >
+                  الكلمات المحظورة
+                </TabsTrigger>
+              )}
+              {showSubAdmins && (
+                <TabsTrigger
+                  value="subadmins"
+                  className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors"
+                >
+                  حسابات المساعدين
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
+
+          <div className="flex-1 w-full min-w-0">
+            {showReports && (
+              <TabsContent value="reports" className="mt-0 focus-visible:outline-none">
+                <ReportsTab />
+              </TabsContent>
+            )}
+            <TabsContent value="users" className="mt-0 focus-visible:outline-none">
+              <UsersTable />
             </TabsContent>
-          )}
-          <TabsContent
-            value="users"
-            className="mt-0 focus-visible:outline-none focus-visible:ring-0"
-          >
-            <UsersTable />
-          </TabsContent>
-          {showLog && (
-            <TabsContent
-              value="log"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
-            >
-              <ActivityLogTab />
-            </TabsContent>
-          )}
-          {showTeacher && (
-            <TabsContent
-              value="teacher"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
-            >
-              <AddTeacherCard />
-            </TabsContent>
-          )}
-          {showWords && (
-            <TabsContent
-              value="words"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
-            >
-              <BannedWordsTab />
-            </TabsContent>
-          )}
-          {showSubAdmins && (
-            <TabsContent
-              value="subadmins"
-              className="mt-0 focus-visible:outline-none focus-visible:ring-0"
-            >
-              <SubAdminsTab />
-            </TabsContent>
-          )}
-        </div>
-      </Tabs>
+            {showLog && (
+              <TabsContent value="log" className="mt-0 focus-visible:outline-none">
+                <ActivityLogTab />
+              </TabsContent>
+            )}
+            {showTeacher && (
+              <TabsContent value="teacher" className="mt-0 focus-visible:outline-none">
+                <AddTeacherCard />
+              </TabsContent>
+            )}
+            {showWords && (
+              <TabsContent value="words" className="mt-0 focus-visible:outline-none">
+                <BannedWordsTab />
+              </TabsContent>
+            )}
+            {showSubAdmins && (
+              <TabsContent value="subadmins" className="mt-0 focus-visible:outline-none">
+                <SubAdminsTab />
+              </TabsContent>
+            )}
+          </div>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
+
+function DashboardCharts() {
+  const barData = [
+    { name: "01", value: 40 },
+    { name: "02", value: 70 },
+    { name: "03", value: 45 },
+    { name: "04", value: 90 },
+    { name: "05", value: 65 },
+    { name: "06", value: 85 },
+    { name: "07", value: 110 },
+  ];
+
+  const areaData = [
+    { name: "1", value: 2000 },
+    { name: "2", value: 4000 },
+    { name: "3", value: 3000 },
+    { name: "4", value: 8000 },
+    { name: "5", value: 5000 },
+    { name: "6", value: 12000 },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <Card className="border border-border/40 shadow-sm rounded-xl bg-card overflow-hidden">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">إجمالي النشاط</p>
+              <h3 className="text-2xl font-bold tracking-tight mt-1">1,525</h3>
+              <p className="text-xs text-emerald-500 mt-1 font-medium">+20.3% منذ الشهر الماضي</p>
+            </div>
+            <Button variant="outline" size="sm" className="h-8 text-xs bg-muted/30">
+              <Calendar className="w-3.5 h-3.5 ml-1.5" /> آخر 30 يوماً
+            </Button>
+          </div>
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#e5e7eb"
+                  opacity={0.5}
+                />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: "#9ca3af" }}
+                  dy={10}
+                />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#9ca3af" }} />
+                <Tooltip
+                  cursor={{ fill: "transparent" }}
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "none",
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                  }}
+                />
+                <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={32} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border/40 shadow-sm rounded-xl bg-card overflow-hidden">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">التفاعل الكلي</p>
+              <h3 className="text-2xl font-bold tracking-tight mt-1">20,462.89</h3>
+              <p className="text-xs text-emerald-500 mt-1 font-medium">+20.1% منذ الشهر الماضي</p>
+            </div>
+          </div>
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={areaData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "none",
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#6366f1"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorValue)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -323,46 +496,61 @@ function StatsCards() {
       icon: Users,
       label: "إجمالي المستخدمين",
       value: data?.users ?? 0,
-      color: "text-blue-600",
-      bg: "bg-blue-500/10",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      trend: "+41% منذ الشهر الماضي",
     },
     {
       icon: FileText,
-      label: "المنشورات",
+      label: "إجمالي المنشورات",
       value: data?.posts ?? 0,
-      color: "text-indigo-600",
-      bg: "bg-indigo-500/10",
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      trend: "+41% منذ الشهر الماضي",
     },
     {
       icon: Flag,
-      label: "بلاغات قيد المراجعة",
+      label: "البلاغات المعلقة",
       value: data?.reports ?? 0,
-      color: "text-rose-600",
-      bg: "bg-rose-500/10",
+      color: "text-cyan-600",
+      bg: "bg-cyan-50",
+      trend: "-50% منذ الشهر الماضي",
+      trendDown: true,
     },
     {
       icon: MessageSquare,
-      label: "الرسائل المتبادلة",
+      label: "إجمالي الرسائل",
       value: data?.msgs ?? 0,
       color: "text-emerald-600",
-      bg: "bg-emerald-500/10",
+      bg: "bg-emerald-50",
+      trend: "+41% منذ الشهر الماضي",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {items.map((it) => (
-        <Card key={it.label} className="shadow-none border-border/40 bg-card">
-          <CardContent className="p-5 flex flex-col gap-4">
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-sm font-medium text-muted-foreground">{it.label}</span>
+        <Card
+          key={it.label}
+          className="border border-border/40 shadow-sm rounded-xl bg-card hover:shadow-md transition-shadow duration-200"
+        >
+          <CardContent className="p-5 flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
               <div
-                className={`w-8 h-8 rounded-md flex items-center justify-center ${it.bg} ${it.color}`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center ${it.bg} ${it.color}`}
               >
                 <it.icon className="w-4 h-4" />
               </div>
+              <span className="text-sm font-medium text-muted-foreground">{it.label}</span>
             </div>
-            <div className="text-3xl font-bold tracking-tight text-foreground">{it.value}</div>
+            <div className="text-3xl font-bold tracking-tight text-foreground">
+              {it.value.toLocaleString()}
+            </div>
+            <div
+              className={`text-xs mt-2 font-medium ${it.trendDown ? "text-rose-500" : "text-emerald-500"}`}
+            >
+              {it.trend}
+            </div>
           </CardContent>
         </Card>
       ))}
@@ -1002,14 +1190,14 @@ function UsersTable() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="relative w-full max-w-sm">
+        <div className="relative w-full max-w-md">
           <Input
-            placeholder="بحث بالاسم أو الرقم الجامعي..."
-            className="pr-10 bg-card border-border/40 shadow-none focus-visible:ring-1"
+            placeholder="Search items, categories, or more..."
+            className="pr-10 bg-muted/30 border-none shadow-none rounded-full h-10 focus-visible:ring-1 text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <Users className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2" />
         </div>
       </div>
 
@@ -1018,15 +1206,13 @@ function UsersTable() {
           <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
         </div>
       ) : (
-        <Card className="border-border/40 shadow-none overflow-hidden bg-card">
+        <Card className="border border-border/40 shadow-sm rounded-xl overflow-hidden bg-card">
           {filtered.length > 0 && (
-            <div className="hidden sm:flex items-center justify-between p-4 bg-muted/30 border-b border-border/40 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <div className="flex-1">المستخدم</div>
-              <div className="w-[300px] flex justify-end gap-12 pr-8">
-                <span>الحالة والتخصص</span>
-                <span>النقاط</span>
-                <span className="w-8"></span>
-              </div>
+            <div className="hidden sm:grid grid-cols-12 items-center p-4 bg-transparent border-b border-border/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="col-span-5">اسم المستخدم (Client Name)</div>
+              <div className="col-span-3">تاريخ الانضمام (Date)</div>
+              <div className="col-span-2">التخصص (Category)</div>
+              <div className="col-span-2 text-left pr-4">الحالة (Status)</div>
             </div>
           )}
           <div className="divide-y divide-border/40">
