@@ -10,6 +10,11 @@ import {
   clearAllNotifications,
   formatArabicTimeAgo,
 } from "@/lib/notificationsStore";
+import {
+  requestNotificationPermission,
+  getNotificationPermissionState,
+  sendNativeNotification,
+} from "@/lib/pushNotifications";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +44,21 @@ export function NotificationsPopover() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [open, setOpen] = useState(false);
   const [filterTab, setFilterTab] = useState<"all" | "unread">("all");
+  const [permState, setPermState] = useState<string>("default");
+
+  useEffect(() => {
+    setPermState(getNotificationPermissionState());
+  }, []);
+
+  const handleEnablePush = async () => {
+    const granted = await requestNotificationPermission();
+    setPermState(granted ? "granted" : "denied");
+    if (granted) {
+      toast.success("تم تفعيل الإشعارات الفورية على جهازك 🔔");
+    } else {
+      toast.error("لم يتم منح الإذن. يرجى تفعيل الإشعارات من إعدادات المتصفح.");
+    }
+  };
 
   const loadNotifications = useCallback(async () => {
     if (!userId) return;
@@ -226,6 +246,27 @@ export function NotificationsPopover() {
             )}
           </div>
         </div>
+
+        {/* Enable Native Device Push Banner */}
+        {permState !== "granted" && permState !== "unsupported" && (
+          <div className="p-2.5 mx-3 mt-2 rounded-2xl bg-gradient-to-r from-primary/15 to-purple-500/15 border border-primary/25 flex items-center justify-between gap-2">
+            <div className="text-[11px] font-medium text-foreground space-y-0.5">
+              <p className="font-bold text-primary flex items-center gap-1">
+                <Bell className="w-3.5 h-3.5 animate-bounce" /> تفعيل إشعارات الهاتف الفورية
+              </p>
+              <p className="text-muted-foreground leading-snug">
+                لتصلك تنبيهات الملخصات والرسائل على جهازك مباشرة
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleEnablePush}
+              className="h-7 px-2.5 text-[11px] font-bold rounded-xl bg-primary hover:bg-primary/90 shrink-0 shadow-sm"
+            >
+              تفعيل الآن
+            </Button>
+          </div>
+        )}
 
         {/* Filter Tabs */}
         {notifications.length > 0 && (

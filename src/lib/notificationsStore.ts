@@ -1,5 +1,6 @@
 import { NotificationItem, NotificationType } from "@/types/notification";
 import { supabase } from "@/integrations/supabase/client";
+import { sendNativeNotification } from "@/lib/pushNotifications";
 
 const NOTIFICATIONS_STORAGE_KEY = "academic_community_notifications_v2";
 
@@ -89,6 +90,12 @@ export function createNotification(params: {
   if (!isDuplicate) {
     const updated = [newNotif, ...existing].slice(0, 100); // keep top 100
     saveNotifications(recipientId, updated);
+
+    // Trigger native browser device push notification
+    sendNativeNotification(title, {
+      body,
+      url: link || "/",
+    });
   }
 }
 

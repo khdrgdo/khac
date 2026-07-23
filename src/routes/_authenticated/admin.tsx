@@ -23,7 +23,8 @@ import {
   CartesianGrid,
 } from "recharts";
 
-import { Download, Sparkles, UserCheck } from "lucide-react";
+import { Download, Sparkles, UserCheck, Bell } from "lucide-react";
+import { BroadcastNotificationTab } from "@/components/BroadcastNotificationTab";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -343,6 +344,13 @@ function AdminPage() {
                 <span>الكارد المثبت والأحداث</span>
               </TabsTrigger>
               <TabsTrigger
+                value="broadcast_notif"
+                className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors flex items-center gap-1.5"
+              >
+                <Bell className="w-3.5 h-3.5 text-primary" />
+                <span>إرسال إشعار للطلاب</span>
+              </TabsTrigger>
+              <TabsTrigger
                 value="name_requests"
                 className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors flex items-center gap-1.5"
               >
@@ -383,6 +391,9 @@ function AdminPage() {
             )}
             <TabsContent value="pinned_card" className="mt-0 focus-visible:outline-none">
               <PinnedCardAdminTab />
+            </TabsContent>
+            <TabsContent value="broadcast_notif" className="mt-0 focus-visible:outline-none">
+              <BroadcastNotificationTab />
             </TabsContent>
             <TabsContent value="name_requests" className="mt-0 focus-visible:outline-none">
               <NameRequestsTab />
