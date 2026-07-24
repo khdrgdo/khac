@@ -1,5 +1,5 @@
 // Enhanced PWA & Push Service Worker for NEXUS
-const CACHE_NAME = "nexus-pwa-v2";
+const CACHE_NAME = "nexus-pwa-v3";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -10,10 +10,19 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match(event.request) || caches.match("/");
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request).catch(() => {
       return caches.match(event.request);
-    }),
+    })
   );
 });
 
