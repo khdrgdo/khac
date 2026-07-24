@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -1469,12 +1469,10 @@ export function DiscussionsTab({
               <HelpCircle className="w-5 h-5 text-primary" />
               <span>طرح سؤال أو استفسار حول المقرر</span>
             </div>
-            <Textarea
-              value={questionContent}
-              onChange={(e) => setQuestionContent(e.target.value)}
-              rows={3}
+            <RichTextEditor
+              content={questionContent}
+              onChange={setQuestionContent}
               placeholder="اكتب سؤالك هنا ليستطيع الطلاب وأستاذ المقرر الإجابة عليه..."
-              className="resize-none rounded-xl text-xs"
             />
             <div className="flex justify-end">
               <Button

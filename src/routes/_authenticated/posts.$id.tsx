@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, isSuspended } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ArrowRight, Loader2, Send, Trash2, CheckCircle2, Pencil } from "lucide-react";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
@@ -302,12 +302,10 @@ function PostDetailPage() {
               </div>
             )}
             <div className="flex gap-2">
-              <Textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                rows={2}
+              <RichTextEditor
+                content={text}
+                onChange={setText}
                 placeholder="اكتب تعليقًا..."
-                className="resize-none"
               />
               <Button
                 onClick={() => commentMut.mutate()}

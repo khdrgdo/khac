@@ -1,12 +1,17 @@
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, ReactRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import LinkExtension from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
+import Mention from "@tiptap/extension-mention";
 import { Markdown } from "tiptap-markdown";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Bold, Italic, Code, Link as LinkIcon, List, Quote, Heading } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import tippy from "tippy.js";
+import { MentionList } from "./MentionList";
+import "tippy.js/dist/tippy.css";
 
 export function RichTextEditor({
   content,
@@ -28,6 +33,57 @@ export function RichTextEditor({
       }),
       Placeholder.configure({
         placeholder,
+      }),
+      Mention.configure({
+        HTMLAttributes: {
+          class: "bg-primary/10 text-primary px-1 rounded-md font-semibold",
+        },
+        suggestion: {
+          items: async ({ query }) => {
+            const { data, error } = await supabase.rpc("search_public_profiles", { _q: query });
+            if (error || !data) return [];
+            return data;
+          },
+          render: () => {
+            let component: any;
+            let popup: any;
+
+            return {
+              onStart: (props) => {
+                component = new ReactRenderer(MentionList, {
+                  props,
+                  editor: props.editor,
+                });
+                popup = tippy("body", {
+                  getReferenceClientRect: props.clientRect,
+                  appendTo: () => document.body,
+                  content: component.element,
+                  showOnCreate: true,
+                  interactive: true,
+                  trigger: "manual",
+                  placement: "bottom-start",
+                });
+              },
+              onUpdate(props) {
+                component.updateProps(props);
+                popup[0].setProps({
+                  getReferenceClientRect: props.clientRect,
+                });
+              },
+              onKeyDown(props) {
+                if (props.event.key === "Escape") {
+                  popup[0].hide();
+                  return true;
+                }
+                return component.ref?.onKeyDown(props);
+              },
+              onExit() {
+                popup[0].destroy();
+                component.destroy();
+              },
+            };
+          },
+        },
       }),
       Markdown,
     ],
