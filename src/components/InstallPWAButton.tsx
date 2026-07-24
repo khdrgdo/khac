@@ -47,8 +47,14 @@ export function InstallPWAButton({ variant = "menu", className }: InstallPWAButt
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
-
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    // Check if it was already fired and stored globally
+    if ((window as unknown as { deferredPrompt: BeforeInstallPromptEvent }).deferredPrompt) {
+      setDeferredPrompt(
+        (window as unknown as { deferredPrompt: BeforeInstallPromptEvent }).deferredPrompt,
+      );
+    }
 
     // Register Service Worker
     if ("serviceWorker" in navigator) {

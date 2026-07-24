@@ -127,7 +127,8 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
     participants: config.participants,
     updated_at: new Date().toISOString(),
   };
-  const { error } = await supabase.from("pinned_cards").upsert(row);
+  // Use update instead of upsert so that regular users can vote without INSERT permissions
+  const { error } = await supabase.from("pinned_cards").update(row).eq("id", config.id);
   if (error) {
     console.error("DB update error:", error);
     // Fallback to localStorage if DB fails (e.g. table not created yet)
