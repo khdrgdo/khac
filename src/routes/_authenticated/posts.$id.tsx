@@ -103,7 +103,7 @@ function PostDetailPage() {
 
   useEffect(() => {
     const ch = supabase
-      .channel(`post-${id}-comments`)
+      .channel(`post-${id}-comments_${Math.random().toString(36).substring(7)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "comments", filter: `post_id=eq.${id}` },

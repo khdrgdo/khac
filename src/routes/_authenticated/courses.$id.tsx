@@ -94,7 +94,7 @@ function CourseDetailPage() {
   // Real-time synchronization inside course detail
   useEffect(() => {
     const channel = supabase
-      .channel(`course-detail-${id}`)
+      .channel(`course-detail-${id}_${Math.random().toString(36).substring(7)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "course_links" }, () => {
         qc.invalidateQueries({ queryKey: ["course_links", id] });
         qc.invalidateQueries({ queryKey: ["course_files", id] });

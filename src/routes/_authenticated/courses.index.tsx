@@ -99,7 +99,7 @@ export function CoursesPage() {
   // Real-time synchronization for courses and material updates
   useEffect(() => {
     const channel = supabase
-      .channel("courses-live-sync")
+      .channel(`courses-live-sync_${Math.random().toString(36).substring(7)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "course_links" }, () => {
         qc.invalidateQueries({ queryKey: ["courses"] });
         qc.invalidateQueries({ queryKey: ["latest_materials_feed"] });

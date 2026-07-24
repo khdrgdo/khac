@@ -134,6 +134,8 @@ export function BroadcastNotificationTab() {
         },
       });
 
+      supabase.removeChannel(broadcastChannel);
+
       // 3. Save notification for each target user in local storage / real-time feed
       targetUserIds.forEach((uid) => {
         createNotification({

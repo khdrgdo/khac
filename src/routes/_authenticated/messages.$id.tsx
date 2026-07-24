@@ -129,7 +129,7 @@ function ChatPage() {
 
   useEffect(() => {
     const ch = supabase
-      .channel(`conv-${id}`)
+      .channel(`conv-${id}_${Math.random().toString(36).substring(7)}`)
       .on(
         "postgres_changes",
         {
