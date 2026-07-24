@@ -169,17 +169,22 @@ export function ProfileCardFrame({
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  const defaultTheme = getDefaultThemeForPoints(profile.points ?? 0);
 
   // Storage key for user's selected frame theme
-  const themeStorageKey = `profile_card_theme_${profile.id}`;
+  const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>((profile as any).theme || defaultTheme);
 
-  const defaultTheme = getDefaultThemeForPoints(profile.points ?? 0);
-  const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(() => {
-    const saved = localStorage.getItem(themeStorageKey) as CardThemeId | null;
-    if (saved && CARD_THEMES.some((t) => t.id === saved)) {
-      return saved;
+  const saveThemeMutation = useMutation({
+    mutationFn: async (themeId: CardThemeId) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ theme: themeId })
+        .eq("id", profile.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile", profile.id] });
     }
-    return defaultTheme;
   });
 
   const [themeDialogOpen, setThemeDialogOpen] = useState(false);
@@ -290,7 +295,7 @@ export function ProfileCardFrame({
       return;
     }
     setSelectedThemeId(theme.id);
-    localStorage.setItem(themeStorageKey, theme.id);
+    saveThemeMutation.mutate(theme.id);
     toast.success(`تم اختيار مظهر "${theme.name}" بنجاح! ✨`);
     setThemeDialogOpen(false);
   };

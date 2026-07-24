@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
 export const renderMarkdownContent = (content: string, className?: string) => {
@@ -9,6 +10,7 @@ export const renderMarkdownContent = (content: string, className?: string) => {
   return (
     <div className={cn("markdown-body", className)}>
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children, ...props }) => {
             if (href?.startsWith("/profile/")) {

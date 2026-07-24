@@ -1,4 +1,4 @@
-import DOMPurify from "dompurify";
+import { renderMarkdownContent } from "@/lib/markdown";
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -281,10 +281,9 @@ function PostDetailPage() {
               )}
             </div>
           )}
-          <p 
-            className="mt-3 whitespace-pre-wrap text-[15px]"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
-          />
+          <div className="mt-3 text-[15px]">
+            {renderMarkdownContent(post.content, "whitespace-pre-wrap")}
+          </div>
         </CardContent>
       </Card>
 
@@ -544,10 +543,9 @@ function CommentItem({
                 </div>
               ) : (
                 <>
-                  <p 
-                    className="text-sm mt-0.5 whitespace-pre-wrap"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(c.content) }}
-                  />
+                  <div className="text-sm mt-0.5">
+                    {renderMarkdownContent(c.content, "whitespace-pre-wrap")}
+                  </div>
                   <CommentReactionsBar commentId={c.id} />
                 </>
               )}
@@ -721,10 +719,9 @@ function ChildCommentItem({
               </div>
             ) : (
               <>
-                <p 
-                  className="text-sm mt-0.5 whitespace-pre-wrap"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(ch.content) }}
-                />
+                <div className="text-sm mt-0.5">
+                  {renderMarkdownContent(ch.content, "whitespace-pre-wrap")}
+                </div>
                 <CommentReactionsBar commentId={ch.id} />
               </>
             )}

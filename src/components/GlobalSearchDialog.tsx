@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import DOMPurify from "dompurify";
+import { renderMarkdownContent } from "@/lib/markdown";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -564,9 +564,9 @@ export function GlobalSearchDialog() {
                             </div>
                           </div>
 
-                          <p className="text-xs text-foreground line-clamp-3 whitespace-pre-line leading-relaxed">
-                            {post.content}
-                          </p>
+                          <div className="text-xs text-foreground line-clamp-3 leading-relaxed">
+                            {renderMarkdownContent(post.content)}
+                          </div>
 
                           <div className="flex items-center justify-between pt-1 text-[11px] text-muted-foreground border-t border-border/40">
                             <div className="flex items-center gap-3">
@@ -652,10 +652,9 @@ export function GlobalSearchDialog() {
                               </span>
                             </div>
 
-                            <p 
-                              className="text-xs text-foreground bg-muted/40 p-2.5 rounded-lg border border-border/40 whitespace-pre-line leading-relaxed"
-                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(c.content) }}
-                            />
+                            <div className="text-xs text-foreground bg-muted/40 p-2.5 rounded-lg border border-border/40">
+                              {renderMarkdownContent(c.content)}
+                            </div>
 
                             {c.postSnippet && (
                               <div className="flex items-center justify-between pt-1 text-[11px] text-muted-foreground">

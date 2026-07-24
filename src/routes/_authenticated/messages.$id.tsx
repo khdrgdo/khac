@@ -1,6 +1,6 @@
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import DOMPurify from "dompurify";
+import { renderMarkdownContent } from "@/lib/markdown";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, isSuspended } from "@/hooks/useAuth";
@@ -358,10 +358,9 @@ function ChatPage() {
                       {sender?.full_name}
                     </div>
                   )}
-                  <p 
-                    className="whitespace-pre-wrap break-words leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(m.content) }}
-                  />
+                  <div className="whitespace-pre-wrap break-words leading-relaxed">
+                    {renderMarkdownContent(m.content)}
+                  </div>
                   <div
                     className={cn(
                       "text-[9px] mt-1 text-end",

@@ -3,12 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 export async function isUnivNumberHidden(userId: string | undefined | null): Promise<boolean> {
   if (!userId) return false;
 
-  if (typeof window !== "undefined") {
-    const localVal = localStorage.getItem("unihub_univ_hidden_" + userId);
-    if (localVal === "true") return true;
-    if (localVal === "false") return false;
-  }
-
   try {
     const { data } = await supabase
       .from("profiles")
@@ -18,9 +12,6 @@ export async function isUnivNumberHidden(userId: string | undefined | null): Pro
 
     const isHiddenInDb =
       data?.hide_university_number || data?.university_number?.startsWith("HIDDEN_") || false;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("unihub_univ_hidden_" + userId, isHiddenInDb ? "true" : "false");
-    }
     return isHiddenInDb;
   } catch {
     return false;
@@ -29,10 +20,6 @@ export async function isUnivNumberHidden(userId: string | undefined | null): Pro
 
 export async function setUnivNumberHidden(userId: string, hidden: boolean): Promise<void> {
   if (!userId) return;
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem("unihub_univ_hidden_" + userId, hidden ? "true" : "false");
-  }
 
   try {
     const { data } = await supabase
@@ -75,15 +62,6 @@ export function formatUnivNumber(
 
   const cleanNumber = universityNumber.replace("HIDDEN_", "");
   let isHidden = universityNumber.startsWith("HIDDEN_") || forceHidden;
-
-  if (userId && typeof window !== "undefined") {
-    const localVal = localStorage.getItem("unihub_univ_hidden_" + userId);
-    if (localVal === "true") {
-      isHidden = true;
-    } else if (localVal === "false" && !universityNumber.startsWith("HIDDEN_")) {
-      isHidden = false;
-    }
-  }
 
   if (isHidden) {
     if (isAdmin) {

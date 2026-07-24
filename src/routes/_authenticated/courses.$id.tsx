@@ -1,4 +1,6 @@
 import { renderMarkdownContent } from "@/lib/markdown";
+import DOMPurify from "dompurify";
+import parse, { DOMNode, Element } from 'html-react-parser';
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1732,9 +1734,19 @@ function QuestionCard({
                         )}
                       </div>
 
-                      <div className="text-xs text-foreground/90 whitespace-pre-wrap">
-                    {renderMarkdownContent(c.content)}
-                  </div>
+                                            <div className="text-xs text-foreground/90 whitespace-pre-wrap">
+                        {parse(DOMPurify.sanitize(c.content), {
+                          replace: (domNode) => {
+                            if (domNode instanceof Element && domNode.attribs['data-type'] === 'mention') {
+                              return (
+                                <span className="bg-primary/10 text-primary px-1 rounded-md font-semibold">
+                                  {domNode.children.map((child: any) => child.data)}
+                                </span>
+                              );
+                            }
+                          }
+                        })}
+                      </div>
                     </div>
                   );
                 })}

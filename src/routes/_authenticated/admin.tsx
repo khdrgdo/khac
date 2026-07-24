@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import DOMPurify from "dompurify";
+import { renderMarkdownContent } from "@/lib/markdown";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
@@ -803,10 +803,9 @@ function ReportsTab() {
                     <div className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5" /> محتوى المنشور
                     </div>
-                    <p 
-                      className="line-clamp-3 whitespace-pre-wrap text-foreground/90"
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.post.content) }}
-                    />
+                    <div className="line-clamp-3 text-foreground/90">
+                      {renderMarkdownContent(r.post.content)}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-sm bg-muted/30 border border-border/40 rounded-lg p-3 flex items-center text-muted-foreground italic">
@@ -1870,10 +1869,9 @@ function UserDetailsDialog({
                   <div className="space-y-1 max-h-40 overflow-auto">
                     {(data?.recentPosts ?? []).map((p) => (
                       <div key={p.id} className="text-xs bg-muted/40 rounded p-2">
-                        <div 
-                          className="line-clamp-2 whitespace-pre-wrap"
-                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(p.content) }}
-                        />
+                        <div className="line-clamp-2">
+                          {renderMarkdownContent(p.content)}
+                        </div>
                         <div className="text-[10px] text-muted-foreground mt-0.5">
                           {format(new Date(p.created_at), "yyyy/MM/dd HH:mm")}
                         </div>
