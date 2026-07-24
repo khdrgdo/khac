@@ -1348,9 +1348,10 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
                   )}
                 </div>
 
-                <p className="whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed">
-                  {u.content}
-                </p>
+                <p 
+                  className="whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(u.content) }}
+                />
               </CardContent>
             </Card>
           ))}

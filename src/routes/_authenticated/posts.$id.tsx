@@ -281,7 +281,10 @@ function PostDetailPage() {
               )}
             </div>
           )}
-          <p className="mt-3 whitespace-pre-wrap text-[15px]">{post.content}</p>
+          <p 
+            className="mt-3 whitespace-pre-wrap text-[15px]"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
+          />
         </CardContent>
       </Card>
 
