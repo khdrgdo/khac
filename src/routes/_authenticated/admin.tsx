@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -3192,8 +3191,9 @@ function NameRequestsTab() {
   });
 
   useEffect(() => {
-    window.addEventListener("name_change_requests_updated", refetch as any);
-    return () => window.removeEventListener("name_change_requests_updated", refetch as any);
+    window.addEventListener("name_change_requests_updated", refetch as EventListener);
+    return () =>
+      window.removeEventListener("name_change_requests_updated", refetch as EventListener);
   }, [refetch]);
 
   const handleApprove = async (req: NameChangeRequest) => {

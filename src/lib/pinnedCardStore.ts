@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -57,7 +56,7 @@ export const DEFAULT_PINNED_CARD: PinnedCardConfig = {
   updatedAt: new Date().toISOString(),
 };
 
-function mapRowToConfig(row: any): PinnedCardConfig {
+function mapRowToConfig(row: Record<string, unknown>): PinnedCardConfig {
   return {
     id: row.id,
     enabled: row.enabled ?? true,
@@ -111,7 +110,10 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
     participants: config.participants,
     updated_at: new Date().toISOString(),
   };
-  await (supabase as any).from("pinned_cards").upsert(row);
+  await (supabase as unknown as Record<string, unknown>)
+    .from("pinned_cards")
+    .update(row)
+    .eq("id", config.id);
 }
 
 export function usePinnedCard() {
@@ -123,13 +125,16 @@ export function usePinnedCard() {
       if (mounted) setConfig(c);
     });
 
-    const channel = (supabase as any)
+    const channel = (supabase as unknown as Record<string, unknown>)
       .channel("pinned_cards_changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "pinned_cards" },
         (payload) => {
-          if (payload.new && (payload.new as any).id === "pinned_featured_event_1") {
+          if (
+            payload.new &&
+            (payload.new as Record<string, unknown>).id === "pinned_featured_event_1"
+          ) {
             setConfig(mapRowToConfig(payload.new));
           }
         },

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   usePinnedCard,
   PinnedCardConfig,
@@ -40,6 +40,10 @@ export function PinnedCardAdminTab() {
 
   const [form, setForm] = useState<PinnedCardConfig>(config);
   const [newOptionText, setNewOptionText] = useState("");
+
+  useEffect(() => {
+    setForm(config);
+  }, [config]);
 
   const handleSave = () => {
     updateConfig(form);

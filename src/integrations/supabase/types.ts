@@ -814,9 +814,9 @@ export type PinnedCardDB = {
   action_button_url: string | null;
   target_year: number | null;
   target_major: string | null;
-  poll_options: any;
-  votes: any;
-  participants: any;
+  poll_options: unknown;
+  votes: unknown;
+  participants: unknown;
   created_at: string;
   updated_at: string;
 };

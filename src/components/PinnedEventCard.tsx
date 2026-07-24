@@ -425,8 +425,8 @@ export function PinnedEventCard({ isAdminPreview = false }: PinnedEventCardProps
                 </div>
               </div>
               <span className="text-xs text-white/80 font-medium">
-                <strong className="text-white font-bold">{participantCount + 12}</strong> طالب شارك
-                في هذا الحدث
+                <strong className="text-white font-bold">{participantCount}</strong> طالب شارك في
+                هذا الحدث
               </span>
             </div>
 

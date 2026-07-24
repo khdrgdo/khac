@@ -1,10 +1,9 @@
-// @ts-nocheck
 import { supabase } from "@/integrations/supabase/client";
 
 export async function isUnivNumberHidden(userId: string | undefined | null): Promise<boolean> {
   if (!userId) return false;
   try {
-    const { data } = await (supabase as any)
+    const { data } = await (supabase as unknown as Record<string, unknown>)
       .from("profiles")
       .select("hide_university_number")
       .eq("id", userId)
@@ -18,7 +17,7 @@ export async function isUnivNumberHidden(userId: string | undefined | null): Pro
 export async function setUnivNumberHidden(userId: string, hidden: boolean): Promise<void> {
   if (!userId) return;
   try {
-    await (supabase as any)
+    await (supabase as unknown as Record<string, unknown>)
       .from("profiles")
       .update({ hide_university_number: hidden })
       .eq("id", userId);
