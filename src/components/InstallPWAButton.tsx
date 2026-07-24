@@ -17,12 +17,12 @@ interface BeforeInstallPromptEvent extends Event {
 
 interface InstallPWAButtonProps {
   showBanner?: boolean;
-  variant?: "menu" | "button" | "header";
+  variant?: "menu" | "button" | "header" | "banner";
   className?: string;
 }
 
 export function InstallPWAButton({
-  variant = "menu",
+  variant = "banner",
   className,
   showBanner = false,
 }: InstallPWAButtonProps) {
@@ -118,7 +118,7 @@ export function InstallPWAButton({
           <Smartphone className="w-4 h-4 text-primary animate-pulse" />
           تثبيت التطبيق على هاتفك 📲
         </DropdownMenuItem>
-      ) : (
+      ) : variant === "banner" ? null : (
         <Button
           onClick={handleInstallClick}
           variant="default"

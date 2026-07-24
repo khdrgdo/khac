@@ -284,7 +284,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
       </div>
       {/* PWA Install Floating Notification Banner */}
-      <InstallPWAButton showBanner={true} />
+      <InstallPWAButton variant="banner" showBanner={true} />
     </div>
   );
 }
