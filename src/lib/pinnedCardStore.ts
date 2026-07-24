@@ -115,7 +115,7 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
     participants: config.participants,
     updated_at: new Date().toISOString(),
   };
-  await (supabase as unknown as Record<string, unknown>)
+  await supabase
     .from("pinned_cards")
     .update(row)
     .eq("id", config.id);
@@ -132,8 +132,8 @@ export function usePinnedCard() {
       console.warn("Unhandled error in usePinnedCard effect:", err);
     });
 
-    const channel = (supabase as unknown as Record<string, unknown>)
-      .channel("pinned_cards_changes")
+    const channel = supabase
+      .channel(`pinned_cards_changes_${Math.random().toString(36).substring(7)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "pinned_cards" },
