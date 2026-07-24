@@ -87,6 +87,16 @@ export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
       .eq("id", "pinned_featured_event_1")
       .single();
 
+    if (error) {
+      // Try to load from local storage if DB fails
+      const local = localStorage.getItem("unihub_pinned_featured_card_v1");
+      if (local) {
+        try {
+          return { ...DEFAULT_PINNED_CARD, ...JSON.parse(local) };
+        } catch (e) {}
+      }
+    }
+
     if (error || !data) return DEFAULT_PINNED_CARD;
     return mapRowToConfig(data);
   } catch (err) {
@@ -115,10 +125,15 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
     participants: config.participants,
     updated_at: new Date().toISOString(),
   };
-  await supabase
+  const { error } = await supabase
     .from("pinned_cards")
-    .update(row)
-    .eq("id", config.id);
+    .upsert(row);
+  if (error) {
+    console.error("DB update error:", error);
+    // Fallback to localStorage if DB fails (e.g. table not created yet)
+    localStorage.setItem("unihub_pinned_featured_card_v1", JSON.stringify(config));
+    window.dispatchEvent(new CustomEvent("pinnedCardUpdated", { detail: config }));
+  }
 }
 
 export function usePinnedCard() {
@@ -131,6 +146,23 @@ export function usePinnedCard() {
     }).catch((err) => {
       console.warn("Unhandled error in usePinnedCard effect:", err);
     });
+
+    const handleStorageUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<PinnedCardConfig>;
+      if (customEvent.detail) {
+        setConfig(customEvent.detail);
+      } else {
+        const local = localStorage.getItem("unihub_pinned_featured_card_v1");
+        if (local) {
+          try {
+            setConfig({ ...DEFAULT_PINNED_CARD, ...JSON.parse(local) });
+          } catch (e) {}
+        }
+      }
+    };
+
+    window.addEventListener("pinnedCardUpdated", handleStorageUpdate);
+    window.addEventListener("storage", handleStorageUpdate);
 
     const channel = supabase
       .channel(`pinned_cards_changes_${Math.random().toString(36).substring(7)}`)
@@ -151,6 +183,8 @@ export function usePinnedCard() {
     return () => {
       mounted = false;
       supabase.removeChannel(channel);
+      window.removeEventListener("pinnedCardUpdated", handleStorageUpdate);
+      window.removeEventListener("storage", handleStorageUpdate);
     };
   }, []);
 
