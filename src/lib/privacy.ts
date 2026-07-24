@@ -2,6 +2,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 export async function isUnivNumberHidden(userId: string | undefined | null): Promise<boolean> {
   if (!userId) return false;
+
+  if (typeof window !== "undefined") {
+    const localVal = localStorage.getItem("unihub_univ_hidden_" + userId);
+    if (localVal === "true") return true;
+    if (localVal === "false") return false;
+  }
+
   try {
     const { data } = await supabase
       .from("profiles")
@@ -9,7 +16,11 @@ export async function isUnivNumberHidden(userId: string | undefined | null): Pro
       .eq("id", userId)
       .single();
 
-    return data?.university_number?.startsWith("HIDDEN_") || false;
+    const isHiddenInDb = data?.university_number?.startsWith("HIDDEN_") || false;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("unihub_univ_hidden_" + userId, isHiddenInDb ? "true" : "false");
+    }
+    return isHiddenInDb;
   } catch {
     return false;
   }
@@ -17,6 +28,11 @@ export async function isUnivNumberHidden(userId: string | undefined | null): Pro
 
 export async function setUnivNumberHidden(userId: string, hidden: boolean): Promise<void> {
   if (!userId) return;
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("unihub_univ_hidden_" + userId, hidden ? "true" : "false");
+  }
+
   try {
     const { data } = await supabase
       .from("profiles")
@@ -24,23 +40,23 @@ export async function setUnivNumberHidden(userId: string, hidden: boolean): Prom
       .eq("id", userId)
       .single();
 
-    if (!data) return;
-
-    const current = data.university_number || "";
-    if (hidden && !current.startsWith("HIDDEN_")) {
+    if (data) {
+      const current = data.university_number || "";
+      const clean = current.replace("HIDDEN_", "");
+      const nextVal = hidden ? "HIDDEN_" + clean : clean;
       await supabase
         .from("profiles")
-        .update({ university_number: "HIDDEN_" + current })
-        .eq("id", userId);
-    } else if (!hidden && current.startsWith("HIDDEN_")) {
-      await supabase
-        .from("profiles")
-        .update({ university_number: current.replace("HIDDEN_", "") })
+        .update({ university_number: nextVal })
         .eq("id", userId);
     }
-    window.dispatchEvent(new Event("univ_privacy_changed"));
   } catch (err) {
     console.error(err);
+  } finally {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("univ_privacy_changed", { detail: { userId, hidden } }),
+      );
+    }
   }
 }
 
@@ -52,15 +68,24 @@ export function formatUnivNumber(
 ): string {
   if (!universityNumber) return "";
 
-  if (universityNumber.startsWith("HIDDEN_")) {
+  const cleanNumber = universityNumber.replace("HIDDEN_", "");
+  let isHidden = universityNumber.startsWith("HIDDEN_") || forceHidden;
+
+  if (userId && typeof window !== "undefined") {
+    const localVal = localStorage.getItem("unihub_univ_hidden_" + userId);
+    if (localVal === "true") {
+      isHidden = true;
+    } else if (localVal === "false" && !universityNumber.startsWith("HIDDEN_")) {
+      isHidden = false;
+    }
+  }
+
+  if (isHidden) {
     if (isAdmin) {
-      return universityNumber.replace("HIDDEN_", "") + " (مخفي)";
+      return cleanNumber + " (مخفي)";
     }
     return "••••••••••";
   }
 
-  if (forceHidden || universityNumber === "••••••••••") {
-    return "••••••••••";
-  }
-  return universityNumber;
+  return cleanNumber;
 }

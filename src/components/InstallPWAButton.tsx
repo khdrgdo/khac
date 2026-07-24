@@ -30,6 +30,7 @@ export function InstallPWAButton({
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
+  const [showGeneralModal, setShowGeneralModal] = useState(false);
   const [isBannerVisible, setIsBannerVisible] = useState(true);
 
   useEffect(() => {
@@ -88,10 +89,7 @@ export function InstallPWAButton({
     } else if (isIOS) {
       setShowIOSModal(true);
     } else {
-      // Fallback for browsers that don't support prompt directly
-      alert(
-        "لتثبيت التطبيق: افتح خيارات المتصفح واختر 'إضافة إلى الشاشة الرئيسية' أو 'تثبيت التطبيق'.",
-      );
+      setShowGeneralModal(true);
     }
   };
 
@@ -123,16 +121,16 @@ export function InstallPWAButton({
       ) : (
         <Button
           onClick={handleInstallClick}
-          variant="outline"
+          variant="default"
           size="sm"
-          className={`gap-1.5 rounded-xl text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 ${className}`}
+          className={`gap-1.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm ${className}`}
         >
-          <Download className="w-3.5 h-3.5" />
-          تثبيت التطبيق
+          <Download className="w-3.5 h-3.5 animate-bounce" />
+          <span>تثبيت التطبيق</span>
         </Button>
       )}
 
-      {showBanner && !isInstalled && isBannerVisible && (deferredPrompt || isIOS) && (
+      {showBanner && !isInstalled && isBannerVisible && (
         <div className="fixed bottom-20 left-4 right-4 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 md:bottom-6 md:left-auto md:right-6 md:w-96">
           <div className="bg-primary/95 backdrop-blur-xl border border-primary/20 p-4 rounded-3xl shadow-2xl flex items-center justify-between gap-4 dir-rtl">
             <div className="flex items-center gap-3">
@@ -197,6 +195,44 @@ export function InstallPWAButton({
                 <span>
                   اضغط <strong>إضافة (Add)</strong> في أعلى الزاوية، وسيظهر التطبيق على شاشة هاتفك
                   فوراً!
+                </span>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
+      {/* General Android/Chrome Instructions Dialog */}
+      <Dialog open={showGeneralModal} onOpenChange={setShowGeneralModal}>
+        <DialogContent className="max-w-sm rounded-3xl dir-rtl text-right">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <Smartphone className="w-5 h-5 text-primary" />
+              خطوات تثبيت تطبيق NEXUS
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground pt-2 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <span className="flex shrink-0 items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  1
+                </span>
+                <span>
+                  افتح قائمة المتصفح بالضغط على <strong>النقاط الثلاث (⋮)</strong> في أعلى زاوية المتصفح.
+                </span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="flex shrink-0 items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  2
+                </span>
+                <span>
+                  اختر خيار <strong>تثبيت التطبيق (Install App)</strong> أو <strong>الإضافة إلى الشاشة الرئيسية</strong>.
+                </span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="flex shrink-0 items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  3
+                </span>
+                <span>
+                  تأكيد التثبيت وسيعمل التطبيق مباشرة كأنه تطبيق هاتف أصل مع وصول سريع!
                 </span>
               </div>
             </DialogDescription>

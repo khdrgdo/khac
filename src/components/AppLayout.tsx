@@ -156,7 +156,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <GlobalSearchDialog />
             <NotificationsPopover />
             <ThemeToggle />
-            <InstallPWAButton variant="button" className="hidden lg:inline-flex" />
 
             <DropdownMenu>
               <DropdownMenuTrigger className="outline-none group">
@@ -284,6 +283,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </div>
+      {/* PWA Install Floating Notification Banner */}
+      <InstallPWAButton showBanner={true} />
     </div>
   );
 }

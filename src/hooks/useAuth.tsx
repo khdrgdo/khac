@@ -174,8 +174,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) setLoading(false);
       });
 
+    const handlePrivacyChange = () => {
+      if (sessionRef.current?.user?.id) {
+        loadExtras(sessionRef.current.user.id);
+      }
+    };
+    window.addEventListener("univ_privacy_changed", handlePrivacyChange);
+
     return () => {
       mounted = false;
+      window.removeEventListener("univ_privacy_changed", handlePrivacyChange);
       sub.subscription.unsubscribe();
     };
   }, [queryClient]);

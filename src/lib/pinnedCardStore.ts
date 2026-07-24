@@ -81,33 +81,84 @@ function mapRowToConfig(row: Record<string, unknown>): PinnedCardConfig {
 
 export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
   try {
+    let result = DEFAULT_PINNED_CARD;
     const { data, error } = await supabase
       .from("pinned_cards")
       .select("*")
       .eq("id", "pinned_featured_event_1")
       .single();
 
-    if (error) {
-      // Try to load from local storage if DB fails
-      const local = localStorage.getItem("unihub_pinned_featured_card_v1");
-      if (local) {
-        try {
-          return { ...DEFAULT_PINNED_CARD, ...JSON.parse(local) };
-        } catch (e) {
-          /* ignore error */
-        }
+    if (!error && data) {
+      result = mapRowToConfig(data);
+    }
+
+    // Always merge with local storage backup to ensure votes/participants are never lost
+    const localStr = localStorage.getItem("unihub_pinned_featured_card_v1");
+    let localConfig: Partial<PinnedCardConfig> = {};
+    if (localStr) {
+      try {
+        localConfig = JSON.parse(localStr);
+      } catch (e) {
+        /* ignore */
       }
     }
 
-    if (error || !data) return DEFAULT_PINNED_CARD;
-    return mapRowToConfig(data);
+    const localVotesStr = localStorage.getItem("unihub_poll_votes_v1");
+    let localVotes: Record<string, string> = {};
+    if (localVotesStr) {
+      try {
+        localVotes = JSON.parse(localVotesStr);
+      } catch (e) {
+        /* ignore */
+      }
+    }
+
+    const mergedVotes = {
+      ...(result.votes || {}),
+      ...(localConfig.votes || {}),
+      ...localVotes,
+    };
+
+    const mergedParticipants = Array.from(
+      new Set([
+        ...(result.participants || []),
+        ...(localConfig.participants || []),
+      ]),
+    );
+
+    return {
+      ...result,
+      ...(localConfig.enabled !== undefined ? { enabled: localConfig.enabled } : {}),
+      votes: mergedVotes,
+      participants: mergedParticipants,
+    };
   } catch (err) {
     console.warn("Failed to fetch pinned card:", err);
+    const local = localStorage.getItem("unihub_pinned_featured_card_v1");
+    if (local) {
+      try {
+        return { ...DEFAULT_PINNED_CARD, ...JSON.parse(local) };
+      } catch (e) {
+        /* ignore */
+      }
+    }
     return DEFAULT_PINNED_CARD;
   }
 }
 
 export async function savePinnedCardToDb(config: PinnedCardConfig) {
+  // 1. Immediately store locally to guarantee client persistence
+  try {
+    localStorage.setItem("unihub_pinned_featured_card_v1", JSON.stringify(config));
+    if (config.votes) {
+      localStorage.setItem("unihub_poll_votes_v1", JSON.stringify(config.votes));
+    }
+    window.dispatchEvent(new CustomEvent("pinnedCardUpdated", { detail: config }));
+  } catch (e) {
+    console.warn("Local storage save failed:", e);
+  }
+
+  // 2. Try DB update/upsert
   const row = {
     id: config.id,
     enabled: config.enabled,
@@ -127,13 +178,11 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
     participants: config.participants,
     updated_at: new Date().toISOString(),
   };
-  // Use update instead of upsert so that regular users can vote without INSERT permissions
-  const { error } = await supabase.from("pinned_cards").update(row).eq("id", config.id);
+
+  const { error } = await supabase.from("pinned_cards").upsert(row);
   if (error) {
-    console.error("DB update error:", error);
-    // Fallback to localStorage if DB fails (e.g. table not created yet)
-    localStorage.setItem("unihub_pinned_featured_card_v1", JSON.stringify(config));
-    window.dispatchEvent(new CustomEvent("pinnedCardUpdated", { detail: config }));
+    // Try update as fallback
+    await supabase.from("pinned_cards").update(row).eq("id", config.id);
   }
 }
 
