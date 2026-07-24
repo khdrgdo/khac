@@ -13,6 +13,7 @@ if (typeof window !== "undefined") {
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     (window as unknown as { deferredPrompt: Event }).deferredPrompt = e;
+    window.dispatchEvent(new CustomEvent("pwa-prompt-ready"));
   });
 }
 
