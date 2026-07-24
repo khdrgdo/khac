@@ -179,7 +179,7 @@ function RootComponent() {
     });
 
     return () => {
-      sub.subscription.unsubscribe();
+      sub?.subscription.unsubscribe();
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     };
   }, [router, queryClient]);
