@@ -72,6 +72,7 @@ function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
+    // TODO: Move blocked users to Supabase table "blocked_users" with RLS
     try {
       const stored = localStorage.getItem("blocked_users");
       return stored ? JSON.parse(stored) : [];
@@ -192,6 +193,15 @@ function ChatPage() {
   const sendMut = useMutation({
     mutationFn: async () => {
       if (!user || !text.trim()) return;
+      
+      const { data: membership } = await supabase
+        .from("conversation_members")
+        .select("id")
+        .eq("conversation_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!membership) throw new Error("You are not a member of this conversation");
+
       if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن إرسال الرسائل");
       if (isSubAdmin) throw new Error("حساب المشرف المساعد مخصص للمراقبة فقط ولا يمكنه المراسلة");
       if (isOtherBlocked) throw new Error("لا يمكنك مراسلة مستخدم قمت بحظره");

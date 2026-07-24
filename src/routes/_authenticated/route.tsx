@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authenticated")({
         throw redirect({ to: "/auth" });
       }
 
-      // Try validating user via getUser(), but fall back to session user if network fails
+      // Try validating user via getUser()
       try {
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (userData?.user) {
@@ -34,10 +34,9 @@ export const Route = createFileRoute("/_authenticated")({
         ) {
           throw innerErr;
         }
-        // If network fetch failed, proceed with session user rather than kicking user out
       }
-
-      return { user: sessionUser };
+      
+      throw redirect({ to: "/auth" });
     } catch (err) {
       if (
         err &&

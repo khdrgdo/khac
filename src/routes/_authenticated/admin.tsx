@@ -106,6 +106,13 @@ import { PinnedCardAdminTab } from "@/components/PinnedCardAdminTab";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  beforeLoad: async ({ context }) => {
+    const { user } = context as { user?: { app_metadata?: { role?: string[] } } };
+    const roles = user?.app_metadata?.role || [];
+    if (!roles.includes("admin") && !roles.includes("sub_admin")) {
+      throw redirect({ to: "/feed" });
+    }
+  },
   component: AdminPage,
 });
 

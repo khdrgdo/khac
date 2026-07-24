@@ -114,6 +114,7 @@ function CourseDetailPage() {
 
   const deleteCourse = useMutation({
     mutationFn: async () => {
+      if (!canModifyCourse) throw new Error("Unauthorized");
       const { error } = await supabase.from("courses").delete().eq("id", id);
       if (error) throw error;
     },
@@ -156,9 +157,7 @@ function CourseDetailPage() {
     },
   });
 
-  const canEdit = !!user;
-  const canModifyCourse =
-    !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
+  const canEdit = canModifyCourse;
   const canDeleteCourse =
     !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
 
