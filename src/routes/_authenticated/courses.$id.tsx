@@ -1,3 +1,4 @@
+import { renderMarkdownContent } from "@/lib/markdown";
 import DOMPurify from "dompurify";
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
@@ -1348,10 +1349,9 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
                   )}
                 </div>
 
-                <p 
-                  className="whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(u.content) }}
-                />
+                <div className="whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed">
+                  {renderMarkdownContent(u.content)}
+                </div>
               </CardContent>
             </Card>
           ))}
