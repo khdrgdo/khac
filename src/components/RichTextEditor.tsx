@@ -33,7 +33,9 @@ export function RichTextEditor({
     ],
     content,
     onUpdate: ({ editor }) => {
-      onChange(editor.storage.markdown.getMarkdown());
+      const storage = editor.storage as unknown as Record<string, { getMarkdown?: () => string }>;
+      const md = storage.markdown?.getMarkdown ? storage.markdown.getMarkdown() : editor.getText();
+      onChange(md);
     },
     editorProps: {
       attributes: {

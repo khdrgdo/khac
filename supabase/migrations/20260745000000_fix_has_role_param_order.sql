@@ -1,4 +1,30 @@
+-- Corrective Migration: Fix has_role parameter order and clean university_number strings
 
+-- 1. Fix name_change_requests policies
+DROP POLICY IF EXISTS "Admins can view all name change requests" ON name_change_requests;
+DROP POLICY IF EXISTS "Admins can update name change requests" ON name_change_requests;
+
+CREATE POLICY "Admins can view all name change requests"
+ON name_change_requests FOR SELECT
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'sub_admin'::public.app_role));
+
+CREATE POLICY "Admins can update name change requests"
+ON name_change_requests FOR UPDATE
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'sub_admin'::public.app_role));
+
+-- 2. Fix pinned_cards policies
+DROP POLICY IF EXISTS "Admins can insert pinned cards" ON pinned_cards;
+DROP POLICY IF EXISTS "Admins can update pinned cards" ON pinned_cards;
+
+CREATE POLICY "Admins can insert pinned cards"
+ON pinned_cards FOR INSERT
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'sub_admin'::public.app_role));
+
+CREATE POLICY "Admins can update pinned cards"
+ON pinned_cards FOR UPDATE
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'sub_admin'::public.app_role));
+
+-- 3. Fix RPC functions with correct has_role signature
 CREATE OR REPLACE FUNCTION public.get_public_profiles(_ids uuid[])
 RETURNS TABLE(
   id uuid,
@@ -30,7 +56,6 @@ BEGIN
   FROM public.profiles p
   LEFT JOIN public.user_roles r ON p.id = r.user_id AND r.role = 'sub_admin'
   WHERE p.id = ANY(_ids)
-    -- Same hiding logic as the previous migration
     AND (
       r.user_id IS NULL 
       OR p.id = auth.uid() 
@@ -104,3 +129,9 @@ BEGIN
   LIMIT 50;
 END; $$;
 
+-- 4. Clean up any corrupted university_number values that were prepended with HIDDEN_
+UPDATE public.profiles
+SET 
+  hide_university_number = true,
+  university_number = REPLACE(university_number, 'HIDDEN_', '')
+WHERE university_number LIKE 'HIDDEN_%';

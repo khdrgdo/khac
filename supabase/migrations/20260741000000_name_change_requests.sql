@@ -22,11 +22,11 @@ WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Admins can view all name change requests"
 ON name_change_requests FOR SELECT
-USING (public.has_role('admin', auth.uid()) OR public.has_role('sub_admin', auth.uid()));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'sub_admin'::public.app_role));
 
 CREATE POLICY "Admins can update name change requests"
 ON name_change_requests FOR UPDATE
-USING (public.has_role('admin', auth.uid()) OR public.has_role('sub_admin', auth.uid()));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'sub_admin'::public.app_role));
 
 -- Also add hide_university_number to profiles if not exists
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS hide_university_number BOOLEAN NOT NULL DEFAULT false;

@@ -27,7 +27,7 @@ export function NewConversationDialog({ trigger }: { trigger?: ReactElement }) {
   const [groupName, setGroupName] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState("dm");
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
 

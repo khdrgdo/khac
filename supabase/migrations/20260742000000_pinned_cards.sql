@@ -27,11 +27,11 @@ USING (true);
 
 CREATE POLICY "Admins can insert pinned cards"
 ON pinned_cards FOR INSERT
-WITH CHECK (public.has_role('admin', auth.uid()) OR public.has_role('sub_admin', auth.uid()));
+WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'sub_admin'::public.app_role));
 
 CREATE POLICY "Admins can update pinned cards"
 ON pinned_cards FOR UPDATE
-USING (public.has_role('admin', auth.uid()) OR public.has_role('sub_admin', auth.uid()));
+USING (public.has_role(auth.uid(), 'admin'::public.app_role) OR public.has_role(auth.uid(), 'sub_admin'::public.app_role));
 
 CREATE POLICY "Users can vote on pinned cards"
 ON pinned_cards FOR UPDATE

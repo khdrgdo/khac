@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export type PinnedCardType = "poll" | "contest" | "event" | "announcement";
 export type PinnedCardTheme = "royal" | "emerald" | "amber" | "sapphire" | "crimson" | "cyber";
@@ -58,24 +59,24 @@ export const DEFAULT_PINNED_CARD: PinnedCardConfig = {
 
 function mapRowToConfig(row: Record<string, unknown>): PinnedCardConfig {
   return {
-    id: row.id,
-    enabled: row.enabled ?? true,
-    type: row.type as PinnedCardType,
-    theme: row.theme as PinnedCardTheme,
-    badgeText: row.badge_text || "",
-    title: row.title || "",
-    description: row.description || "",
-    imageUrl: row.image_url || "",
-    endDate: row.end_date,
-    actionButtonText: row.action_button_text || "",
-    actionButtonUrl: row.action_button_url || "",
-    targetYear: row.target_year,
-    targetMajor: row.target_major,
+    id: (row.id as string) || "",
+    enabled: (row.enabled as boolean) ?? true,
+    type: (row.type as PinnedCardType) || "contest",
+    theme: (row.theme as PinnedCardTheme) || "royal",
+    badgeText: (row.badge_text as string) || "",
+    title: (row.title as string) || "",
+    description: (row.description as string) || "",
+    imageUrl: (row.image_url as string) || "",
+    endDate: (row.end_date as string) || undefined,
+    actionButtonText: (row.action_button_text as string) || "",
+    actionButtonUrl: (row.action_button_url as string) || "",
+    targetYear: (row.target_year as number | null) ?? null,
+    targetMajor: (row.target_major as string | null) ?? null,
     pollOptions: (row.poll_options as PollOption[]) || [],
     votes: (row.votes as Record<string, string>) || {},
     participants: (row.participants as string[]) || [],
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: (row.created_at as string) || new Date().toISOString(),
+    updatedAt: (row.updated_at as string) || new Date().toISOString(),
   };
 }
 
@@ -83,7 +84,7 @@ export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
   try {
     let result = DEFAULT_PINNED_CARD;
     const { data, error } = await supabase
-      .from("pinned_cards")
+      .from("pinned_cards" as never)
       .select("*")
       .eq("id", "pinned_featured_event_1")
       .single();
@@ -166,23 +167,23 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
     theme: config.theme,
     badge_text: config.badgeText,
     title: config.title,
-    description: config.description,
-    image_url: config.imageUrl,
-    end_date: config.endDate,
-    action_button_text: config.actionButtonText,
-    action_button_url: config.actionButtonUrl,
-    target_year: config.targetYear,
-    target_major: config.targetMajor,
-    poll_options: config.pollOptions,
-    votes: config.votes,
-    participants: config.participants,
+    description: config.description || null,
+    image_url: config.imageUrl || null,
+    end_date: config.endDate || null,
+    action_button_text: config.actionButtonText || null,
+    action_button_url: config.actionButtonUrl || null,
+    target_year: config.targetYear || null,
+    target_major: config.targetMajor || null,
+    poll_options: config.pollOptions as unknown as Json,
+    votes: config.votes as unknown as Json,
+    participants: config.participants as unknown as Json,
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from("pinned_cards").upsert(row);
+  const { error } = await supabase.from("pinned_cards").upsert(row as never);
   if (error) {
     // Try update as fallback
-    await supabase.from("pinned_cards").update(row).eq("id", config.id);
+    await supabase.from("pinned_cards").update(row as never).eq("id", config.id);
   }
 }
 

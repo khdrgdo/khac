@@ -12,11 +12,12 @@ export async function isUnivNumberHidden(userId: string | undefined | null): Pro
   try {
     const { data } = await supabase
       .from("profiles")
-      .select("university_number")
+      .select("hide_university_number, university_number")
       .eq("id", userId)
       .single();
 
-    const isHiddenInDb = data?.university_number?.startsWith("HIDDEN_") || false;
+    const isHiddenInDb =
+      data?.hide_university_number || data?.university_number?.startsWith("HIDDEN_") || false;
     if (typeof window !== "undefined") {
       localStorage.setItem("unihub_univ_hidden_" + userId, isHiddenInDb ? "true" : "false");
     }
@@ -43,10 +44,14 @@ export async function setUnivNumberHidden(userId: string, hidden: boolean): Prom
     if (data) {
       const current = data.university_number || "";
       const clean = current.replace("HIDDEN_", "");
-      const nextVal = hidden ? "HIDDEN_" + clean : clean;
+      
+      // Update boolean flag and clean corrupted university_number if it contained HIDDEN_
       await supabase
         .from("profiles")
-        .update({ university_number: nextVal })
+        .update({ 
+          hide_university_number: hidden,
+          university_number: clean
+        })
         .eq("id", userId);
     }
   } catch (err) {
