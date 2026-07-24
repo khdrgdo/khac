@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { NexusLogo } from "@/components/NexusLogo";
+import { formatUnivNumber } from "@/lib/privacy";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -180,7 +181,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         {profile?.full_name}
                       </div>
                       <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">
-                        {profile?.university_number}
+                        {formatUnivNumber(profile?.university_number, profile?.id, false, isAdmin)}
                       </div>
                     </div>
                   </div>
