@@ -1,3 +1,4 @@
+import { formatUnivNumber } from "@/lib/privacy";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -305,8 +306,8 @@ export function BroadcastNotificationTab() {
                   <SelectContent className="max-h-60">
                     {(profiles ?? []).map((p) => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.full_name} ({p.university_number}) — {p.major || "عام"} (سنة{" "}
-                        {p.year || 1})
+                        {p.full_name} ({formatUnivNumber(p.university_number, p.id, false, true)}) —{" "}
+                        {p.major || "عام"} (سنة {p.year || 1})
                       </SelectItem>
                     ))}
                   </SelectContent>

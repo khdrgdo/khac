@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/feed")({
 });
 
 function FeedPage() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "open_questions" | "solved_questions">("all");
 
@@ -57,7 +57,7 @@ function FeedPage() {
               </Link>
               <div className="mt-2 font-bold text-base leading-tight">{profile.full_name}</div>
               <div className="text-xs text-muted-foreground" dir="ltr">
-                {formatUnivNumber(profile.university_number, profile.id)}
+                {formatUnivNumber(profile.university_number, profile.id, false, isAdmin)}
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
                 <span className="px-2 py-0.5 rounded-full bg-muted">

@@ -3,28 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 export async function isUnivNumberHidden(userId: string | undefined | null): Promise<boolean> {
   if (!userId) return false;
   try {
-    // First try DB
-    let isHidden = false;
-    const { data, error } = await (supabase as unknown as Record<string, unknown>)
+    const { data } = await supabase
       .from("profiles")
-      .select("hide_university_number")
+      .select("university_number")
       .eq("id", userId)
       .single();
 
-    if (!error && data) {
-      isHidden = !!data.hide_university_number;
-    } else {
-      // Fallback to user metadata
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user && user.id === userId) {
-        isHidden = !!user.user_metadata?.hide_university_number;
-      }
-    }
-    return isHidden;
-
-    return !!data?.hide_university_number;
+    return data?.university_number?.startsWith("HIDDEN_") || false;
   } catch {
     return false;
   }
@@ -33,16 +18,25 @@ export async function isUnivNumberHidden(userId: string | undefined | null): Pro
 export async function setUnivNumberHidden(userId: string, hidden: boolean): Promise<void> {
   if (!userId) return;
   try {
-    const { error } = await (supabase as unknown as Record<string, unknown>)
+    const { data } = await supabase
       .from("profiles")
-      .update({ hide_university_number: hidden })
-      .eq("id", userId);
+      .select("university_number")
+      .eq("id", userId)
+      .single();
 
-    if (error) {
-      // Fallback to auth metadata if DB column doesn't exist
-      await supabase.auth.updateUser({
-        data: { hide_university_number: hidden },
-      });
+    if (!data) return;
+
+    const current = data.university_number || "";
+    if (hidden && !current.startsWith("HIDDEN_")) {
+      await supabase
+        .from("profiles")
+        .update({ university_number: "HIDDEN_" + current })
+        .eq("id", userId);
+    } else if (!hidden && current.startsWith("HIDDEN_")) {
+      await supabase
+        .from("profiles")
+        .update({ university_number: current.replace("HIDDEN_", "") })
+        .eq("id", userId);
     }
     window.dispatchEvent(new Event("univ_privacy_changed"));
   } catch (err) {
@@ -54,8 +48,17 @@ export function formatUnivNumber(
   universityNumber: string | null | undefined,
   userId?: string | null | undefined,
   forceHidden: boolean = false,
+  isAdmin: boolean = false,
 ): string {
   if (!universityNumber) return "";
+
+  if (universityNumber.startsWith("HIDDEN_")) {
+    if (isAdmin) {
+      return universityNumber.replace("HIDDEN_", "") + " (مخفي)";
+    }
+    return "••••••••••";
+  }
+
   if (forceHidden || universityNumber === "••••••••••") {
     return "••••••••••";
   }

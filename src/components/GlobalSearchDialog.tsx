@@ -83,7 +83,7 @@ interface PersonResult {
 }
 
 export function GlobalSearchDialog() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -246,7 +246,7 @@ export function GlobalSearchDialog() {
       });
 
       return mapped.filter((p) => {
-        const uniNum = p.university_number || "";
+        const uniNum = formatUnivNumber(p.university_number, p.id, false, !!isAdmin);
         if (uniNum.startsWith("sub_")) return false;
         const nameLower = (p.full_name || "").toLowerCase();
         if (
@@ -464,7 +464,7 @@ export function GlobalSearchDialog() {
                                 className="text-[11px] font-mono text-muted-foreground"
                                 dir="ltr"
                               >
-                                {formatUnivNumber(p.university_number, p.id)}
+                                {formatUnivNumber(p.university_number, p.id, false, !!isAdmin)}
                               </div>
 
                               <div className="flex items-center gap-1 mt-0.5 flex-wrap">
@@ -535,6 +535,8 @@ export function GlobalSearchDialog() {
                                     {formatUnivNumber(
                                       post.author.university_number,
                                       post.author.id,
+                                      false,
+                                      !!isAdmin,
                                     )}
                                   </span>
                                 </div>
@@ -628,7 +630,12 @@ export function GlobalSearchDialog() {
                                       className="text-[10px] text-muted-foreground block font-mono"
                                       dir="ltr"
                                     >
-                                      {formatUnivNumber(c.author.university_number, c.author.id)}
+                                      {formatUnivNumber(
+                                        c.author.university_number,
+                                        c.author.id,
+                                        false,
+                                        !!isAdmin,
+                                      )}
                                     </span>
                                   </div>
                                 </Link>

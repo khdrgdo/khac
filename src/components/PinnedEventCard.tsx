@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { usePinnedCard, PinnedCardTheme, PinnedCardType } from "@/lib/pinnedCardStore";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "motion/react";
@@ -26,6 +27,61 @@ import { toast } from "sonner";
 
 interface PinnedEventCardProps {
   isAdminPreview?: boolean;
+}
+
+import { useQuery } from "@tanstack/react-query";
+import { formatUnivNumber } from "@/lib/privacy";
+
+function AdminVoterList({
+  votes,
+  options,
+}: {
+  votes: Record<string, string>;
+  options: { id: string; text: string }[];
+}) {
+  const userIds = Object.keys(votes);
+  const { data: profiles } = useQuery({
+    queryKey: ["voters_profiles", userIds],
+    queryFn: async () => {
+      if (!userIds.length) return [];
+      const { data } = await supabase.rpc("get_public_profiles", { _ids: userIds });
+      return data || [];
+    },
+    enabled: userIds.length > 0,
+  });
+
+  if (!userIds.length) return null;
+
+  return (
+    <div className="mt-4 p-4 rounded-xl bg-slate-900/50 border border-slate-800">
+      <h4 className="text-sm font-bold text-white mb-3">قائمة المصوتين (تظهر للمسؤولين فقط)</h4>
+      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+        {(profiles || []).map((p) => {
+          const voteId = votes[p.id];
+          const option = options.find((o) => o.id === voteId);
+          return (
+            <div
+              key={p.id}
+              className="flex justify-between items-center text-xs bg-slate-800/50 p-2 rounded-lg"
+            >
+              <div className="flex flex-col">
+                <span className="font-semibold text-slate-200">{p.full_name}</span>
+                <span className="text-slate-400" dir="ltr">
+                  {formatUnivNumber(p.university_number, p.id, false, true)}
+                </span>
+              </div>
+              <Badge
+                variant="outline"
+                className="bg-slate-900 border-slate-700 text-slate-300 px-2 py-0"
+              >
+                {option?.text || "غير معروف"}
+              </Badge>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function PinnedEventCard({ isAdminPreview = false }: PinnedEventCardProps) {

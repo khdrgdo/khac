@@ -162,7 +162,7 @@ function useSubAdminRestrictions() {
   });
 
   function isTargetMainAdmin(u: { university_number: string; email?: string | null }) {
-    return u.university_number === "2011099840" || u.email?.toLowerCase() === "khdrmamon@gmail.com";
+    return u.university_number === "2011099840" || u.university_number === "HIDDEN_2011099840" || u.email?.toLowerCase() === "khdrmamon@gmail.com";
   }
 
   function handleActionCheck(target: { university_number: string; email?: string | null }) {
@@ -1423,7 +1423,7 @@ function UsersTable() {
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground" dir="ltr">
-                        {u.university_number}
+                        {formatUnivNumber(u.university_number, u.id, false, true)}
                       </span>
                     </div>
                   </div>
@@ -1766,7 +1766,7 @@ function UserDetailsDialog({
                 <div className="bg-muted/50 rounded p-2">
                   <div className="text-xs text-muted-foreground">الرقم الجامعي</div>
                   <div className="font-medium" dir="ltr">
-                    {user.university_number}
+                    {formatUnivNumber(user.university_number, user.id, false, true)}
                   </div>
                 </div>
                 <div className="bg-muted/50 rounded p-2">
@@ -2182,7 +2182,8 @@ function ActivityLogTab() {
                           <span>
                             الرقم الجامعي:{" "}
                             <strong className="font-mono text-foreground/90">
-                              {u.university_number || "غير محدد"}
+                              {formatUnivNumber(u.university_number, u.id, false, true) ||
+                                "غير محدد"}
                             </strong>
                           </span>
                           {u.major && (

@@ -35,7 +35,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 import { useUnivPrivacy } from "@/hooks/useUnivPrivacy";
+import { formatUnivNumber } from "@/lib/privacy";
 import {
   hasUserUsedDirectChange,
   setUserUsedDirectChange,
@@ -164,6 +166,7 @@ export function ProfileCardFrame({
   onStartChat,
   isChatPending,
 }: ProfileCardFrameProps) {
+  const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -467,7 +470,9 @@ export function ProfileCardFrame({
             >
               <span>الرقم الجامعي:</span>
               <span className="font-semibold text-white tracking-widest">
-                {isUnivHidden ? "••••••••••" : profile.university_number}
+                {isUnivHidden
+                  ? "••••••••••"
+                  : formatUnivNumber(profile.university_number, profile.id, false, isAdmin)}
               </span>
               {isMe && (
                 <button

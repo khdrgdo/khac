@@ -180,7 +180,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         {profile?.full_name}
                       </div>
                       <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">
-                        {isUnivHidden ? "••••••••••" : profile?.university_number}
+                        {profile?.university_number}
                       </div>
                     </div>
                   </div>
@@ -222,7 +222,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuItem>
                 )}
 
-                <InstallPWAButton variant="menu" />
+                <InstallPWAButton variant="menu" showBanner={true} />
 
                 <DropdownMenuSeparator />
 

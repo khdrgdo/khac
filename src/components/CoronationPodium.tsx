@@ -1,3 +1,5 @@
+import { formatUnivNumber } from "@/lib/privacy";
+import { useAuth } from "@/hooks/useAuth";
 import { Link } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import {

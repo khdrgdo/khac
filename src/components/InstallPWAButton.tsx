@@ -16,15 +16,21 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 interface InstallPWAButtonProps {
+  showBanner?: boolean;
   variant?: "menu" | "button" | "header";
   className?: string;
 }
 
-export function InstallPWAButton({ variant = "menu", className }: InstallPWAButtonProps) {
+export function InstallPWAButton({
+  variant = "menu",
+  className,
+  showBanner = false,
+}: InstallPWAButtonProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
+  const [isBannerVisible, setIsBannerVisible] = useState(true);
 
   useEffect(() => {
     // Check if already in standalone mode
@@ -124,6 +130,39 @@ export function InstallPWAButton({ variant = "menu", className }: InstallPWAButt
           <Download className="w-3.5 h-3.5" />
           تثبيت التطبيق
         </Button>
+      )}
+
+      {showBanner && !isInstalled && isBannerVisible && (deferredPrompt || isIOS) && (
+        <div className="fixed bottom-20 left-4 right-4 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 md:bottom-6 md:left-auto md:right-6 md:w-96">
+          <div className="bg-primary/95 backdrop-blur-xl border border-primary/20 p-4 rounded-3xl shadow-2xl flex items-center justify-between gap-4 dir-rtl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+                <Download className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-right">
+                <h4 className="text-sm font-bold text-white leading-tight">تثبيت تطبيق NEXUS</h4>
+                <p className="text-[11px] text-white/80 mt-0.5">
+                  ثبّت التطبيق للوصول السريع والإشعارات!
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 shrink-0">
+              <Button
+                onClick={handleInstallClick}
+                size="sm"
+                className="h-8 rounded-xl bg-white text-primary hover:bg-white/90 text-xs font-bold px-4"
+              >
+                تثبيت الآن
+              </Button>
+              <button
+                onClick={() => setIsBannerVisible(false)}
+                className="text-[10px] text-white/70 hover:text-white text-center font-medium"
+              >
+                ليس الآن
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* iOS Safari Instructions Dialog */}

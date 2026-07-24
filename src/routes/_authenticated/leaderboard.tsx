@@ -260,7 +260,7 @@ function LeaderboardPage() {
         if (profile?.id && p.id === profile.id && isAdmin) return false;
 
         const nameLower = (p.full_name || "").toLowerCase();
-        const uniNum = p.university_number || "";
+        const uniNum = formatUnivNumber(p.university_number, p.id, false, isAdmin);
 
         if (
           uniNum === "2011099840" ||

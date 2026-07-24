@@ -1,3 +1,4 @@
+import { formatUnivNumber } from "@/lib/privacy";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
