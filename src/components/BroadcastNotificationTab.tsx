@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,7 @@ export function BroadcastNotificationTab() {
   const [targetType, setTargetType] = useState<"all" | "academic" | "user">("academic");
 
   // Academic Targeting
-  const [selectedMajor, setSelectedMajor] = useState<MajorCode | "ALL">("IT");
+  const [selectedMajor, setSelectedMajor] = useState<MajorCode | "ALL">("it");
   const [selectedYear, setSelectedYear] = useState<string>("2"); // default year 2
 
   // Specific User Targeting

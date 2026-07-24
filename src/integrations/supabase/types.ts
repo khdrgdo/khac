@@ -786,3 +786,37 @@ export const Constants = {
     },
   },
 } as const;
+
+// Append our newly created types:
+export type NameChangeRequestDB = {
+  id: string;
+  user_id: string;
+  current_name: string;
+  requested_name: string;
+  reason: string;
+  contact_info: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  processed_at?: string;
+};
+
+export type PinnedCardDB = {
+  id: string;
+  enabled: boolean;
+  type: string;
+  theme: string;
+  badge_text: string;
+  title: string;
+  description: string;
+  image_url: string | null;
+  end_date: string | null;
+  action_button_text: string | null;
+  action_button_url: string | null;
+  target_year: number | null;
+  target_major: string | null;
+  poll_options: any;
+  votes: any;
+  participants: any;
+  created_at: string;
+  updated_at: string;
+};

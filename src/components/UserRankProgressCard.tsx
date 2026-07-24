@@ -88,7 +88,7 @@ export function UserRankProgressCard({
 
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-muted-foreground font-medium">رتبتك الحالية:</span>
-              <RankBadge points={points} className="text-xs" />
+              <RankBadge points={points} size="xs" />
             </div>
           </div>
         </div>

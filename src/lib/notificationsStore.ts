@@ -252,13 +252,11 @@ export async function fetchRealtimeNotifications(userId: string): Promise<Notifi
     // 1. Posts written by the user
     const { data: userPosts } = await supabase
       .from("posts")
-      .select("id, title, content")
+      .select("id, content")
       .eq("author_id", userId);
 
     const postIds = (userPosts ?? []).map((p) => p.id);
-    const postTitleMap = new Map(
-      (userPosts ?? []).map((p) => [p.id, p.title || p.content.slice(0, 30)]),
-    );
+    const postTitleMap = new Map((userPosts ?? []).map((p) => [p.id, p.content.slice(0, 30)]));
 
     if (postIds.length > 0) {
       // Comments on user's posts

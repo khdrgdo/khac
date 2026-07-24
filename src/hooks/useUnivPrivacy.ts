@@ -2,28 +2,33 @@ import { useState, useEffect } from "react";
 import { isUnivNumberHidden, setUnivNumberHidden } from "@/lib/privacy";
 
 export function useUnivPrivacy(userId: string | undefined | null) {
-  const [isHidden, setIsHidden] = useState<boolean>(() => isUnivNumberHidden(userId));
+  const [isHidden, setIsHidden] = useState<boolean>(false);
 
   useEffect(() => {
-    setIsHidden(isUnivNumberHidden(userId));
+    let mounted = true;
+    const fetchIt = async () => {
+      const hidden = await isUnivNumberHidden(userId);
+      if (mounted) setIsHidden(hidden);
+    };
+
+    fetchIt();
 
     const handleChanged = () => {
-      setIsHidden(isUnivNumberHidden(userId));
+      fetchIt();
     };
 
     window.addEventListener("univ_privacy_changed", handleChanged);
-    window.addEventListener("storage", handleChanged);
     return () => {
+      mounted = false;
       window.removeEventListener("univ_privacy_changed", handleChanged);
-      window.removeEventListener("storage", handleChanged);
     };
   }, [userId]);
 
-  const togglePrivacy = () => {
+  const togglePrivacy = async () => {
     if (!userId) return !isHidden;
     const nextState = !isHidden;
-    setUnivNumberHidden(userId, nextState);
-    setIsHidden(nextState);
+    setIsHidden(nextState); // optimistic update
+    await setUnivNumberHidden(userId, nextState);
     return nextState;
   };
 

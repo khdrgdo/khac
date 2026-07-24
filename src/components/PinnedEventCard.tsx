@@ -184,7 +184,7 @@ export function PinnedEventCard({ isAdminPreview = false }: PinnedEventCardProps
       <div className="absolute -bottom-24 -right-24 w-60 h-60 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
 
       {/* Admin Control Banner Overlay inside Card */}
-      {canManage && (
+      {isAdminPreview && (
         <div className="bg-black/40 backdrop-blur-md px-4 py-2 border-b border-white/10 flex items-center justify-between text-xs text-white/90">
           <div className="flex items-center gap-2">
             <Badge

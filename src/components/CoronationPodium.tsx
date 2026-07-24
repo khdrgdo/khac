@@ -120,7 +120,7 @@ export function CoronationPodium({ podium, timeframe }: CoronationPodiumProps) {
 
   const handleShareBrag = (user: LeaderboardUser, rank: number) => {
     const rankTitle =
-      rank === 1 ? "بطل الكلية 👑" : rank === 2 ? "وصيف الصدارة 🥈" : "فارس المنصة 🥉";
+      rank === 1 ? "بطل الكلية 👑" : rank === 2 ? "وصيف الصدارة 🥈" : "فارس NEXUS 🥉";
     const text = `🏆 أنا في المركز #${rank} (${rankTitle}) على لوحة صدارة منصة NEXUS الأكاديمية برصيد ${user.score} نقطة! 🚀`;
     navigator.clipboard.writeText(text);
     toast.success("تم نسخ بطاقة الإنجاز! يمكنك مشاركتها الآن 🎉");
@@ -146,7 +146,7 @@ export function CoronationPodium({ podium, timeframe }: CoronationPodiumProps) {
               </Badge>
             </h2>
             <p className="text-xs text-muted-foreground">
-              المنصة الشرفية للطلاب الأوائل على مستوى الكلية
+              NEXUS الشرفية للطلاب الأوائل على مستوى الكلية
             </p>
           </div>
         </div>
@@ -195,7 +195,7 @@ export function CoronationPodium({ podium, timeframe }: CoronationPodiumProps) {
                 </span>
 
                 <Button
-                  size="xs"
+                  size="sm"
                   variant="ghost"
                   onClick={() => handleShareBrag(runnerUp, 2)}
                   className="h-6 text-[10px] gap-1 mt-1 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-700 dark:text-slate-300"
@@ -254,7 +254,7 @@ export function CoronationPodium({ podium, timeframe }: CoronationPodiumProps) {
                   />
                   <div className="absolute -bottom-3 right-1/2 translate-x-1/2 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 text-slate-950 font-black text-[11px] sm:text-xs px-3 py-0.5 rounded-full shadow-lg border border-yellow-200 z-20 flex items-center gap-1 whitespace-nowrap">
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>بطل المنصة الأكاديمية</span>
+                    <span>بطل NEXUS الأكاديمية</span>
                   </div>
                 </Link>
 
@@ -270,7 +270,7 @@ export function CoronationPodium({ podium, timeframe }: CoronationPodiumProps) {
                 </span>
 
                 <Button
-                  size="xs"
+                  size="sm"
                   onClick={() => handleShareBrag(champion, 1)}
                   className="h-6 text-[10px] gap-1 mt-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold shadow-sm"
                 >
@@ -324,7 +324,7 @@ export function CoronationPodium({ podium, timeframe }: CoronationPodiumProps) {
                     className="w-16 h-16 sm:w-20 sm:h-20 ring-4 ring-amber-700/50 group-hover/avatar:ring-amber-600 transition-all duration-300 shadow-lg"
                   />
                   <div className="absolute -bottom-2.5 right-1/2 translate-x-1/2 bg-amber-800 text-white font-extrabold text-[10px] px-2.5 py-0.5 rounded-full shadow border border-amber-600 whitespace-nowrap">
-                    فرسان المنصة
+                    فرسان NEXUS
                   </div>
                 </Link>
 
@@ -340,7 +340,7 @@ export function CoronationPodium({ podium, timeframe }: CoronationPodiumProps) {
                 </span>
 
                 <Button
-                  size="xs"
+                  size="sm"
                   variant="ghost"
                   onClick={() => handleShareBrag(thirdPlace, 3)}
                   className="h-6 text-[10px] gap-1 mt-1 rounded-lg bg-amber-800/10 hover:bg-amber-800/20 text-amber-800 dark:text-amber-300"

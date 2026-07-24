@@ -83,7 +83,7 @@ function AuthPage() {
           <NexusLogo
             size="lg"
             showTagline={true}
-            taglineText="المنصة الأكاديمية الذكية"
+            taglineText="NEXUS الأكاديمية الذكية"
             className="mb-2"
           />
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">

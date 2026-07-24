@@ -29,6 +29,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { RankBadge } from "@/components/RankBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useIsPWAInstalled } from "@/hooks/useIsPWAInstalled";
+import { PasskeySettingsDialog } from "@/components/PasskeySettingsDialog";
+import { Fingerprint } from "lucide-react";
 import { useUnivPrivacy } from "@/hooks/useUnivPrivacy";
 import { GlobalSearchDialog } from "@/components/GlobalSearchDialog";
 import { NotificationsPopover } from "@/components/NotificationsPopover";
@@ -37,6 +40,8 @@ import { motion, AnimatePresence } from "motion/react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, isAdmin, isSubAdmin, loading } = useAuth();
+  const isPWAInstalled = useIsPWAInstalled();
+  const [passkeyOpen, setPasskeyOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -209,6 +214,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <KeyRound className="w-4 h-4 text-muted-foreground" /> تغيير كلمة السر
                 </DropdownMenuItem>
+                {isPWAInstalled && (
+                  <DropdownMenuItem
+                    onClick={() => setPasskeyOpen(true)}
+                    className="rounded-xl cursor-pointer py-2 px-2.5 gap-2 text-xs font-semibold"
+                  >
+                    <Fingerprint className="w-4 h-4 text-emerald-500" /> إدارة البصمة
+                  </DropdownMenuItem>
+                )}
 
                 {isAdmin && (
                   <DropdownMenuItem
@@ -237,6 +250,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Page Layout Wrapper */}
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 pb-24 md:pb-8">{children}</main>
+      <PasskeySettingsDialog open={passkeyOpen} onOpenChange={setPasskeyOpen} />
 
       {/* Floating Translucent Mobile Bottom Navigation Bar */}
       <div className="fixed bottom-3 inset-x-3 md:hidden z-50 pointer-events-none">

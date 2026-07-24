@@ -10,6 +10,7 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { bindAccountToDevice } from "@/lib/deviceGuard";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 
 export type AppRole = "student" | "teacher" | "admin" | "sub_admin";
@@ -74,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [subAdminPermissions, setSubAdminPermissions] = useState<SubAdminPermissions>({
     can_warn: true,
     can_suspend: true,
@@ -138,7 +140,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
+      if (_e === "SIGNED_IN") {
+        await queryClient.invalidateQueries();
+      } else if (_e === "SIGNED_OUT") {
+        queryClient.clear();
+      }
       if (!mounted) return;
       sessionRef.current = s;
       setSession(s);
@@ -171,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   const refreshProfile = useCallback(async () => {
     try {

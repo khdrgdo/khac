@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { MarkdownViewer } from "./MarkdownViewer";
 
 interface ExpandableTextProps {
   text: string;
-  maxChars?: number;
+  maxChars?: number; // Kept for API compatibility, though we rely more on length for the check
   maxLines?: number;
   className?: string;
 }
@@ -23,54 +24,37 @@ export function ExpandableText({
 
   if (!isLong) {
     return (
-      <p className={cn("whitespace-pre-wrap text-[15px] leading-relaxed", className)}>{text}</p>
+      <div className={className}>
+        <MarkdownViewer content={text} />
+      </div>
     );
   }
 
-  let truncated = text;
-  if (!isExpanded) {
-    if (lines.length > maxLines) {
-      truncated = lines.slice(0, maxLines).join("\n");
-    }
-    if (truncated.length > maxChars) {
-      truncated = truncated.slice(0, maxChars);
-    }
-  }
-
   return (
-    <p className={cn("whitespace-pre-wrap text-[15px] leading-relaxed", className)}>
-      {isExpanded ? (
-        <>
-          {text}{" "}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsExpanded(false);
-            }}
-            className="text-primary font-bold text-xs hover:underline ms-1.5 inline-flex items-center text-primary/90 focus:outline-none"
-          >
-            عرض أقل
-          </button>
-        </>
-      ) : (
-        <>
-          {truncated.trimEnd()}
-          <span className="text-muted-foreground">... </span>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsExpanded(true);
-            }}
-            className="text-primary font-bold text-xs sm:text-sm hover:underline ms-1 inline-flex items-center hover:text-primary/80 focus:outline-none"
-          >
-            عرض المزيد
-          </button>
-        </>
-      )}
-    </p>
+    <div className={cn("relative", className)}>
+      <div
+        className={cn(
+          "overflow-hidden transition-all duration-300 relative",
+          !isExpanded && "max-h-[120px]",
+        )}
+      >
+        <MarkdownViewer content={text} />
+        {!isExpanded && (
+          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsExpanded(!isExpanded);
+        }}
+        className="mt-1 text-primary font-bold text-sm hover:underline inline-flex items-center focus:outline-none"
+      >
+        {isExpanded ? "عرض أقل" : "عرض المزيد"}
+      </button>
+    </div>
   );
 }

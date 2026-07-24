@@ -90,7 +90,7 @@ export function NexusLogo({
   size = "md",
   showIcon = true,
   showTagline = true,
-  taglineText = "المنصة الأكاديمية الذكية",
+  taglineText = "NEXUS — المنصة الأكاديمية الذكية",
   className,
 }: NexusLogoProps) {
   const iconSizes = {

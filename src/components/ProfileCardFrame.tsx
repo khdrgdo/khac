@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUnivPrivacy } from "@/hooks/useUnivPrivacy";
 import {
@@ -191,7 +191,10 @@ export function ProfileCardFrame({
   const [contactInfo, setContactInfo] = useState("");
   const [savingName, setSavingName] = useState(false);
 
-  const hasUsedDirectNameChange = hasUserUsedDirectChange(profile.id);
+  const { data: hasUsedDirectNameChange = false } = useQuery({
+    queryKey: ["hasUsedDirectNameChange", profile.id],
+    queryFn: () => hasUserUsedDirectChange(profile.id),
+  });
 
   const handleCopyProfileLink = () => {
     const url = `${window.location.origin}/profile/${profile.id}`;
@@ -264,8 +267,8 @@ export function ProfileCardFrame({
 
   const { isHidden: isUnivHidden, togglePrivacy } = useUnivPrivacy(profile.id);
 
-  const handleToggleUnivPrivacy = () => {
-    const nextHidden = togglePrivacy();
+  const handleToggleUnivPrivacy = async () => {
+    const nextHidden = await togglePrivacy();
     if (nextHidden) {
       toast.success("تم إخفاء الرقم الجامعي في جميع أرجاء التطبيق 🔒");
     } else {
