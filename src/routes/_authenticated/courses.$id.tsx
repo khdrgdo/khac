@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1731,7 +1732,10 @@ function QuestionCard({
                         )}
                       </div>
 
-                      <p className="text-xs text-foreground/90 whitespace-pre-wrap">{c.content}</p>
+                      <p 
+                        className="text-xs text-foreground/90 whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(c.content) }}
+                      />
                     </div>
                   );
                 })}

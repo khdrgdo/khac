@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -651,9 +652,10 @@ export function GlobalSearchDialog() {
                               </span>
                             </div>
 
-                            <p className="text-xs text-foreground bg-muted/40 p-2.5 rounded-lg border border-border/40 whitespace-pre-line leading-relaxed">
-                              {c.content}
-                            </p>
+                            <p 
+                              className="text-xs text-foreground bg-muted/40 p-2.5 rounded-lg border border-border/40 whitespace-pre-line leading-relaxed"
+                              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(c.content) }}
+                            />
 
                             {c.postSnippet && (
                               <div className="flex items-center justify-between pt-1 text-[11px] text-muted-foreground">
