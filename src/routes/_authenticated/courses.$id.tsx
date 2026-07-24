@@ -1,5 +1,4 @@
 import { renderMarkdownContent } from "@/lib/markdown";
-import DOMPurify from "dompurify";
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1733,10 +1732,9 @@ function QuestionCard({
                         )}
                       </div>
 
-                      <p 
-                        className="text-xs text-foreground/90 whitespace-pre-wrap"
-                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(c.content) }}
-                      />
+                      <div className="text-xs text-foreground/90 whitespace-pre-wrap">
+                    {renderMarkdownContent(c.content)}
+                  </div>
                     </div>
                   );
                 })}
