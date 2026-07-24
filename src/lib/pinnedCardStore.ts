@@ -93,7 +93,9 @@ export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
       if (local) {
         try {
           return { ...DEFAULT_PINNED_CARD, ...JSON.parse(local) };
-        } catch (e) {}
+        } catch (e) {
+          /* ignore error */
+        }
       }
     }
 
@@ -125,9 +127,7 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
     participants: config.participants,
     updated_at: new Date().toISOString(),
   };
-  const { error } = await supabase
-    .from("pinned_cards")
-    .upsert(row);
+  const { error } = await supabase.from("pinned_cards").upsert(row);
   if (error) {
     console.error("DB update error:", error);
     // Fallback to localStorage if DB fails (e.g. table not created yet)
@@ -141,11 +141,13 @@ export function usePinnedCard() {
 
   useEffect(() => {
     let mounted = true;
-    fetchPinnedCard().then((c) => {
-      if (mounted) setConfig(c);
-    }).catch((err) => {
-      console.warn("Unhandled error in usePinnedCard effect:", err);
-    });
+    fetchPinnedCard()
+      .then((c) => {
+        if (mounted) setConfig(c);
+      })
+      .catch((err) => {
+        console.warn("Unhandled error in usePinnedCard effect:", err);
+      });
 
     const handleStorageUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<PinnedCardConfig>;
@@ -156,7 +158,9 @@ export function usePinnedCard() {
         if (local) {
           try {
             setConfig({ ...DEFAULT_PINNED_CARD, ...JSON.parse(local) });
-          } catch (e) {}
+          } catch (e) {
+            /* ignore error */
+          }
         }
       }
     };

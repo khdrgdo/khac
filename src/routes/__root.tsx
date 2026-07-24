@@ -114,7 +114,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/site.webmanifest" },
+      { rel: "manifest", href: "/manifest.json" },
       { rel: "icon", href: "/pwa-192.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -155,6 +155,13 @@ function RootComponent() {
     const t =
       saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     document.documentElement.classList.toggle("dark", t === "dark");
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then(() => console.log("Global SW Registered"))
+        .catch((err) => console.warn("Global SW Registration failed:", err));
+    }
 
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
