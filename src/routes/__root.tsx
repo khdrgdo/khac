@@ -90,13 +90,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "NEXUS المنصة الأكاديمية للطلاب والأساتذة: كورسات، مسابقات، منشورات وتواصل تفاعلي.",
+          "NEXUS",
       },
       { property: "og:title", content: "NEXUS — المنصة الأكاديمية الذكية" },
       {
         property: "og:description",
         content:
-          "NEXUS المنصة الأكاديمية للطلاب والأساتذة: كورسات، مسابقات، منشورات وتواصل تفاعلي.",
+          "NEXUS",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -104,15 +104,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "twitter:description",
         content:
-          "NEXUS المنصة الأكاديمية للطلاب والأساتذة: كورسات، مسابقات، منشورات وتواصل تفاعلي.",
+          "NEXUS",
       },
       {
         property: "og:image",
-        content: "/pwa-512.png",
+        content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/59866c9e-faf5-491b-b8ff-2a422ce6c7cf",
       },
       {
         name: "twitter:image",
-        content: "/pwa-512.png",
+        content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/59866c9e-faf5-491b-b8ff-2a422ce6c7cf",
       },
       { name: "theme-color", content: "#8b5cf6" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
