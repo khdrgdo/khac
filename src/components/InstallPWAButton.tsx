@@ -9,6 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -30,36 +31,53 @@ export function InstallPWAButton({
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
-  const [showGeneralModal, setShowGeneralModal] = useState(false);
   const [isBannerVisible, setIsBannerVisible] = useState(true);
 
   useEffect(() => {
-    // Check if already in standalone mode
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true;
+    // 1. Check if already installed or opened in standalone mode
+    const checkInstalled = () => {
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (navigator as unknown as { standalone?: boolean }).standalone === true ||
+        localStorage.getItem("nexus_pwa_installed") === "true";
 
-    if (isStandalone) {
-      setIsInstalled(true);
-      return;
-    }
+      if (isStandalone) {
+        setIsInstalled(true);
+        return true;
+      }
+      return false;
+    };
+
+    if (checkInstalled()) return;
 
     // Detect iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIOSDevice);
 
-    // Listen for install prompt on Android/Desktop
+    // 2. Listen for native install prompt on Android / Chrome / Desktop
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      setDeferredPrompt(promptEvent);
+      (window as unknown as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt = promptEvent;
     };
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    // Check if it was already fired and stored globally
-    if ((window as unknown as { deferredPrompt: BeforeInstallPromptEvent }).deferredPrompt) {
+    // 3. Listen for appinstalled event to permanently hide banner
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      localStorage.setItem("nexus_pwa_installed", "true");
+      setIsBannerVisible(false);
+      toast.success("تم تثبيت تطبيق NEXUS بنجاح على جهازك! 🎉");
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    // Check if prompt was captured globally
+    if ((window as unknown as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt) {
       setDeferredPrompt(
-        (window as unknown as { deferredPrompt: BeforeInstallPromptEvent }).deferredPrompt,
+        (window as unknown as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt || null,
       );
     }
 
@@ -73,23 +91,44 @@ export function InstallPWAButton({
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
   const handleInstallClick = async () => {
     if (isInstalled) return;
 
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === "accepted") {
-        setIsInstalled(true);
+    // Grab prompt from state or global window
+    const promptEvent =
+      deferredPrompt ||
+      (window as unknown as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt;
+
+    if (promptEvent) {
+      try {
+        await promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        if (outcome === "accepted") {
+          setIsInstalled(true);
+          localStorage.setItem("nexus_pwa_installed", "true");
+          setIsBannerVisible(false);
+          toast.success("تم تثبيت تطبيق NEXUS بنجاح!");
+        }
+      } catch (err) {
+        console.warn("Error triggering install prompt:", err);
+      } finally {
+        setDeferredPrompt(null);
+        delete (window as unknown as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt;
       }
-      setDeferredPrompt(null);
     } else if (isIOS) {
       setShowIOSModal(true);
     } else {
-      setShowGeneralModal(true);
+      // Direct prompt fallback notice without manual steps
+      toast.info("جاري طلب إذن التثبيت المباشر من المتصفح...", {
+        duration: 3500,
+      });
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js");
+      }
     }
   };
 
@@ -195,44 +234,6 @@ export function InstallPWAButton({
                 <span>
                   اضغط <strong>إضافة (Add)</strong> في أعلى الزاوية، وسيظهر التطبيق على شاشة هاتفك
                   فوراً!
-                </span>
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-
-      {/* General Android/Chrome Instructions Dialog */}
-      <Dialog open={showGeneralModal} onOpenChange={setShowGeneralModal}>
-        <DialogContent className="max-w-sm rounded-3xl dir-rtl text-right">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <Smartphone className="w-5 h-5 text-primary" />
-              خطوات تثبيت تطبيق NEXUS
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground pt-2 space-y-3">
-              <div className="flex items-start gap-2.5">
-                <span className="flex shrink-0 items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                  1
-                </span>
-                <span>
-                  افتح قائمة المتصفح بالضغط على <strong>النقاط الثلاث (⋮)</strong> في أعلى زاوية المتصفح.
-                </span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="flex shrink-0 items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                  2
-                </span>
-                <span>
-                  اختر خيار <strong>تثبيت التطبيق (Install App)</strong> أو <strong>الإضافة إلى الشاشة الرئيسية</strong>.
-                </span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <span className="flex shrink-0 items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                  3
-                </span>
-                <span>
-                  تأكيد التثبيت وسيعمل التطبيق مباشرة كأنه تطبيق هاتف أصل مع وصول سريع!
                 </span>
               </div>
             </DialogDescription>
