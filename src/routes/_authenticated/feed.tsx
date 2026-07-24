@@ -33,9 +33,9 @@ function FeedPage() {
   return (
     <div className="grid md:grid-cols-3 gap-4">
       <div className="md:col-span-2 space-y-4">
+        <CreatePost />
         {/* Admin Pinned Event / Announcement / Poll Card */}
         <PinnedEventCard />
-        <CreatePost />
         <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
           <TabsList>
             <TabsTrigger value="all">الكل</TabsTrigger>

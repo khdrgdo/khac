@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { usePinnedCard, PinnedCardTheme, PinnedCardType } from "@/lib/pinnedCardStore";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy,
@@ -223,16 +222,17 @@ export function PinnedEventCard({ isAdminPreview = false }: PinnedEventCardProps
               )}
             </Button>
 
-            <Link to="/admin" search={{ tab: "pinned_card" }}>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs px-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg gap-1.5"
+            {!isAdminPreview && (
+              <button
+                onClick={() => {
+                  window.location.href = "/admin";
+                }}
+                className="h-7 text-xs px-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg gap-1.5 flex items-center transition-all"
               >
                 <Settings className="w-3.5 h-3.5 text-amber-300" />
                 <span>تعديل الكارد</span>
-              </Button>
-            </Link>
+              </button>
+            )}
           </div>
         </div>
       )}
