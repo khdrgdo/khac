@@ -80,14 +80,19 @@ function mapRowToConfig(row: Record<string, unknown>): PinnedCardConfig {
 }
 
 export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
-  const { data, error } = await supabase
-    .from("pinned_cards")
-    .select("*")
-    .eq("id", "pinned_featured_event_1")
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from("pinned_cards")
+      .select("*")
+      .eq("id", "pinned_featured_event_1")
+      .single();
 
-  if (error || !data) return DEFAULT_PINNED_CARD;
-  return mapRowToConfig(data);
+    if (error || !data) return DEFAULT_PINNED_CARD;
+    return mapRowToConfig(data);
+  } catch (err) {
+    console.warn("Failed to fetch pinned card:", err);
+    return DEFAULT_PINNED_CARD;
+  }
 }
 
 export async function savePinnedCardToDb(config: PinnedCardConfig) {
@@ -123,6 +128,8 @@ export function usePinnedCard() {
     let mounted = true;
     fetchPinnedCard().then((c) => {
       if (mounted) setConfig(c);
+    }).catch((err) => {
+      console.warn("Unhandled error in usePinnedCard effect:", err);
     });
 
     const channel = (supabase as unknown as Record<string, unknown>)
@@ -148,9 +155,13 @@ export function usePinnedCard() {
   }, []);
 
   const updateConfig = async (newConfig: Partial<PinnedCardConfig>) => {
-    const fullConfig = { ...config, ...newConfig };
-    setConfig(fullConfig); // optimistic
-    await savePinnedCardToDb(fullConfig);
+    try {
+      const fullConfig = { ...config, ...newConfig };
+      setConfig(fullConfig); // optimistic
+      await savePinnedCardToDb(fullConfig);
+    } catch (err) {
+      console.warn("Failed to save pinned card config to DB:", err);
+    }
   };
 
   const castVote = async (userId: string, optionId: string) => {
