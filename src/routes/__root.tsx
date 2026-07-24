@@ -9,14 +9,6 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
-if (typeof window !== "undefined") {
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    (window as unknown as { deferredPrompt: Event }).deferredPrompt = e;
-    window.dispatchEvent(new CustomEvent("pwa-prompt-ready"));
-  });
-}
-
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
@@ -164,19 +156,32 @@ function RootComponent() {
       saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     document.documentElement.classList.toggle("dark", t === "dark");
 
+    // FIXED: Register Service Worker once, centrally
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js")
-        .then(() => console.log("Global SW Registered"))
-        .catch((err) => console.warn("Global SW Registration failed:", err));
+        .then(() => console.log("[PWA] Service Worker registered"))
+        .catch((err) => console.warn("[PWA] SW registration failed:", err));
     }
+
+    // FIXED: Capture beforeinstallprompt inside useEffect (not at module top-level)
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      (window as unknown as { deferredPrompt?: Event }).deferredPrompt = e;
+      window.dispatchEvent(new CustomEvent("pwa-prompt-ready"));
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
         router.invalidate();
       }
     });
-    return () => sub.subscription.unsubscribe();
+
+    return () => {
+      sub.subscription.unsubscribe();
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
   }, [router, queryClient]);
 
   return (

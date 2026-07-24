@@ -42,7 +42,7 @@ export function InstallPWAButton({
       setIsBannerVisible(false);
     }
 
-    // 1. Listen for native install prompt
+    // Listen for native install prompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       const promptEvent = e as BeforeInstallPromptEvent;
@@ -57,7 +57,7 @@ export function InstallPWAButton({
       }
     };
 
-    // 2. Listen for appinstalled event
+    // Listen for appinstalled event
     const handleAppInstalled = () => {
       setIsInstalled(true);
       localStorage.setItem("nexus_pwa_installed", "true");
@@ -77,13 +77,8 @@ export function InstallPWAButton({
       );
     }
 
-    // Register Service Worker if supported
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then(() => console.log("PWA Service Worker Registered"))
-        .catch((err) => console.warn("SW Registration failed:", err));
-    }
+    // FIXED: Removed duplicate Service Worker registration.
+    // SW is now registered once centrally in __root.tsx to avoid conflicts.
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -235,5 +230,3 @@ export function InstallPWAButton({
     </>
   );
 }
-
-
