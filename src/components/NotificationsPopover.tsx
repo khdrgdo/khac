@@ -33,7 +33,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 
 export function NotificationsPopover() {
