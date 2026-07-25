@@ -5,10 +5,11 @@ import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-r
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from "@/components/RichTextEditor";
@@ -90,7 +91,9 @@ interface CourseUpdate {
 function CourseDetailPage() {
   const { id } = useParams({ from: "/_authenticated/courses/$id" });
   const { tab } = Route.useSearch();
-  const { user, isTeacher, isAdmin } = useAuth();
+  const { user, isTeacher, isAdmin, isSubAdmin, profile } = useAuth();
+  const permissions = getSubAdminPermissions(profile);
+  const canModifyCourse = isAdmin || (isSubAdmin && permissions.can_courses) || isTeacher;
   const qc = useQueryClient();
   const navigate = useNavigate();
 

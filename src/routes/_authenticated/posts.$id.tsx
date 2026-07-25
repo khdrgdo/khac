@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth, isSuspended } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ArrowRight, Loader2, Send, Trash2, CheckCircle2, Pencil } from "lucide-react";

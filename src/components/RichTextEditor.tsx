@@ -55,7 +55,7 @@ export function RichTextEditor({
                   editor: props.editor,
                 });
                 popup = tippy("body", {
-                  getReferenceClientRect: props.clientRect,
+                  getReferenceClientRect: props.clientRect as any,
                   appendTo: () => document.body,
                   content: component.element,
                   showOnCreate: true,
@@ -67,7 +67,7 @@ export function RichTextEditor({
               onUpdate(props) {
                 component.updateProps(props);
                 popup[0].setProps({
-                  getReferenceClientRect: props.clientRect,
+                  getReferenceClientRect: props.clientRect as any,
                 });
               },
               onKeyDown(props) {

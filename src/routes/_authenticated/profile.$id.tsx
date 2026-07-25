@@ -87,8 +87,8 @@ function ProfilePage() {
         emailStr.includes("@subadmin.") ||
         ((data.full_name as string) || "").toLowerCase().includes("a guard");
 
-      // Hide sub-admins' profiles completely: only main admin can view them. Even the sub-admin themselves should not have/view a profile.
-      if (isSubAdminProfile && !isMainAdmin) {
+      // Hide sub-admins' profiles from other users: only main admin or the user themselves can view them.
+      if (isSubAdminProfile && !isMainAdmin && !isSelf) {
         return {
           full_name: "",
           university_number: "",
