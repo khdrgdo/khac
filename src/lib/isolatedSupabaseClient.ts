@@ -31,9 +31,15 @@ function isolatedFetch(supabaseKey: string): typeof fetch {
 
 /** Creates a fresh, session-isolated Supabase client. Use once, then discard. */
 export function createIsolatedSupabaseClient() {
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const DEFAULT_SUPABASE_URL = "https://nzerffnvrvtmlnuqvhkw.supabase.co";
+  const DEFAULT_PUBLISHABLE_KEY = "sb_publishable_CiCJzf7SfP7C-1bsBKuMNQ_IbS0v2K9";
+
+  const SUPABASE_URL =
+    import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    DEFAULT_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     throw new Error("Missing Supabase environment variables for isolated client.");
