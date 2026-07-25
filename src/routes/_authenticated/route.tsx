@@ -13,6 +13,9 @@ function AuthenticatedLayout() {
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
+    if (typeof window === "undefined") {
+      return {};
+    }
     try {
       // First check cached local session
       const { data: sessionData } = await supabase.auth.getSession();
