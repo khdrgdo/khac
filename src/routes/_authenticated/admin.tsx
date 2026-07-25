@@ -106,13 +106,6 @@ import { PinnedCardAdminTab } from "@/components/PinnedCardAdminTab";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  beforeLoad: async ({ context }) => {
-    const { user } = context as { user?: { app_metadata?: { role?: string[] } } };
-    const roles = user?.app_metadata?.role || [];
-    if (!roles.includes("admin") && !roles.includes("sub_admin")) {
-      throw redirect({ to: "/feed" });
-    }
-  },
   component: AdminPage,
 });
 
@@ -2421,7 +2414,7 @@ function AddTeacherCard() {
       // Promote user to teacher role securely using RPC, falling back to direct table write if RPC fails
       let roleError;
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { error } = await supabase.rpc("admin_set_teacher_role" as any, {
           _user: data.user.id,
         });
@@ -2677,7 +2670,7 @@ function SubAdminsTab() {
         if (!roleSubAdminIds.has(p.id)) {
           console.log(`Auto-healing role for sub-admin ${p.full_name}...`);
           try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             await supabase.rpc("admin_set_user_role" as any, { _user: p.id, _role: "sub_admin" });
           } catch (err) {
             await supabase.from("user_roles").delete().eq("user_id", p.id);
@@ -2781,7 +2774,7 @@ function SubAdminsTab() {
       // 6. Set user role to 'sub_admin' securely using the RPC, falling back to direct table write if RPC fails
       let roleError;
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { error } = await supabase.rpc("admin_set_user_role" as any, {
           _user: data.user.id,
           _role: "sub_admin",

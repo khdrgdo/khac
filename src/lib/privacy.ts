@@ -61,7 +61,7 @@ export function formatUnivNumber(
   if (!universityNumber) return "";
 
   const cleanNumber = universityNumber.replace("HIDDEN_", "");
-  let isHidden = universityNumber.startsWith("HIDDEN_") || forceHidden;
+  const isHidden = universityNumber.startsWith("HIDDEN_") || forceHidden;
 
   if (isHidden) {
     if (isAdmin) {
