@@ -4,6 +4,7 @@ import { renderMarkdownContent } from "@/lib/markdown";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, isSuspended } from "@/hooks/useAuth";
+import { getOrCreateDM } from "@/lib/chatUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -112,8 +113,21 @@ function ChatPage() {
         .select("user_id")
         .eq("conversation_id", id);
       const memberIds = (members ?? []).map((m: { user_id: string }) => m.user_id);
-      const { data: profs } = await supabase.rpc("get_public_profiles", { _ids: memberIds });
-      return { ...data, profiles: (profs ?? []) as Prof[] };
+      
+      let profs: Prof[] = [];
+      if (memberIds.length > 0) {
+        const { data: rpcProfs } = await supabase.rpc("get_public_profiles", { _ids: memberIds });
+        if (rpcProfs && rpcProfs.length > 0) {
+          profs = rpcProfs as Prof[];
+        } else {
+          const { data: directProfs } = await supabase
+            .from("profiles")
+            .select("id, full_name, university_number, avatar_url, major, year")
+            .in("id", memberIds);
+          profs = (directProfs ?? []) as Prof[];
+        }
+      }
+      return { ...data, profiles: profs };
     },
   });
 
@@ -192,36 +206,50 @@ function ChatPage() {
   const [text, setText] = useState("");
   const sendMut = useMutation({
     mutationFn: async () => {
-      if (!user || !text.trim()) return;
-      
+      if (!user) throw new Error("يرجى تسجيل الدخول أولاً للمراسلة");
+      if (!text.trim()) return;
+
+      if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن إرسال الرسائل");
+      if (isOtherBlocked) throw new Error("لا يمكنك مراسلة مستخدم قمت بحظره");
+
       const { data: membership } = await supabase
         .from("conversation_members")
-        .select("id")
+        .select("conversation_id")
         .eq("conversation_id", id)
         .eq("user_id", user.id)
         .maybeSingle();
-      if (!membership) throw new Error("You are not a member of this conversation");
 
-      if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن إرسال الرسائل");
-      if (isSubAdmin) throw new Error("حساب المشرف المساعد مخصص للمراقبة فقط ولا يمكنه المراسلة");
-      if (isOtherBlocked) throw new Error("لا يمكنك مراسلة مستخدم قمت بحظره");
+      if (!membership) {
+        await supabase
+          .from("conversation_members")
+          .insert({ conversation_id: id, user_id: user.id });
+      }
+
       const { error } = await supabase.from("messages").insert({
         conversation_id: id,
         sender_id: user.id,
         content: text.trim(),
       });
-      if (error) throw error;
-      await supabase
-        .from("conversations")
-        .update({ updated_at: new Date().toISOString() })
-        .eq("id", id);
+
+      if (error) {
+        throw new Error(error.message || "تعذر إرسال الرسالة");
+      }
+
+      try {
+        await supabase
+          .from("conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", id);
+      } catch (err) {
+        console.warn("Could not update conversation updated_at:", err);
+      }
     },
     onSuccess: () => {
       setText("");
       qc.invalidateQueries({ queryKey: ["messages", id] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: any) => toast.error(e?.message || "حدث خطأ أثناء إرسال الرسالة"),
   });
 
   return (
@@ -596,10 +624,8 @@ function ChatPage() {
                           onClick={async () => {
                             setMembersOpen(false);
                             try {
-                              const { data: convId, error } = await supabase.rpc("create_dm", {
-                                _other: member.id,
-                              });
-                              if (error) throw error;
+                              if (!user) return;
+                              const convId = await getOrCreateDM(user.id, member.id);
                               if (convId) {
                                 qc.invalidateQueries({ queryKey: ["conversations"] });
                                 navigate({

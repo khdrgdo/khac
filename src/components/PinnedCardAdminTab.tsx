@@ -46,7 +46,8 @@ export function PinnedCardAdminTab() {
   }, [config]);
 
   const handleSave = () => {
-    updateConfig(form);
+    const { votes, participants, ...settingsToSave } = form;
+    updateConfig(settingsToSave);
     toast.success("تم حفظ إعدادات الكارد المثبت بنجاح! 🚀");
   };
 

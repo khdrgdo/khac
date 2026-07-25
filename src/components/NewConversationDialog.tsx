@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, Users, User as UserIcon, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { getOrCreateDM } from "@/lib/chatUtils";
 import { formatUnivNumber } from "@/lib/privacy";
 import type { ReactElement } from "react";
 
@@ -72,9 +73,7 @@ export function NewConversationDialog({ trigger }: { trigger?: ReactElement }) {
       } else {
         if (selected.size !== 1) throw new Error("اختر شخصًا واحدًا");
         const otherId = Array.from(selected)[0];
-        const { data, error } = await supabase.rpc("create_dm", { _other: otherId });
-        if (error) throw error;
-        return data as string;
+        return await getOrCreateDM(user.id, otherId);
       }
     },
     onSuccess: (convId) => {

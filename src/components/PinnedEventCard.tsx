@@ -39,42 +39,149 @@ function AdminVoterList({
   votes: Record<string, string>;
   options: { id: string; text: string }[];
 }) {
-  const userIds = Object.keys(votes);
+  const userIds = Object.keys(votes || {});
   const { data: profiles } = useQuery({
-    queryKey: ["voters_profiles", userIds],
+    queryKey: ["voters_profiles", userIds.join(",")],
     queryFn: async () => {
       if (!userIds.length) return [];
-      const { data } = await supabase.rpc("get_public_profiles", { _ids: userIds });
-      return data || [];
+      const { data: rpcProfs } = await supabase.rpc("get_public_profiles", { _ids: userIds });
+      if (rpcProfs && rpcProfs.length > 0) return rpcProfs;
+
+      const { data: directProfs } = await supabase
+        .from("profiles")
+        .select("id, full_name, university_number, avatar_url, major, year")
+        .in("id", userIds);
+      return directProfs || [];
     },
     enabled: userIds.length > 0,
   });
 
-  if (!userIds.length) return null;
+  if (!userIds.length) {
+    return (
+      <div className="mt-4 p-3 rounded-2xl bg-slate-900/60 border border-white/10 text-center text-xs text-slate-400">
+        لا يوجد أصوات سُجلت حتى الآن لهذا الاستطلاع.
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-4 p-4 rounded-xl bg-slate-900/50 border border-slate-800">
-      <h4 className="text-sm font-bold text-white mb-3">قائمة المصوتين (تظهر للمسؤولين فقط)</h4>
-      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-        {(profiles || []).map((p) => {
-          const voteId = votes[p.id];
+    <div className="mt-4 p-4 rounded-2xl bg-slate-900/85 border border-amber-500/30 text-right">
+      <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
+        <h4 className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+          <Users className="w-4 h-4 text-amber-400" />
+          <span>قائمة المصوتين بالتفصيل ({userIds.length} صوت) — خادمة للمشرفين</span>
+        </h4>
+        <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30">
+          خاص بالأدمن
+        </Badge>
+      </div>
+      <div className="space-y-2 max-h-[260px] overflow-y-auto pl-1">
+        {userIds.map((uid) => {
+          const voteId = votes[uid];
           const option = options.find((o) => o.id === voteId);
+          const p = (profiles || []).find((prof: any) => prof.id === uid);
           return (
             <div
-              key={p.id}
-              className="flex justify-between items-center text-xs bg-slate-800/50 p-2 rounded-lg"
+              key={uid}
+              className="flex justify-between items-center text-xs bg-slate-800/80 p-2.5 rounded-xl border border-white/5 hover:border-white/15 transition-all"
             >
-              <div className="flex flex-col">
-                <span className="font-semibold text-slate-200">{p.full_name}</span>
-                <span className="text-slate-400" dir="ltr">
-                  {formatUnivNumber(p.university_number, p.id, false, true)}
-                </span>
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-primary text-[10px] overflow-hidden shrink-0">
+                  {p?.avatar_url ? (
+                    <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    (p?.full_name?.[0] || "م")
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-slate-100">{p?.full_name || "مستخدم مسجل"}</span>
+                  <span className="text-[10px] text-slate-400 font-mono" dir="ltr">
+                    {p?.university_number ? formatUnivNumber(p.university_number, uid, false, true) : uid.slice(0, 8)}
+                  </span>
+                </div>
               </div>
               <Badge
                 variant="outline"
-                className="bg-slate-900 border-slate-700 text-slate-300 px-2 py-0"
+                className="bg-indigo-500/20 text-indigo-300 border-indigo-400/30 px-2.5 py-0.5 text-[11px] font-bold"
               >
-                {option?.text || "غير معروف"}
+                {option?.text || "اختيار محذوف"}
+              </Badge>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AdminParticipantList({
+  participants,
+}: {
+  participants: string[];
+}) {
+  const { data: profiles } = useQuery({
+    queryKey: ["participants_profiles", participants.join(",")],
+    queryFn: async () => {
+      if (!participants.length) return [];
+      const { data: rpcProfs } = await supabase.rpc("get_public_profiles", { _ids: participants });
+      if (rpcProfs && rpcProfs.length > 0) return rpcProfs;
+
+      const { data: directProfs } = await supabase
+        .from("profiles")
+        .select("id, full_name, university_number, avatar_url, major, year")
+        .in("id", participants);
+      return directProfs || [];
+    },
+    enabled: participants.length > 0,
+  });
+
+  if (!participants.length) {
+    return (
+      <div className="mt-4 p-3 rounded-2xl bg-slate-900/60 border border-white/10 text-center text-xs text-slate-400">
+        لا يوجد مشاركون مسجلون حتى الآن.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 p-4 rounded-2xl bg-slate-900/85 border border-emerald-500/30 text-right">
+      <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
+        <h4 className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
+          <Users className="w-4 h-4 text-emerald-400" />
+          <span>قائمة المسجلين بالحدث ({participants.length} طالب) — خاص بالمشرفين</span>
+        </h4>
+        <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
+          خاص بالأدمن
+        </Badge>
+      </div>
+      <div className="space-y-2 max-h-[260px] overflow-y-auto pl-1">
+        {participants.map((uid) => {
+          const p = (profiles || []).find((prof: any) => prof.id === uid);
+          return (
+            <div
+              key={uid}
+              className="flex justify-between items-center text-xs bg-slate-800/80 p-2.5 rounded-xl border border-white/5 hover:border-white/15 transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center font-bold text-emerald-300 text-[10px] overflow-hidden shrink-0">
+                  {p?.avatar_url ? (
+                    <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    (p?.full_name?.[0] || "م")
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-slate-100">{p?.full_name || "مستخدم مسجل"}</span>
+                  <span className="text-[10px] text-slate-400 font-mono" dir="ltr">
+                    {p?.university_number ? formatUnivNumber(p.university_number, uid, false, true) : uid.slice(0, 8)}
+                  </span>
+                </div>
+              </div>
+              <Badge
+                variant="outline"
+                className="bg-emerald-500/20 text-emerald-300 border-emerald-400/30 px-2.5 py-0.5 text-[11px]"
+              >
+                مسجل 🟢
               </Badge>
             </div>
           );
@@ -536,6 +643,14 @@ export function PinnedEventCard({ isAdminPreview = false }: PinnedEventCardProps
               )}
             </div>
           </div>
+        )}
+
+        {/* ADMIN VOTERS & PARTICIPANTS DETAILS PANEL */}
+        {canManage && config.type === "poll" && (
+          <AdminVoterList votes={config.votes || {}} options={config.pollOptions || []} />
+        )}
+        {canManage && config.type !== "poll" && (
+          <AdminParticipantList participants={config.participants || []} />
         )}
       </div>
     </motion.div>

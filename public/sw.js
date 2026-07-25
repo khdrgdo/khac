@@ -1,6 +1,6 @@
 // Enhanced PWA & Push Service Worker for NEXUS
 // FIXED: Added precache strategy to pass Chrome PWA install audit
-const CACHE_NAME = "nexus-pwa-v4";
+const CACHE_NAME = "nexus-pwa-v5";
 
 // Core assets that must be cached for offline functionality
 const PRECACHE_ASSETS = [

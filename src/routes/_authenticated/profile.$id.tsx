@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile, signedUrl } from "@/lib/storage";
+import { getOrCreateDM } from "@/lib/chatUtils";
 
 export const Route = createFileRoute("/_authenticated/profile/$id")({
   component: ProfilePage,
@@ -46,6 +47,31 @@ function ProfilePage() {
       } else {
         const { data: rows } = await supabase.rpc("get_public_profiles", { _ids: [id] });
         data = rows && rows[0] ? (rows[0] as Record<string, unknown>) : null;
+        if (data) {
+          try {
+            const { data: directProfile } = await supabase
+              .from("profiles")
+              .select("theme")
+              .eq("id", id)
+              .maybeSingle();
+            if (directProfile && (directProfile as any).theme) {
+              data.theme = (directProfile as any).theme;
+            }
+          } catch (err) {
+            console.warn("Could not fetch theme directly:", err);
+          }
+        }
+      }
+
+      if (data && !data.theme) {
+        try {
+          const themeMap = JSON.parse(localStorage.getItem("unihub_profile_themes_v1") || "{}");
+          if (themeMap[id]) {
+            data.theme = themeMap[id];
+          }
+        } catch (e) {
+          /* ignore */
+        }
       }
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", id);
       if (!data) return null;
@@ -222,10 +248,9 @@ function ProfilePage() {
 
   const startChat = useMutation({
     mutationFn: async () => {
-      if (!user || user.id === id) return null;
-      const { data, error } = await supabase.rpc("create_dm", { _other: id });
-      if (error) throw error;
-      return data as string;
+      if (!user) throw new Error("يرجى تسجيل الدخول أولاً للمراسلة");
+      if (user.id === id) throw new Error("لا يمكنك مراسلة نفسك");
+      return await getOrCreateDM(user.id, id);
     },
     onSuccess: (convId) => {
       if (convId) {
@@ -233,7 +258,7 @@ function ProfilePage() {
         navigate({ to: "/messages/$id", params: { id: convId } });
       }
     },
-    onError: (e: Error) => toast.error(e.message || "تعذّر بدء المحادثة"),
+    onError: (e: any) => toast.error(e?.message || "تعذّر بدء المحادثة"),
   });
 
   async function onPickAvatar(files: FileList | null) {

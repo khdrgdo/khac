@@ -9,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from "@/components/RichTextEditor";
@@ -158,10 +157,9 @@ function CourseDetailPage() {
     },
   });
 
-  const canModifyCourse =
-    !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
   const canEdit = canModifyCourse;
-  const canDeleteCourse = canModifyCourse;
+  const canDeleteCourse =
+    !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
 
   if (isCourseLoading) {
     return (

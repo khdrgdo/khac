@@ -19,6 +19,7 @@ import { RankBadge } from "@/components/RankBadge";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { majorLabel } from "@/lib/college";
 import { formatUnivNumber } from "@/lib/privacy";
+import { getOrCreateDM } from "@/lib/chatUtils";
 import {
   Search,
   X,
@@ -268,9 +269,7 @@ export function GlobalSearchDialog() {
   const startDmMut = useMutation({
     mutationFn: async (otherId: string) => {
       if (!user) throw new Error("يرجى تسجيل الدخول أولاً");
-      const { data, error } = await supabase.rpc("create_dm", { _other: otherId });
-      if (error) throw error;
-      return data as string;
+      return await getOrCreateDM(user.id, otherId);
     },
     onSuccess: (convId) => {
       qc.invalidateQueries({ queryKey: ["conversations"] });

@@ -410,7 +410,6 @@ export type Database = {
           must_change_password: boolean;
           points: number;
           suspended_until: string | null;
-          theme: string | null;
           university_number: string;
           updated_at: string;
           verified: boolean;
@@ -431,7 +430,6 @@ export type Database = {
           must_change_password?: boolean;
           points?: number;
           suspended_until?: string | null;
-          theme?: string | null;
           university_number: string;
           updated_at?: string;
           verified?: boolean;
@@ -452,7 +450,6 @@ export type Database = {
           must_change_password?: boolean;
           points?: number;
           suspended_until?: string | null;
-          theme?: string | null;
           university_number?: string;
           updated_at?: string;
           verified?: boolean;

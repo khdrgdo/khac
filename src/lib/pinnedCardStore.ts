@@ -82,7 +82,6 @@ function mapRowToConfig(row: Record<string, unknown>): PinnedCardConfig {
 
 export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
   try {
-    let result = DEFAULT_PINNED_CARD;
     const { data, error } = await supabase
       .from("pinned_cards" as never)
       .select("*")
@@ -90,76 +89,34 @@ export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
       .single();
 
     if (!error && data) {
-      result = mapRowToConfig(data);
+      return mapRowToConfig(data);
     }
-
-    // Always merge with local storage backup to ensure votes/participants are never lost
-    const localStr = localStorage.getItem("unihub_pinned_featured_card_v1");
-    let localConfig: Partial<PinnedCardConfig> = {};
-    if (localStr) {
-      try {
-        localConfig = JSON.parse(localStr);
-      } catch (e) {
-        /* ignore */
-      }
-    }
-
-    const localVotesStr = localStorage.getItem("unihub_poll_votes_v1");
-    let localVotes: Record<string, string> = {};
-    if (localVotesStr) {
-      try {
-        localVotes = JSON.parse(localVotesStr);
-      } catch (e) {
-        /* ignore */
-      }
-    }
-
-    const mergedVotes = {
-      ...(result.votes || {}),
-      ...(localConfig.votes || {}),
-      ...localVotes,
-    };
-
-    const mergedParticipants = Array.from(
-      new Set([
-        ...(result.participants || []),
-        ...(localConfig.participants || []),
-      ]),
-    );
-
-    return {
-      ...result,
-      ...(localConfig.enabled !== undefined ? { enabled: localConfig.enabled } : {}),
-      votes: mergedVotes,
-      participants: mergedParticipants,
-    };
   } catch (err) {
-    console.warn("Failed to fetch pinned card:", err);
-    const local = localStorage.getItem("unihub_pinned_featured_card_v1");
-    if (local) {
-      try {
-        return { ...DEFAULT_PINNED_CARD, ...JSON.parse(local) };
-      } catch (e) {
-        /* ignore */
-      }
-    }
-    return DEFAULT_PINNED_CARD;
+    console.warn("Failed to fetch pinned card from DB:", err);
   }
+
+  // Fallback to local storage if offline/error
+  const localStr = localStorage.getItem("unihub_pinned_featured_card_v1");
+  if (localStr) {
+    try {
+      return { ...DEFAULT_PINNED_CARD, ...JSON.parse(localStr) };
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  return DEFAULT_PINNED_CARD;
 }
 
 export async function savePinnedCardToDb(config: PinnedCardConfig) {
-  // 1. Immediately store locally to guarantee client persistence
+  // Store locally for immediate component feedback
   try {
     localStorage.setItem("unihub_pinned_featured_card_v1", JSON.stringify(config));
-    if (config.votes) {
-      localStorage.setItem("unihub_poll_votes_v1", JSON.stringify(config.votes));
-    }
     window.dispatchEvent(new CustomEvent("pinnedCardUpdated", { detail: config }));
   } catch (e) {
     console.warn("Local storage save failed:", e);
   }
 
-  // 2. Try DB update/upsert
+  // Try DB update/upsert
   const row = {
     id: config.id,
     enabled: config.enabled,
@@ -182,7 +139,7 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
 
   const { error } = await supabase.from("pinned_cards").upsert(row as never);
   if (error) {
-    // Try update as fallback
+    console.warn("Upsert failed, trying update fallback:", error);
     await supabase.from("pinned_cards").update(row as never).eq("id", config.id);
   }
 }
@@ -243,27 +200,110 @@ export function usePinnedCard() {
     };
   }, []);
 
-  const updateConfig = async (newConfig: Partial<PinnedCardConfig>) => {
+  const updateConfig = async (newConfigPartial: Partial<PinnedCardConfig>) => {
     try {
-      const fullConfig = { ...config, ...newConfig };
-      setConfig(fullConfig); // optimistic
+      // Fetch latest row to avoid overwriting recent votes/participants if admin updates settings
+      const { data: latestRow } = await supabase
+        .from("pinned_cards")
+        .select("*")
+        .eq("id", "pinned_featured_event_1")
+        .single();
+
+      const latestConfig = latestRow ? mapRowToConfig(latestRow) : config;
+
+      const fullConfig: PinnedCardConfig = {
+        ...latestConfig,
+        ...newConfigPartial,
+        votes: newConfigPartial.votes !== undefined ? newConfigPartial.votes : latestConfig.votes,
+        participants:
+          newConfigPartial.participants !== undefined
+            ? newConfigPartial.participants
+            : latestConfig.participants,
+      };
+
+      setConfig(fullConfig);
       await savePinnedCardToDb(fullConfig);
     } catch (err) {
-      console.warn("Failed to save pinned card config to DB:", err);
+      console.warn("Failed to update pinned card config:", err);
+      const fullConfig = { ...config, ...newConfigPartial };
+      setConfig(fullConfig);
+      await savePinnedCardToDb(fullConfig);
     }
   };
 
   const castVote = async (userId: string, optionId: string) => {
-    const newVotes = { ...config.votes, [userId]: optionId };
-    await updateConfig({ votes: newVotes });
+    try {
+      // Fetch latest row to merge user's vote safely with other users' votes
+      const { data: latestRow } = await supabase
+        .from("pinned_cards")
+        .select("*")
+        .eq("id", "pinned_featured_event_1")
+        .single();
+
+      let currentVotes: Record<string, string> = {};
+      if (latestRow?.votes && typeof latestRow.votes === "object" && !Array.isArray(latestRow.votes)) {
+        currentVotes = { ...(latestRow.votes as Record<string, string>) };
+      } else {
+        currentVotes = { ...(config.votes || {}) };
+      }
+
+      currentVotes[userId] = optionId;
+
+      const latestConfig = latestRow ? mapRowToConfig(latestRow) : config;
+      const updatedConfig: PinnedCardConfig = {
+        ...latestConfig,
+        votes: currentVotes,
+      };
+
+      setConfig(updatedConfig);
+      await savePinnedCardToDb(updatedConfig);
+    } catch (err) {
+      console.warn("Fallback castVote execution:", err);
+      const newVotes = { ...(config.votes || {}), [userId]: optionId };
+      const updatedConfig = { ...config, votes: newVotes };
+      setConfig(updatedConfig);
+      await savePinnedCardToDb(updatedConfig);
+    }
   };
 
   const toggleParticipation = async (userId: string) => {
-    const hasJoined = config.participants.includes(userId);
-    const newParticipants = hasJoined
-      ? config.participants.filter((id) => id !== userId)
-      : [...config.participants, userId];
-    await updateConfig({ participants: newParticipants });
+    try {
+      const { data: latestRow } = await supabase
+        .from("pinned_cards")
+        .select("*")
+        .eq("id", "pinned_featured_event_1")
+        .single();
+
+      let currentParticipants: string[] = [];
+      if (latestRow?.participants && Array.isArray(latestRow.participants)) {
+        currentParticipants = [...(latestRow.participants as string[])];
+      } else {
+        currentParticipants = [...(config.participants || [])];
+      }
+
+      const hasJoined = currentParticipants.includes(userId);
+      const newParticipants = hasJoined
+        ? currentParticipants.filter((id) => id !== userId)
+        : [...currentParticipants, userId];
+
+      const latestConfig = latestRow ? mapRowToConfig(latestRow) : config;
+      const updatedConfig: PinnedCardConfig = {
+        ...latestConfig,
+        participants: newParticipants,
+      };
+
+      setConfig(updatedConfig);
+      await savePinnedCardToDb(updatedConfig);
+    } catch (err) {
+      console.warn("Fallback toggleParticipation execution:", err);
+      const hasJoined = (config.participants || []).includes(userId);
+      const newParticipants = hasJoined
+        ? config.participants.filter((id) => id !== userId)
+        : [...(config.participants || []), userId];
+      const updatedConfig = { ...config, participants: newParticipants };
+      setConfig(updatedConfig);
+      await savePinnedCardToDb(updatedConfig);
+    }
   };
 
   const toggleEnabled = async () => {
