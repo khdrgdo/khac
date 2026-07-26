@@ -1,6 +1,6 @@
 // Enhanced PWA & Push Service Worker for NEXUS
 // FIXED: Added precache strategy to pass Chrome PWA install audit
-const CACHE_NAME = "nexus-pwa-v5";
+const CACHE_NAME = "nexus-pwa-v6";
 
 // Core assets that must be cached for offline functionality
 const PRECACHE_ASSETS = [
@@ -44,6 +44,10 @@ self.addEventListener("fetch", (event) => {
   // Skip Supabase API calls — always fetch fresh
   if (request.url.includes("supabase.co")) return;
 
+  // Skip auth-related pages — never cache
+  const url = new URL(request.url);
+  if (url.pathname === "/auth" || url.pathname === "/reset-password") return;
+
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request)
@@ -58,7 +62,6 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cachedResponse);
 
-      // Return cached version immediately if available, else fetch
       return cachedResponse || fetchPromise;
     })
   );

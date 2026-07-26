@@ -3,7 +3,6 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
-  useRouter,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -13,7 +12,6 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -147,7 +145,6 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const router = useRouter();
 
   useEffect(() => {
     // Init theme on mount
@@ -171,17 +168,10 @@ function RootComponent() {
     };
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-        router.invalidate();
-      }
-    });
-
     return () => {
-      sub?.subscription.unsubscribe();
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     };
-  }, [router, queryClient]);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
