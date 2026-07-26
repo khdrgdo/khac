@@ -3,8 +3,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
+const MENTION_REGEX = /\[@([^\]]+)\]\(([^)]+)\)/g;
+
 export const renderMarkdownContent = (content: string, className?: string) => {
-  const transformedContent = content.replace(/\[@([^\]]+)\]\(([^)]+)\)/g, '[@$1](/profile/$2)');
+  const transformedContent = content.replace(MENTION_REGEX, '[@$1](/profile/$2)');
 
   return (
     <div className={cn("markdown-body", className)}>
@@ -17,9 +19,8 @@ export const renderMarkdownContent = (content: string, className?: string) => {
               return (
                 <Link
                   to="/profile/$id"
-                  params={{ id: profileId }}
+                  params={{ id: profileId } as never}
                   className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-semibold hover:underline inline-flex items-center gap-1"
-                  onClick={(e) => e.stopPropagation()}
                 >
                   {children}
                 </Link>

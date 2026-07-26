@@ -13,6 +13,8 @@ interface MarkdownViewerProps {
   className?: string;
 }
 
+const MENTION_REGEX = /\[@([^\]]+)\]\(([^)]+)\)/g;
+
 function sanitizeContent(content: string): string {
   return DOMPurify.sanitize(content, {
     ALLOWED_TAGS: [
@@ -36,7 +38,7 @@ function isSafeUrl(href: string): boolean {
 }
 
 export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
-  const transformedContent = content.replace(/\[@([^\]]+)\]\(([^)]+)\)/g, '[@$1](/profile/$2)');
+  const transformedContent = content.replace(MENTION_REGEX, '[@$1](/profile/$2)');
   const sanitizedContent = sanitizeContent(transformedContent);
 
   return (
@@ -47,16 +49,15 @@ export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight, rehypeRaw]}
         components={{
-          a: ({ node, ...props }) => {
+          a: (props) => {
             const href = props.href || "";
             if (href.startsWith("/profile/")) {
               const profileId = href.replace("/profile/", "");
               return (
                 <Link
                   to="/profile/$id"
-                  params={{ id: profileId }}
+                  params={{ id: profileId } as never}
                   className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-semibold hover:underline inline-flex items-center gap-1"
-                  onClick={(e) => e.stopPropagation()}
                 >
                   {props.children}
                 </Link>
@@ -76,36 +77,36 @@ export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
               </a>
             );
           },
-          code: ({ node, className, children, ...props }) => {
+          code: ({ className: codeClassName, children, ...restProps }) => {
             return (
               <code
                 className={cn(
                   "bg-muted px-1.5 py-0.5 rounded-md font-mono text-[0.9em]",
-                  className,
+                  codeClassName,
                 )}
-                {...props}
+                {...restProps}
               >
                 {children}
               </code>
             );
           },
-          pre: ({ node, ...props }) => (
+          pre: (props) => (
             <pre
               className="bg-[#0d1117] p-4 rounded-xl overflow-x-auto border border-border/50 my-4 shadow-sm"
               dir="ltr"
               {...props}
             />
           ),
-          p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-          ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2" {...props} />,
-          ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2" {...props} />,
-          blockquote: ({ node, ...props }) => (
+          p: (props) => <p className="mb-2 last:mb-0" {...props} />,
+          ul: (props) => <ul className="list-disc list-inside mb-2" {...props} />,
+          ol: (props) => <ol className="list-decimal list-inside mb-2" {...props} />,
+          blockquote: (props) => (
             <blockquote
               className="border-l-4 border-primary/50 pl-4 italic text-muted-foreground my-2"
               {...props}
             />
           ),
-          img: ({ node, ...props }) => (
+          img: (props) => (
             <img
               {...props}
               alt={props.alt || ""}
