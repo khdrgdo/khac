@@ -140,9 +140,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
+      console.warn(`[AUTH-CTX] onAuthStateChange: event=${_e}, user=${s?.user?.id ?? "NONE"}, expiresAt=${s?.expires_at}`);
       if (_e === "SIGNED_IN") {
         await queryClient.invalidateQueries();
       } else if (_e === "SIGNED_OUT") {
+        console.warn(`[AUTH-CTX] SIGNED_OUT fired! clearing queryClient`);
         queryClient.clear();
       }
       if (!mounted) return;
@@ -150,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (!s) {
+        console.warn(`[AUTH-CTX] session is null → clearing profile/roles`);
         setProfile(null);
         setRoles([]);
         setLoading(false);
@@ -161,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth
       .getSession()
       .then(({ data: { session: s } }) => {
+        console.warn(`[AUTH-CTX] init getSession: user=${s?.user?.id ?? "NONE"}, expiresAt=${s?.expires_at}`);
         if (!mounted) return;
         sessionRef.current = s;
         setSession(s);
@@ -168,7 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (s) loadExtras(s.user.id);
         else setLoading(false);
       })
-      .catch((err) => {
+      .catch((err) => {
+        console.warn(`[AUTH-CTX] init getSession error:`, err);
         if (mounted) setLoading(false);
       });
 

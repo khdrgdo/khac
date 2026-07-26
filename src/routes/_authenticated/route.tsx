@@ -16,22 +16,25 @@ export const Route = createFileRoute("/_authenticated")({
     if (typeof window === "undefined") {
       return {};
     }
+    const ts = new Date().toISOString();
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
       const sessionUser = sessionData?.session?.user;
+      console.warn(`[AUTH][${ts}] getSession: user=${sessionUser ? sessionUser.id : "NONE"}, expiresAt=${sessionData?.session?.expires_at}, error=${sessionErr?.message ?? "none"}`);
 
       if (!sessionUser) {
+        console.warn(`[AUTH][${ts}] → REDIRECT: no session user`);
         throw redirect({ to: "/auth" });
       }
 
-      // Validate token with getUser() — but only redirect on explicit 401.
-      // Any other error (network, server, timeout) → trust the local session.
       try {
-        const { error: userError } = await supabase.auth.getUser();
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        console.warn(`[AUTH][${ts}] getUser: user=${userData?.user ? userData.user.id : "NONE"}, error=${userError?.message ?? "none"}, status=${userError?.status ?? "none"}`);
         if (
           userError &&
           (userError.status === 401 || userError.message?.includes("Invalid token"))
         ) {
+          console.warn(`[AUTH][${ts}] → REDIRECT: 401/Invalid token`);
           throw redirect({ to: "/auth" });
         }
       } catch (innerErr) {
@@ -42,9 +45,10 @@ export const Route = createFileRoute("/_authenticated")({
         ) {
           throw innerErr;
         }
-        // Network error or other exception — trust the local session
+        console.warn(`[AUTH][${ts}] getUser exception (trusted session):`, innerErr);
       }
 
+      console.warn(`[AUTH][${ts}] → OK: returning user`);
       return { user: sessionUser };
     } catch (err) {
       if (
@@ -54,6 +58,7 @@ export const Route = createFileRoute("/_authenticated")({
       ) {
         throw err;
       }
+      console.warn(`[AUTH][${ts}] → REDIRECT: outer catch`, err);
       throw redirect({ to: "/auth" });
     }
   },
