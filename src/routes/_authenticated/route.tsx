@@ -56,7 +56,6 @@ export const Route = createFileRoute("/_authenticated")({
       ) {
         throw err;
       }
-      console.warn("Auth check fallback to login:", err);
       throw redirect({ to: "/auth" });
     }
   },

@@ -105,7 +105,6 @@ export function InstallPWAButton({
         return true;
       }
     } catch (err) {
-      console.warn("Error triggering install prompt:", err);
     } finally {
       setDeferredPrompt(null);
       delete (window as unknown as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt;

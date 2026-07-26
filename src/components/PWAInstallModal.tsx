@@ -59,7 +59,6 @@ export function PWAInstallModal({
         onOpenChange(false);
       }
     } catch (err) {
-      console.warn("Direct install error:", err);
     } finally {
       setInstalling(false);
     }

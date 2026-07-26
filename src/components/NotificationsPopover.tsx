@@ -94,7 +94,6 @@ export function NotificationsPopover() {
       })
       .subscribe((status, err) => {
         if (err) {
-          console.warn("[Notifications Channel Sub Error]", err);
         }
       });
 

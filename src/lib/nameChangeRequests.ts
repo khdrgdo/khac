@@ -33,7 +33,6 @@ export async function setUserUsedDirectChange(userId: string, used: boolean): Pr
   try {
     await supabase.from("profiles").update({ has_used_direct_name_change: used }).eq("id", userId);
   } catch (err) {
-    console.error(err);
   }
 }
 
@@ -45,12 +44,10 @@ export async function getNameChangeRequests(): Promise<NameChangeRequest[]> {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Failed to fetch name change requests:", error);
       return [];
     }
     return (data as NameChangeRequest[]) || [];
   } catch (err) {
-    console.error(err);
     return [];
   }
 }
@@ -66,13 +63,11 @@ export async function submitNameChangeRequest(
       .single();
 
     if (error) {
-      console.error("Error submitting request:", error);
       return null;
     }
     window.dispatchEvent(new Event("name_change_requests_updated"));
     return newReq as NameChangeRequest;
   } catch (err) {
-    console.error(err);
     return null;
   }
 }
@@ -90,7 +85,6 @@ export async function approveNameChangeRequest(
       .single();
 
     if (error || !target) {
-      console.error("Failed to approve request:", error);
       return null;
     }
 
@@ -101,14 +95,12 @@ export async function approveNameChangeRequest(
       .eq("id", target.user_id);
 
     if (profileError) {
-      console.error("Failed to update profile name in database", profileError);
     }
 
     await setUserUsedDirectChange(target.user_id, false);
     window.dispatchEvent(new Event("name_change_requests_updated"));
     return target as NameChangeRequest;
   } catch (err) {
-    console.error(err);
     return null;
   }
 }
@@ -125,14 +117,12 @@ export async function rejectNameChangeRequest(
       .single();
 
     if (error || !target) {
-      console.error("Failed to reject request:", error);
       return null;
     }
 
     window.dispatchEvent(new Event("name_change_requests_updated"));
     return target as NameChangeRequest;
   } catch (err) {
-    console.error(err);
     return null;
   }
 }

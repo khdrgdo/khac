@@ -24,7 +24,6 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     try {
       return await fetch(input, { ...init, headers });
     } catch (err) {
-      console.warn("[Supabase fetch request failed]", err);
       throw err;
     }
   };
@@ -40,7 +39,6 @@ function createSupabaseClient() {
       ...(!SUPABASE_PUBLISHABLE_KEY ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
     ];
     const message = "Missing Supabase env vars: " + missing.join(", ") + ". Set them in .env";
-    console.error("[Supabase] " + message);
     throw new Error(message);
   }
 

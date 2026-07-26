@@ -273,6 +273,8 @@ export interface SubAdminPermissions {
   [key: string]: boolean;
 }
 
+const PERMS_PREFIX = "__PERMS__:";
+
 export function getSubAdminPermissions(profile: Profile | null): SubAdminPermissions {
   const defaults: SubAdminPermissions = {
     can_warn: true,
@@ -284,8 +286,10 @@ export function getSubAdminPermissions(profile: Profile | null): SubAdminPermiss
   };
   if (!profile || !profile.bio) return defaults;
   try {
-    if (profile.bio.trim().startsWith("{")) {
-      const parsed = JSON.parse(profile.bio);
+    const bio = profile.bio;
+    if (bio.startsWith(PERMS_PREFIX)) {
+      const jsonStr = bio.slice(PERMS_PREFIX.length);
+      const parsed = JSON.parse(jsonStr);
       if (parsed && typeof parsed === "object") {
         return {
           can_warn: parsed.can_warn !== false,
@@ -297,10 +301,14 @@ export function getSubAdminPermissions(profile: Profile | null): SubAdminPermiss
         };
       }
     }
-  } catch (e) {
-    // ignore
+  } catch {
+    // ignore parse errors
   }
   return defaults;
+}
+
+export function serializeSubAdminPermissions(perms: SubAdminPermissions): string {
+  return PERMS_PREFIX + JSON.stringify(perms);
 }
 
 export function useAuth(): AuthContextValue {

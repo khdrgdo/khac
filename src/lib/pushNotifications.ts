@@ -16,7 +16,6 @@ export function getNotificationPermissionState(): NotificationPermission | "unsu
  */
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!isNotificationSupported()) {
-    console.warn("Notifications are not supported in this browser.");
     return false;
   }
 

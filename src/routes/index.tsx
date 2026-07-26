@@ -21,7 +21,6 @@ function IndexRedirect() {
         }
       })
       .catch((err) => {
-        console.error("Session check error on index route:", err);
         navigate({ to: "/auth", replace: true });
       });
   }, [navigate]);

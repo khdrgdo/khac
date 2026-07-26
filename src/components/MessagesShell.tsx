@@ -52,7 +52,6 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
           setBlockedUsers(stored ? JSON.parse(stored) : []);
         }
       } catch (e) {
-        console.warn(e);
       }
     };
     window.addEventListener("storage", handleStorage);

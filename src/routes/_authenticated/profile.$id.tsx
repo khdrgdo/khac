@@ -58,7 +58,6 @@ function ProfilePage() {
               data.theme = (directProfile as any).theme;
             }
           } catch (err) {
-            console.warn("Could not fetch theme directly:", err);
           }
         }
       }

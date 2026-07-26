@@ -96,7 +96,6 @@ function ChatPage() {
         const stored = localStorage.getItem("blocked_users");
         setBlockedUsers(stored ? JSON.parse(stored) : []);
       } catch (e) {
-        console.warn(e);
       }
     };
     window.addEventListener("storage", handleStorage);
@@ -241,7 +240,6 @@ function ChatPage() {
           .update({ updated_at: new Date().toISOString() })
           .eq("id", id);
       } catch (err) {
-        console.warn("Could not update conversation updated_at:", err);
       }
     },
     onSuccess: () => {

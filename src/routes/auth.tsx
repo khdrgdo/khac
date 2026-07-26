@@ -47,7 +47,6 @@ function AuthPage() {
         if (data?.session) navigate({ to: "/feed", replace: true });
       })
       .catch((err) => {
-        console.error("Auth session check failed:", err);
       });
   }, [navigate]);
 

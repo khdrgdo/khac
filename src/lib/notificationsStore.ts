@@ -30,7 +30,6 @@ export function getStoredNotifications(userId: string): NotificationItem[] {
     }
     return JSON.parse(raw);
   } catch (e) {
-    console.error("Failed to parse notifications:", e);
     return [];
   }
 }
@@ -44,7 +43,6 @@ export function saveNotifications(userId: string, items: NotificationItem[]): vo
     localStorage.setItem(`${NOTIFICATIONS_STORAGE_KEY}_${userId}`, JSON.stringify(items));
     window.dispatchEvent(new Event("notifications_updated"));
   } catch (e) {
-    console.error("Failed to save notifications:", e);
   }
 }
 
@@ -443,7 +441,6 @@ export async function fetchRealtimeNotifications(userId: string): Promise<Notifi
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   } catch (err) {
-    console.error("Error fetching realtime notifications:", err);
     return getStoredNotifications(userId);
   }
 }

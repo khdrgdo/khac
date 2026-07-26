@@ -163,7 +163,6 @@ export function BroadcastNotificationTab() {
       setTitle("");
       setBody("");
     } catch (err) {
-      console.error("Error sending broadcast notification:", err);
       toast.error("حدث خطأ أثناء إرسال الإشعار");
     } finally {
       setIsSending(false);

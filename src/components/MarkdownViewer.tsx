@@ -2,6 +2,8 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import rehypeRaw from "rehype-raw";
+import DOMPurify from "dompurify";
 import "highlight.js/styles/github-dark.css";
 import { cn } from "@/lib/utils";
 
@@ -10,14 +12,30 @@ interface MarkdownViewerProps {
   className?: string;
 }
 
+function sanitizeContent(content: string): string {
+  return DOMPurify.sanitize(content, {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "em", "u", "s", "code", "pre", "blockquote",
+      "ul", "ol", "li", "a", "h1", "h2", "h3", "h4", "h5", "h6",
+      "table", "thead", "tbody", "tr", "th", "td", "hr", "img",
+      "span", "div", "del", "sup", "sub",
+    ],
+    ALLOWED_ATTR: [
+      "href", "target", "rel", "className", "class", "id", "src", "alt",
+      "width", "height", "title", "dir",
+    ],
+    ALLOW_DATA_ATTR: false,
+  });
+}
+
+function isSafeUrl(href: string): boolean {
+  if (!href) return false;
+  const trimmed = href.trim().toLowerCase();
+  return trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/");
+}
+
 export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
-  // Simple hashtag parser to turn #tag into a span
-  const processHashtags = (text: string) => {
-    // We will let react-markdown handle most things, but we can't easily parse hashtags
-    // into links without a custom remark plugin. For now, we'll just style them later or
-    // we can use a custom renderer for text.
-    return text;
-  };
+  const sanitizedContent = sanitizeContent(content);
 
   return (
     <div
@@ -25,17 +43,22 @@ export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
+        rehypePlugins={[rehypeHighlight, rehypeRaw]}
         components={{
           a: ({ node, ...props }) => {
-            // Check if it's a hashtag (we could implement hashtag linking if we pre-processed)
+            const href = props.href || "";
+            if (!isSafeUrl(href)) {
+              return <span className="text-muted-foreground">{props.children}</span>;
+            }
             return (
               <a
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
-                {...props}
-              />
+                href={href}
+              >
+                {props.children}
+              </a>
             );
           },
           code: ({ node, className, children, ...props }) => {
@@ -67,9 +90,17 @@ export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
               {...props}
             />
           ),
+          img: ({ node, ...props }) => (
+            <img
+              {...props}
+              alt={props.alt || ""}
+              loading="lazy"
+              className="max-w-full h-auto rounded-md"
+            />
+          ),
         }}
       >
-        {content}
+        {sanitizedContent}
       </ReactMarkdown>
     </div>
   );
