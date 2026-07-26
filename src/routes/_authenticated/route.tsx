@@ -17,7 +17,6 @@ export const Route = createFileRoute("/_authenticated")({
       return {};
     }
     try {
-      // First check cached local session
       const { data: sessionData } = await supabase.auth.getSession();
       const sessionUser = sessionData?.session?.user;
 
@@ -25,12 +24,10 @@ export const Route = createFileRoute("/_authenticated")({
         throw redirect({ to: "/auth" });
       }
 
-      // Try validating user via getUser()
+      // Validate token with getUser() — but only redirect on explicit 401.
+      // Any other error (network, server, timeout) → trust the local session.
       try {
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (userData?.user) {
-          return { user: userData.user };
-        }
+        const { error: userError } = await supabase.auth.getUser();
         if (
           userError &&
           (userError.status === 401 || userError.message?.includes("Invalid token"))
@@ -45,9 +42,10 @@ export const Route = createFileRoute("/_authenticated")({
         ) {
           throw innerErr;
         }
+        // Network error or other exception — trust the local session
       }
-      
-      throw redirect({ to: "/auth" });
+
+      return { user: sessionUser };
     } catch (err) {
       if (
         err &&
