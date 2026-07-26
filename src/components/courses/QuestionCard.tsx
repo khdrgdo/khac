@@ -12,8 +12,7 @@ import { MessageSquare, Clock, Send, Trash2, Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { broadcastNotification } from "@/lib/notificationsStore";
-import DOMPurify from "dompurify";
-import parse, { DOMNode, Element } from "html-react-parser";
+import { renderMarkdownContent } from "@/lib/markdown";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { toast } from "sonner";
@@ -154,7 +153,7 @@ function QuestionCard({
         </div>
 
         <p className="text-sm font-medium text-foreground whitespace-pre-wrap leading-relaxed">
-          {q.cleanContent}
+          {renderMarkdownContent(q.cleanContent)}
         </p>
 
         {/* Action / Comments Header */}
@@ -223,17 +222,7 @@ function QuestionCard({
                       </div>
 
                                             <div className="text-xs text-foreground/90 whitespace-pre-wrap">
-                        {parse(DOMPurify.sanitize(c.content), {
-                          replace: (domNode) => {
-                            if (domNode instanceof Element && domNode.attribs['data-type'] === 'mention') {
-                              return (
-                                <span className="bg-primary/10 text-primary px-1 rounded-md font-semibold">
-                                  {domNode.children.map((child: any) => child.data)}
-                                </span>
-                              );
-                            }
-                          }
-                        })}
+                        {renderMarkdownContent(c.content)}
                       </div>
                     </div>
                   );

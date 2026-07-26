@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -35,7 +36,8 @@ function isSafeUrl(href: string): boolean {
 }
 
 export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
-  const sanitizedContent = sanitizeContent(content);
+  const transformedContent = content.replace(/\[@([^\]]+)\]\(([^)]+)\)/g, '[@$1](/profile/$2)');
+  const sanitizedContent = sanitizeContent(transformedContent);
 
   return (
     <div
@@ -47,6 +49,19 @@ export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
         components={{
           a: ({ node, ...props }) => {
             const href = props.href || "";
+            if (href.startsWith("/profile/")) {
+              const profileId = href.replace("/profile/", "");
+              return (
+                <Link
+                  to="/profile/$id"
+                  params={{ id: profileId }}
+                  className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-semibold hover:underline inline-flex items-center gap-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {props.children}
+                </Link>
+              );
+            }
             if (!isSafeUrl(href)) {
               return <span className="text-muted-foreground">{props.children}</span>;
             }
