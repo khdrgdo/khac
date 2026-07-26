@@ -21,24 +21,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
       headers.delete("Authorization");
     }
     headers.set("apikey", supabaseKey);
-
-    const maxRetries = 2;
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        const res = await fetch(input, { ...init, headers });
-        if (res.status === 429 && attempt < maxRetries) {
-          const retryAfter = parseInt(res.headers.get("Retry-After") || "1", 10);
-          const delay = Math.min(retryAfter * 1000, 5000);
-          await new Promise((r) => setTimeout(r, delay));
-          continue;
-        }
-        return res;
-      } catch (err) {
-        if (attempt === maxRetries) throw err;
-        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
-      }
-    }
-    throw new Error("unreachable");
+    return fetch(input, { ...init, headers });
   };
 }
 
