@@ -55,7 +55,8 @@ import {
   Filter,
 } from "lucide-react";
 import { toast } from "sonner";
-import { EditCourseDialog, DeleteCourseDialog } from "./courses.$id";
+import { EditCourseDialog } from "@/components/courses/EditCourseDialog";
+import { DeleteCourseDialog } from "@/components/courses/DeleteCourseDialog";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 

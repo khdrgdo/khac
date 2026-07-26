@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, ArrowRight, BookOpen, UserCheck, Pencil, Trash2 } from "lucide-react";
+import { Loader2, ArrowRight, BookOpen, UserCheck, Pencil, Trash2, FileText, ExternalLink, HelpCircle, Megaphone, Calendar } from "lucide-react";
 import { majorLabel } from "@/lib/college";
 import { DeleteCourseDialog } from "@/components/courses/DeleteCourseDialog";
 import { EditCourseDialog } from "@/components/courses/EditCourseDialog";
@@ -17,7 +17,7 @@ import { DiscussionsTab } from "@/components/courses/DiscussionsTab";
 import { UpdatesTab } from "@/components/courses/UpdatesTab";
 import { ScheduleTab } from "@/components/courses/ScheduleTab";
 import { toast } from "sonner";
-import type { CourseData } from "@/components/courses/course-types";
+import type { CourseData, ScheduleEntry } from "@/components/courses/course-types";
 
 export const Route = createFileRoute("/_authenticated/courses/$id")({
   validateSearch: (search: Record<string, unknown>) => {

@@ -17,7 +17,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { toast } from "sonner";
 
-function QuestionCard({
+export function QuestionCard({
   q,
   isTeacher,
   canDelete,

@@ -59,6 +59,10 @@ import {
   ShieldOff,
   BadgeCheck,
   MoreVertical,
+  Plus,
+  Minus,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -69,11 +73,7 @@ import { renderMarkdownContent } from "@/lib/markdown";
 
 // ============ USERS ============
 
-interface LastActivityMap {
-  [userId: string]: string;
-}
-
-function UsersTable() {
+export function UsersTable() {
   const qc = useQueryClient();
   const { handleActionCheck, isSubAdmin } = useSubAdminRestrictions();
   const { profile } = useAuth();

@@ -20,7 +20,7 @@ import {
 import { Loader2, Flag, FileText, Plus, Minus, Check, X, Trash2, Ban, AlertTriangle, Clock } from "lucide-react";
 import { toast } from "sonner";
 
-function ReportsTab() {
+export function ReportsTab() {
   const qc = useQueryClient();
   const { handleActionCheck, isSubAdmin } = useSubAdminRestrictions();
   const { profile } = useAuth();

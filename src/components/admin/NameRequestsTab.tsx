@@ -11,11 +11,11 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { formatArabicTimeAgo } from "@/lib/notificationsStore";
 
-function NameRequestsTab() {
+export function NameRequestsTab() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
   const [processingId, setProcessingId] = useState<string | null>(null);

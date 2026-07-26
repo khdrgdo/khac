@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, FileText, Flag, MessageSquare } from "lucide-react";
 
-function StatsCards() {
+export function StatsCards() {
   const { data } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {

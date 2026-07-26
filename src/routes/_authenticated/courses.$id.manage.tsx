@@ -33,14 +33,12 @@ import {
   User,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  DeleteCourseDialog,
-  LinksTab,
-  FilesTab,
-  ScheduleTab,
-  UpdatesTab,
-  type ScheduleEntry,
-} from "./courses.$id";
+import { DeleteCourseDialog } from "@/components/courses/DeleteCourseDialog";
+import { LinksTab } from "@/components/courses/LinksTab";
+import { FilesTab } from "@/components/courses/FilesTab";
+import { ScheduleTab } from "@/components/courses/ScheduleTab";
+import { UpdatesTab } from "@/components/courses/UpdatesTab";
+import type { ScheduleEntry } from "@/components/courses/course-types";
 
 export const Route = createFileRoute("/_authenticated/courses/$id/manage")({
   component: ManageCoursePage,

@@ -4,16 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatUnivNumber } from "@/lib/privacy";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollText, Users, Shield, Clock, Loader2 } from "lucide-react";
+import { ScrollText, Users, Shield, Clock, Loader2, UserPlus, Search } from "lucide-react";
 import { format } from "date-fns";
 import { majorLabel } from "@/lib/college";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { UserAvatar } from "@/components/UserAvatar";
 import { formatArabicTimeAgo } from "@/lib/notificationsStore";
+import { type AdminActionRow } from "@/components/admin/admin-shared";
+import { Input } from "@/components/ui/input";
 
 // ============ ACTIVITY LOG ============
 
-function ActivityLogTab() {
+export function ActivityLogTab() {
   const [subTab, setSubTab] = useState<"new_users" | "recent_activity" | "admin_actions">(
     "new_users",
   );

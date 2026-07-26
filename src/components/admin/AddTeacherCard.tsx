@@ -16,10 +16,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
-function AddTeacherCard() {
+export function AddTeacherCard() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -67,9 +67,6 @@ function AddTeacherCard() {
       }
 
       if (roleError) {
-          "RPC admin_set_teacher_role failed, trying direct table write fallback...",
-          roleError,
-        );
         const { error: deleteError } = await supabase
           .from("user_roles")
           .delete()

@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { Calendar } from "lucide-react";
 
-function DashboardCharts() {
+export function DashboardCharts() {
   const barData = [
     { name: "01", value: 40 },
     { name: "02", value: 70 },

@@ -18,11 +18,14 @@ export interface CourseUpdate {
 export interface CourseData {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   major: string;
   year: number;
-  semester: string;
+  semester: number | string;
   teacher_id: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  schedule?: unknown;
 }
 
 export interface ScheduleEntry {

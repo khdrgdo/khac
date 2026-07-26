@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { type ScheduleEntry } from "@/components/courses/course-types";
+import type { ScheduleEntry } from "@/components/courses/course-types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,6 @@ import { toast } from "sonner";
 
 /* Course Schedule Component */
 const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"];
-export interface ScheduleEntry {
-  day: string;
-  start: string;
-  end: string;
-  room: string;
-}
 
 export function ScheduleTab({
   course,

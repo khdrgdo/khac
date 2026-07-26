@@ -29,12 +29,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { UserPlus, Trash2, Loader2 } from "lucide-react";
+import { UserPlus, Trash2, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { getSubAdminPermissions } from "@/hooks/useAuth";
 
 // ============ SUB-ADMINS MANAGEMENT ============
 
-function SubAdminsTab() {
+export function SubAdminsTab() {
   const qc = useQueryClient();
   const [nameId, setNameId] = useState("");
   const [fullName, setFullName] = useState("");
@@ -202,9 +203,6 @@ function SubAdminsTab() {
       }
 
       if (roleError) {
-          "RPC admin_set_user_role failed, trying direct table write fallback...",
-          roleError,
-        );
         const { error: deleteError } = await supabase
           .from("user_roles")
           .delete()
