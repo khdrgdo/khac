@@ -133,8 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (uid && sessionRef.current?.user?.email) {
           bindAccountToDevice(uid, sessionRef.current.user.email);
         }
-      } catch (err) {
-        console.error("Failed to load user profile extras:", err);
+      } catch (err) {
       } finally {
         if (mounted) setLoading(false);
       }
@@ -169,8 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (s) loadExtras(s.user.id);
         else setLoading(false);
       })
-      .catch((err) => {
-        console.error("Failed to get session:", err);
+      .catch((err) => {
         if (mounted) setLoading(false);
       });
 
@@ -204,25 +202,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSubAdminPermissions(getSubAdminPermissions(p as Profile));
         }
       }
-    } catch (err) {
-      console.warn("Failed to refresh profile:", err);
+    } catch (err) {
     }
   }, [roles]);
 
-  const isMainAdmin =
-    profile?.university_number === "2011099840" ||
-    profile?.email?.toLowerCase() === "khdrmamon@gmail.com" ||
-    user?.email?.toLowerCase() === "khdrmamon@gmail.com";
+  // Main admin is determined ONLY by role in user_roles table
+  const isMainAdmin = roles.includes("admin");
 
-  const isSubAdmin =
-    roles.includes("sub_admin" as AppRole) ||
-    (profile?.university_number
-      ? profile.university_number.startsWith("SUBADMIN_") ||
-        profile.university_number.toLowerCase().includes("guard")
-      : false) ||
-    (profile?.email ? profile.email.toLowerCase().includes("@subadmin.") : false) ||
-    (user?.email ? user.email.toLowerCase().includes("@subadmin.") : false) ||
-    (profile?.full_name ? profile.full_name.toLowerCase().includes("guard") : false);
+  // Sub-admin is determined ONLY by role in user_roles table
+  const isSubAdmin = roles.includes("sub_admin" as AppRole);
 
   const isKnownAdminUser =
     isMainAdmin ||
