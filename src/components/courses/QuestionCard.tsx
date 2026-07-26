@@ -152,9 +152,9 @@ function QuestionCard({
           )}
         </div>
 
-        <p className="text-sm font-medium text-foreground whitespace-pre-wrap leading-relaxed">
+        <div className="text-sm font-medium text-foreground whitespace-pre-wrap leading-relaxed">
           {renderMarkdownContent(q.cleanContent)}
-        </p>
+        </div>
 
         {/* Action / Comments Header */}
         <div className="flex items-center justify-between border-t pt-2 mt-2 text-xs text-muted-foreground">
