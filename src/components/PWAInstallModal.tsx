@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PWADeviceInfo, detectPWADevice } from "@/lib/pwaDetector";
-import { Share, PlusSquare, MoreVertical, ExternalLink } from "lucide-react";
+import { Share, PlusSquare, MoreVertical, ExternalLink, Download } from "lucide-react";
+import { downloadNEXUSAppFile } from "@/components/InstallPWAButton";
 
 interface PWAInstallModalProps {
   open: boolean;
@@ -11,12 +12,14 @@ interface PWAInstallModalProps {
   deviceInfo?: PWADeviceInfo;
   onDirectInstall?: () => Promise<boolean>;
   hasDirectPrompt?: boolean;
+  onDownloadApp?: () => void;
 }
 
 export function PWAInstallModal({
   open,
   onOpenChange,
   onDirectInstall,
+  onDownloadApp,
   deviceInfo: initialDeviceInfo,
 }: PWAInstallModalProps) {
   const [installing, setInstalling] = useState(false);
@@ -88,6 +91,13 @@ export function PWAInstallModal({
     }
   };
 
+  const handleDownloadClick = () => {
+    downloadNEXUSAppFile();
+    setTimeout(() => {
+      onOpenChange(false);
+    }, 500);
+  };
+
   const renderInstructions = () => {
     const isIOS = deviceInfo?.os === "ios";
     const isInApp = deviceInfo?.isInAppBrowser;
@@ -99,7 +109,7 @@ export function PWAInstallModal({
             متصفح مدمج غير مدعوم <ExternalLink className="w-4 h-4" />
           </p>
           <p className="text-slate-300 text-sm leading-relaxed">
-            أنت تستخدم متصفحاً داخل تطبيق ({deviceInfo.inAppBrowserName}). الرجاء فتح الرابط في المتصفح الأساسي لجهازك (مثل Chrome أو Safari) لتتمكن من التثبيت.
+            أنت تستخدم متصفحاً داخل تطبيق ({deviceInfo.inAppBrowserName}). الرجاء فتح الرابط في المتصفح الأساسي لجهازك (مثل Chrome أو Safari).
           </p>
         </div>
       );
@@ -153,7 +163,7 @@ export function PWAInstallModal({
         {/* Title matching native dialog */}
         <div className="text-right">
           <DialogTitle className="text-2xl font-bold text-slate-100 tracking-tight">
-            {showInstructions ? "خطوات التثبيت" : "تثبيت التطبيق"}
+            {showInstructions ? "خطوات التثبيت" : "تنزيل تطبيق NEXUS"}
           </DialogTitle>
         </div>
 
@@ -174,26 +184,42 @@ export function PWAInstallModal({
           />
         </div>
 
+        {/* Success Message when file is being downloaded */}
         {showInstructions ? (
           <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {renderInstructions()}
           </div>
-        ) : null}
+        ) : (
+          <div className="mb-6 text-right text-sm text-slate-300 leading-relaxed">
+            <p>اختر من الخيارات أدناه لتنزيل وتثبيت تطبيق NEXUS على جهازك:</p>
+            <p className="text-xs text-slate-400 mt-2">سيتم تنزيل ملف مشغل التطبيق في مجلد التنزيلات الخاص بك</p>
+          </div>
+        )}
 
         {/* Action Buttons matching native layout */}
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col gap-3 pt-2">
           {!showInstructions ? (
-            <Button
-              onClick={handleInstallClick}
-              disabled={installing}
-              className="rounded-2xl px-7 h-11 font-bold text-sm bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md active:scale-95"
-            >
-              {installing ? "جاري..." : "تثبيت"}
-            </Button>
+            <>
+              <Button
+                onClick={handleDownloadClick}
+                disabled={installing}
+                className="rounded-2xl px-7 h-11 font-bold text-sm bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white transition-all shadow-md active:scale-95 w-full gap-2"
+              >
+                <Download className="w-4 h-4" />
+                {installing ? "جاري التنزيل..." : "تنزيل ملف المشغل"}
+              </Button>
+              <Button
+                onClick={handleInstallClick}
+                disabled={installing}
+                className="rounded-2xl px-7 h-11 font-bold text-sm bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md active:scale-95 w-full"
+              >
+                {installing ? "جاري..." : "تثبيت مباشر"}
+              </Button>
+            </>
           ) : (
             <Button
               onClick={() => onOpenChange(false)}
-              className="rounded-2xl px-7 h-11 font-bold text-sm bg-slate-700 hover:bg-slate-600 text-white transition-all"
+              className="rounded-2xl px-7 h-11 font-bold text-sm bg-slate-700 hover:bg-slate-600 text-white transition-all w-full"
             >
               حسناً، فهمت
             </Button>
@@ -203,7 +229,7 @@ export function PWAInstallModal({
             <Button
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="rounded-2xl px-6 h-11 font-semibold text-sm text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+              className="rounded-2xl px-6 h-11 font-semibold text-sm text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors w-full"
             >
               إلغاء
             </Button>
