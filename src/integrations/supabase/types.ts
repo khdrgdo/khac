@@ -560,6 +560,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      notifications: {
+        Row: {
+          id: string;
+          recipient_id: string;
+          actor_id: string | null;
+          actor_name: string | null;
+          actor_avatar: string | null;
+          type: string;
+          priority: string;
+          title: string;
+          body: string;
+          link: string | null;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          recipient_id: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          actor_avatar?: string | null;
+          type?: string;
+          priority?: string;
+          title: string;
+          body: string;
+          link?: string | null;
+          read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          recipient_id?: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          actor_avatar?: string | null;
+          type?: string;
+          priority?: string;
+          title?: string;
+          body?: string;
+          link?: string | null;
+          read?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       saved_posts: {
         Row: {
           created_at: string;

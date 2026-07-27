@@ -1,19 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { NotificationItem, NotificationType } from "@/types/notification";
+import { NotificationItem, NotificationType, NotificationPriority } from "@/types/notification";
 import {
   fetchRealtimeNotifications,
-  setNotificationAsRead,
-  setReadAllAtTimestamp,
-  setNotificationAsDeleted,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
   clearAllNotifications,
   formatArabicTimeAgo,
 } from "@/lib/notificationsStore";
 import {
   requestNotificationPermission,
   getNotificationPermissionState,
-  sendNativeNotification,
 } from "@/lib/pushNotifications";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -31,6 +30,9 @@ import {
   X,
   FileText,
   Sparkles,
+  AlertTriangle,
+  Info,
+  CircleDot,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "motion/react";
@@ -69,13 +71,19 @@ export function NotificationsPopover() {
   useEffect(() => {
     loadNotifications();
 
-    const handleUpdate = () => {
-      loadNotifications();
-    };
-
-    // Realtime channel for live notifications
+    // Realtime: listen for new notifications in the DB
     const channel = supabase
       .channel(`live_notifications_feed_${Math.random().toString(36).substring(7)}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications" },
+        (payload) => {
+          const newNotif = payload.new as Record<string, unknown>;
+          if (newNotif.recipient_id === userId) {
+            loadNotifications();
+          }
+        },
+      )
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "comments" }, () => {
         loadNotifications();
       })
@@ -92,57 +100,49 @@ export function NotificationsPopover() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "user_warnings" }, () => {
         loadNotifications();
       })
-      .subscribe((status, err) => {
-        if (err) {
-        }
-      });
+      .subscribe();
 
-    const interval = setInterval(loadNotifications, 12000);
-
-    window.addEventListener("notifications_updated", handleUpdate);
-    window.addEventListener("storage", handleUpdate);
+    // Fallback polling
+    const interval = setInterval(loadNotifications, 15000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
-      window.removeEventListener("notifications_updated", handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
     };
   }, [userId, loadNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
     if (!userId) return;
-    setReadAllAtTimestamp(userId);
+    await markAllNotificationsAsRead(userId);
     loadNotifications();
-    toast.success("تم تحديد جميع الإشعارات كأنها قُرئت ✔️");
+    toast.success("تم تحديد جميع الإشعارات كمقروءة ✔️");
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (!userId) return;
-    clearAllNotifications(userId);
+    await clearAllNotifications(userId);
     loadNotifications();
     toast.info("تم مسح جميع الإشعارات");
   };
 
-  const handleItemClick = (item: NotificationItem) => {
+  const handleItemClick = async (item: NotificationItem) => {
     if (!userId) return;
-    if (!item.read) {
-      setNotificationAsRead(userId, item.id);
+    if (!item.read && item.id.startsWith("notif_")) {
+      await markNotificationAsRead(userId, item.id);
       loadNotifications();
     }
     setOpen(false);
-
     if (item.link) {
       navigate({ to: item.link });
     }
   };
 
-  const handleDeleteItem = (e: React.MouseEvent, item: NotificationItem) => {
+  const handleDeleteItem = async (e: React.MouseEvent, item: NotificationItem) => {
     e.stopPropagation();
     if (!userId) return;
-    setNotificationAsDeleted(userId, item.id);
+    await deleteNotification(userId, item.id);
     loadNotifications();
   };
 
@@ -172,6 +172,17 @@ export function NotificationsPopover() {
     }
   };
 
+  const getPriorityBadge = (priority?: NotificationPriority) => {
+    if (!priority || priority === "normal") return null;
+    return (
+      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+        priority === "urgent" ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
+      }`}>
+        {priority === "urgent" ? "عاجل" : "مهم"}
+      </span>
+    );
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -182,7 +193,6 @@ export function NotificationsPopover() {
           aria-label="الإشعارات"
         >
           <Bell className="w-5 h-5 text-foreground/80 hover:text-foreground transition-colors" />
-
           {unreadCount > 0 && (
             <motion.span
               initial={{ scale: 0 }}
@@ -225,13 +235,12 @@ export function NotificationsPopover() {
                 variant="ghost"
                 size="sm"
                 onClick={handleMarkAllRead}
-                title="تحديد الكل كقراءة"
+                title="تحديد الكل كمقروء"
                 className="h-8 px-2 rounded-xl text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
               </Button>
             )}
-
             {notifications.length > 0 && (
               <Button
                 variant="ghost"
@@ -246,7 +255,7 @@ export function NotificationsPopover() {
           </div>
         </div>
 
-        {/* Enable Native Device Push Banner */}
+        {/* Enable Push Banner */}
         {permState !== "granted" && permState !== "unsupported" && (
           <div className="p-2.5 mx-3 mt-2 rounded-2xl bg-gradient-to-r from-primary/15 to-purple-500/15 border border-primary/25 flex items-center justify-between gap-2">
             <div className="text-[11px] font-medium text-foreground space-y-0.5">
@@ -254,7 +263,7 @@ export function NotificationsPopover() {
                 <Bell className="w-3.5 h-3.5 animate-bounce" /> تفعيل إشعارات الهاتف الفورية
               </p>
               <p className="text-muted-foreground leading-snug">
-                لتصلك تنبيهات الملخصات والرسائل على جهازك مباشرة
+                لتصلك تنبيهات على جهازك مباشرة
               </p>
             </div>
             <Button
@@ -307,7 +316,7 @@ export function NotificationsPopover() {
                     : "لا توجد إشعارات حتى الآن"}
                 </p>
                 <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                  ستتلقى تنبيهاً فورياً عند إضافة مادة جديدة، الرد على تعليقك، أو تفاعل زملائك معك.
+                  ستتلقى إشعارات فورية هنا عند وجود نشاط جديد.
                 </p>
               </div>
             ) : (
@@ -324,12 +333,10 @@ export function NotificationsPopover() {
                       : "hover:bg-muted/50"
                   }`}
                 >
-                  {/* Unread dot */}
                   {!item.read && (
                     <span className="absolute top-4 start-1.5 w-2 h-2 rounded-full bg-primary animate-pulse" />
                   )}
 
-                  {/* Icon / Avatar */}
                   <div className="relative shrink-0 mt-0.5">
                     {item.actorName ? (
                       <UserAvatar
@@ -342,29 +349,26 @@ export function NotificationsPopover() {
                         {getNotificationIcon(item.type)}
                       </div>
                     )}
-
                     <div className="absolute -bottom-1 -end-1 p-0.5 rounded-full bg-background border shadow-xs">
                       {getNotificationIcon(item.type)}
                     </div>
                   </div>
 
-                  {/* Body Text */}
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <div className="flex items-center justify-between gap-1">
-                      <h4 className="text-xs font-bold text-foreground line-clamp-1">
+                      <h4 className="text-xs font-bold text-foreground line-clamp-1 flex items-center gap-1">
                         {item.title}
+                        {getPriorityBadge(item.priority)}
                       </h4>
                       <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                         {formatArabicTimeAgo(item.createdAt)}
                       </span>
                     </div>
-
                     <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                       {item.body}
                     </p>
                   </div>
 
-                  {/* Delete Item Button */}
                   <button
                     onClick={(e) => handleDeleteItem(e, item)}
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 rounded-lg hover:bg-destructive/10 transition-all shrink-0"

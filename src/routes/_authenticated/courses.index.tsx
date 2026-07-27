@@ -796,6 +796,7 @@ export function NewCourseDialog({
       });
       if (error) throw error;
 
+      const { data: allProfiles } = await supabase.from("profiles").select("id");
       broadcastNotification({
         actorId: user.id,
         actorName: user.user_metadata?.full_name || "إدارة الكلية",
@@ -803,7 +804,7 @@ export function NewCourseDialog({
         title: "إضافة مادة جديدة 📚",
         body: `تم إضافة المقرر الدراسي "${name}" لطلاب قسم ${major.toUpperCase()} السنة ${year}`,
         link: "/courses",
-        currentUserId: user.id,
+        targetUserIds: (allProfiles ?? []).map((p) => p.id),
       });
     },
     onSuccess: () => {

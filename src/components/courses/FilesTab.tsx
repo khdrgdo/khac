@@ -86,6 +86,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
         });
 
         if (user) {
+          const { data: allProfiles } = await supabase.from("profiles").select("id");
           broadcastNotification({
             actorId: user.id,
             actorName: user.user_metadata?.full_name || "الأستاذ",
@@ -93,7 +94,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
             title: "تحديث جديد في المقرر 📄",
             body: `تم إضافة ملحق/ملخص جديد (${baseTitle}) في المقرر الدراسي.`,
             link: `/courses/${courseId}`,
-            currentUserId: user.id,
+            targetUserIds: (allProfiles ?? []).map((p) => p.id),
           });
         }
       }

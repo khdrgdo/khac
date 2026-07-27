@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Clock, Send, Trash2, Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
-import { broadcastNotification } from "@/lib/notificationsStore";
+import { createNotification } from "@/lib/notificationsStore";
 import { renderMarkdownContent } from "@/lib/markdown";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -77,14 +77,14 @@ export function QuestionCard({
       if (error) throw error;
 
       if (q.author_id !== user.id) {
-        broadcastNotification({
+        createNotification({
+          recipientId: q.author_id,
           actorId: user.id,
           actorName: user.user_metadata?.full_name || "زميل",
           type: "post_comment",
           title: "رد جديد على سؤالك في المقرر 💬",
           body: replyText.trim(),
           link: `/courses/${courseId}?tab=discussions`,
-          currentUserId: user.id,
         });
       }
     },
