@@ -156,11 +156,10 @@ function RootComponent() {
       saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     document.documentElement.classList.toggle("dark", t === "dark");
 
-    // FIXED: Capture beforeinstallprompt inside useEffect (not at module top-level)
+    // Capture beforeinstallprompt for PWA install
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       (window as unknown as { deferredPrompt?: Event }).deferredPrompt = e;
-      window.dispatchEvent(new CustomEvent("pwa-prompt-ready"));
     };
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
