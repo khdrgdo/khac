@@ -68,11 +68,9 @@ export function PWAInstallModal({
         }
       }
 
-      // 3. If running inside an iframe (like AI Studio preview), open in new tab
+      // 3. If running inside an iframe (like AI Studio preview), just show instructions
       if (window.self !== window.top) {
-        toast.info("جاري فتح التطبيق في نافذة مستقلة لتفعيل التثبيت...");
-        window.open(window.location.href, "_blank");
-        onOpenChange(false);
+        setShowInstructions(true);
         setInstalling(false);
         return;
       }
@@ -100,6 +98,19 @@ export function PWAInstallModal({
           </p>
           <p className="text-slate-300 text-sm leading-relaxed">
             أنت تستخدم متصفحاً داخل تطبيق ({deviceInfo.inAppBrowserName}). الرجاء فتح الرابط في المتصفح الأساسي لجهازك (مثل Chrome أو Safari) لتتمكن من التثبيت.
+          </p>
+        </div>
+      );
+    }
+
+    if (typeof window !== "undefined" && window.self !== window.top) {
+      return (
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-right space-y-3">
+          <p className="text-blue-400 font-semibold text-sm flex justify-end items-center gap-2">
+            بيئة المعاينة <ExternalLink className="w-4 h-4" />
+          </p>
+          <p className="text-slate-300 text-sm leading-relaxed">
+            لا يمكن تثبيت التطبيق مباشرة من داخل بيئة المعاينة. الرجاء <strong>فتح التطبيق في نافذة جديدة</strong> (باستخدام زر الفتح في الأعلى) لتتمكن من التثبيت.
           </p>
         </div>
       );
