@@ -26,7 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { RankBadge } from "@/components/RankBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -73,6 +73,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     navigate({ to: "/auth", replace: true });
   }
 
+  const { data: unreadMessages = 0 } = useQuery({
+    queryKey: ["unread_messages", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return 0;
+      const { data } = await supabase.rpc("get_unread_message_count", { _user_id: profile.id });
+      return data || 0;
+    },
+    enabled: !!profile?.id,
+    refetchInterval: 15000,
+  });
+
   const navItems = [
     { to: "/feed", label: "الرئيسية", icon: Home },
     { to: "/courses", label: "الكورسات", icon: BookOpen },
@@ -104,6 +115,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <nav className="hidden md:flex items-center gap-1 bg-muted/20 dark:bg-muted/15 backdrop-blur-2xl p-1.5 rounded-2xl border border-white/20 dark:border-white/10 shadow-lg shadow-black/5">
             {navItems.map((it) => {
               const active = path.startsWith(it.to);
+              const isMessages = it.to === "/messages";
               return (
                 <Link
                   key={it.to}
@@ -122,14 +134,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       transition={{ type: "spring", stiffness: 420, damping: 32 }}
                     />
                   )}
-                  <it.icon
-                    className={cn(
-                      "w-4 h-4 transition-transform duration-200",
-                      active
-                        ? "scale-110 text-primary dark:text-primary-foreground"
-                        : "opacity-75 group-hover:opacity-100",
+                  <span className="relative">
+                    <it.icon
+                      className={cn(
+                        "w-4 h-4 transition-transform duration-200",
+                        active
+                          ? "scale-110 text-primary dark:text-primary-foreground"
+                          : "opacity-75 group-hover:opacity-100",
+                      )}
+                    />
+                    {isMessages && unreadMessages > 0 && (
+                      <span className="absolute -top-1.5 -end-2 min-w-[15px] h-[15px] px-0.5 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center shadow-xs">
+                        {unreadMessages > 99 ? "99+" : unreadMessages}
+                      </span>
                     )}
-                  />
+                  </span>
                   <span>{it.label}</span>
                 </Link>
               );
@@ -246,6 +265,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="pointer-events-auto bg-background/25 dark:bg-background/30 backdrop-blur-3xl backdrop-saturate-200 border border-white/25 dark:border-white/10 shadow-2xl shadow-primary/15 rounded-3xl p-1.5 max-w-md mx-auto flex items-center justify-around gap-1">
           {navItems.map((it) => {
             const active = path.startsWith(it.to);
+            const isMessages = it.to === "/messages";
             return (
               <Link
                 key={it.to}
@@ -264,12 +284,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     transition={{ type: "spring", stiffness: 450, damping: 32 }}
                   />
                 )}
-                <it.icon
-                  className={cn(
-                    "w-5 h-5 transition-transform duration-200",
-                    active && "scale-110 text-primary dark:text-primary-foreground",
+                <span className="relative">
+                  <it.icon
+                    className={cn(
+                      "w-5 h-5 transition-transform duration-200",
+                      active && "scale-110 text-primary dark:text-primary-foreground",
+                    )}
+                  />
+                  {isMessages && unreadMessages > 0 && (
+                    <span className="absolute -top-1.5 -end-2 min-w-[15px] h-[15px] px-0.5 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center shadow-xs">
+                      {unreadMessages > 99 ? "99+" : unreadMessages}
+                    </span>
                   )}
-                />
+                </span>
                 <span className="text-[10px] leading-tight mt-0.5">{it.label}</span>
                 {active && (
                   <motion.span

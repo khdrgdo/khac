@@ -99,16 +99,19 @@ export type Database = {
         Row: {
           conversation_id: string;
           joined_at: string;
+          last_read_at: string | null;
           user_id: string;
         };
         Insert: {
           conversation_id: string;
           joined_at?: string;
+          last_read_at?: string | null;
           user_id: string;
         };
         Update: {
           conversation_id?: string;
           joined_at?: string;
+          last_read_at?: string | null;
           user_id?: string;
         };
         Relationships: [
@@ -796,6 +799,29 @@ export type Database = {
           id: string;
           university_number: string;
         }[];
+      };
+      get_unread_message_count: {
+        Args: { _user_id: string };
+        Returns: number;
+      };
+      get_conversation_unread_counts: {
+        Args: { _user_id: string };
+        Returns: {
+          conversation_id: string;
+          unread_count: number;
+        }[];
+      };
+      mark_conversation_read: {
+        Args: { _conv_id: string; _user_id: string };
+        Returns: void;
+      };
+      leave_conversation: {
+        Args: { _conv_id: string; _user_id: string };
+        Returns: void;
+      };
+      delete_conversation: {
+        Args: { _conv_id: string; _user_id: string };
+        Returns: void;
       };
     };
     Enums: {

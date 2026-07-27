@@ -38,7 +38,19 @@ import {
   Search,
   MessageSquare,
   ExternalLink,
+  Trash2,
+  LogOut,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { MessagesShell } from "@/components/MessagesShell";
@@ -89,6 +101,8 @@ function ChatPage() {
 
   const [membersOpen, setMembersOpen] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
+  const [msgToDelete, setMsgToDelete] = useState<Message | null>(null);
+  const [convToLeave, setConvToLeave] = useState(false);
 
   useEffect(() => {
     const handleStorage = () => {
@@ -188,6 +202,44 @@ function ChatPage() {
       toast.error("حدث خطأ أثناء تعديل الحظر");
     }
   };
+
+  // Mark conversation as read when opening
+  useEffect(() => {
+    if (!user?.id || !id) return;
+    supabase.rpc("mark_conversation_read", { _conv_id: id, _user_id: user.id }).then(() => {
+      qc.invalidateQueries({ queryKey: ["conversation_unreads"] });
+    });
+  }, [id, user?.id, qc]);
+
+  // Delete individual message mutation
+  const deleteMsgMut = useMutation({
+    mutationFn: async (msgId: string) => {
+      const { error } = await supabase.from("messages").delete().eq("id", msgId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messages", id] });
+      toast.info("تم حذف الرسالة");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
+
+  // Leave conversation mutation
+  const leaveConvMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("leave_conversation", {
+        _conv_id: id,
+        _user_id: user!.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      navigate({ to: "/messages" });
+      toast.info("تم المغادرة من المحادثة");
+    },
+    onError: () => toast.error("حدث خطأ أثناء المغادرة"),
+  });
 
   const handleReportSubmit = () => {
     if (!otherUser) return;
@@ -292,6 +344,36 @@ function ChatPage() {
           </div>
 
           {conv?.is_group && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => setMembersOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>أعضاء المجموعة</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setConvToLeave(true)}
+                  className="flex items-center gap-2 text-amber-600 focus:text-amber-600"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>مغادرة المحادثة</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {conv?.is_group && (
             <Button
               variant="outline"
               size="sm"
@@ -366,7 +448,7 @@ function ChatPage() {
               <div
                 key={m.id}
                 className={cn(
-                  "flex items-end gap-1.5",
+                  "flex items-end gap-1.5 group",
                   mine ? "flex-row-reverse justify-start" : "flex-row justify-start",
                 )}
               >
@@ -383,7 +465,7 @@ function ChatPage() {
                 )}
                 <div
                   className={cn(
-                    "max-w-[75%] px-3 py-2 text-sm shadow-sm",
+                    "max-w-[75%] px-3 py-2 text-sm shadow-sm group/msg",
                     mine
                       ? "bg-primary text-primary-foreground rounded-2xl rounded-br-none"
                       : "bg-card border rounded-2xl rounded-bl-none",
@@ -399,11 +481,20 @@ function ChatPage() {
                   </div>
                   <div
                     className={cn(
-                      "text-[9px] mt-1 text-end",
+                      "text-[9px] mt-1 text-end flex items-center justify-end gap-1.5",
                       mine ? "opacity-80" : "text-muted-foreground",
                     )}
                   >
                     {format(new Date(m.created_at), "HH:mm")}
+                    {mine && (
+                      <button
+                        onClick={() => setMsgToDelete(m)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive/70 hover:text-destructive"
+                        title="حذف الرسالة"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -665,6 +756,51 @@ function ChatPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Message Dialog */}
+      <AlertDialog open={!!msgToDelete} onOpenChange={() => setMsgToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الرسالة</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف هذه الرسالة نهائياً. لن يتمكن أحد من رؤيتها بعد الحذف.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (msgToDelete) deleteMsgMut.mutate(msgToDelete.id);
+                setMsgToDelete(null);
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Leave Conversation Dialog */}
+      <AlertDialog open={convToLeave} onOpenChange={setConvToLeave}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>مغادرة المحادثة</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل تريد مغادرة هذه المحادثة؟ لن تتمكن من رؤية الرسائل الجديدة بعد المغادرة.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => leaveConvMut.mutate()}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              مغادرة
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
