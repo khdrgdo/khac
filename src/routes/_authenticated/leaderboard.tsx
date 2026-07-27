@@ -45,6 +45,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { RankBadge } from "@/components/RankBadge";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { CoronationPodium } from "@/components/CoronationPodium";
 import { UserRankProgressCard } from "@/components/UserRankProgressCard";
 import { majorLabel } from "@/lib/college";
@@ -245,32 +246,22 @@ function LeaderboardPage() {
         }
       }
 
-      // Always filter out all admin users unconditionally from profileList
+      // Always filter out all admin + sub_admin users unconditionally from profileList
       const { data: adminRoles } = await supabase
         .from("user_roles")
         .select("user_id")
-        .eq("role", "admin");
+        .in("role", ["admin", "sub_admin"]);
       const adminUserIds = new Set((adminRoles ?? []).map((r) => r.user_id));
-
-      if (profile?.id && isAdmin) {
-        adminUserIds.add(profile.id);
-      }
 
       profileList = profileList.filter((p) => {
         if (adminUserIds.has(p.id)) return false;
-        if (profile?.id && p.id === profile.id && isAdmin) return false;
 
         const nameLower = (p.full_name || "").toLowerCase();
-        const uniNum = formatUnivNumber(p.university_number, p.id, false, isAdmin);
 
         if (
-          uniNum === "2011099840" ||
-          uniNum.startsWith("sub_") ||
-          nameLower.includes("أدمن") ||
-          nameLower.includes("ادمن") ||
           nameLower.includes("admin") ||
-          nameLower.includes("مدير") ||
-          nameLower.includes("a guard")
+          nameLower.includes("ادمن") ||
+          nameLower.includes("مدير")
         ) {
           return false;
         }
@@ -341,16 +332,13 @@ function LeaderboardPage() {
   });
 
   const filteredLeaderboard = (leaderboard ?? []).filter((user) => {
-    // 1. Unconditionally exclude admin user or any account with admin attributes
-    const isUserAdmin =
-      (profile?.id && user.id === profile.id && isAdmin) ||
-      user.university_number === "2011099840" ||
-      user.full_name.toLowerCase().includes("ادمن") ||
-      user.full_name.toLowerCase().includes("أدمن") ||
-      user.full_name.toLowerCase().includes("admin") ||
-      user.full_name.toLowerCase().includes("مدير");
-
-    if (isUserAdmin) return false;
+    // Exclude admin/sub_admin by name patterns
+    const nameLower = user.full_name.toLowerCase();
+    if (
+      nameLower.includes("admin") ||
+      nameLower.includes("ادمن") ||
+      nameLower.includes("مدير")
+    ) return false;
 
     // 2. Search query filter
     return (
@@ -814,19 +802,14 @@ function LeaderboardPage() {
                       <div className="min-w-0">
                         <div className="font-bold text-sm flex items-center gap-1.5 group-hover:underline truncate">
                           <span className="truncate">{user.full_name}</span>
-                          {user.verified && (
-                            <Badge
-                              variant="secondary"
-                              className="px-1 py-0 text-[9px] bg-sky-500/10 text-sky-600 border-none shrink-0"
-                            >
-                              موثق
-                            </Badge>
-                          )}
+                          {user.verified && <VerifiedBadge size="sm" />}
                         </div>
-                        <div className="text-xs text-muted-foreground flex gap-1.5 mt-0.5">
+                        <div className="text-xs text-muted-foreground flex gap-1.5 mt-0.5 items-center">
                           <span>{majorLabel(user.major)}</span>
                           <span>•</span>
                           <span>السنة {user.year}</span>
+                          <span>•</span>
+                          <RankBadge points={user.points} size="xs" />
                         </div>
                       </div>
                     </Link>
