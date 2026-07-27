@@ -135,13 +135,11 @@ export function InstallPWAButton({
       if (installed) return;
     }
 
-    // 3. Device specific guidance if direct prompt is not supported or not ready yet
-    if (deviceInfo.os === "ios") {
-      toast.info("للتثبيت على الآيفون: اضغط زر المشاركة (Share) ⎋ أسفل الشاشة ثم اختر 'إضافة إلى الشاشة الرئيسية' ➕");
-    } else if (deviceInfo.isInAppBrowser) {
-      toast.info(`أنت تستخدم متصفحاً مدمجاً (${deviceInfo.inAppBrowserName || "داخل تطبيق"}). يرجى فتح الرابط في متصفح Chrome أو Safari الرئيسي لتثبيت التطبيق.`);
+    // 3. Android guidance if direct prompt is not supported or not ready yet
+    if (deviceInfo.isInAppBrowser) {
+      toast.info(`أنت تستخدم متصفحاً مدمجاً (${deviceInfo.inAppBrowserName || "داخل تطبيق"}). يرجى فتح الرابط في متصفح Chrome الرئيسي على أندرويد لتثبيت التطبيق.`);
     } else {
-      toast.info("جاري إعداد التثبيت... اضغط على قائمة المتصفح (⋮) ثم اختر 'تثبيت التطبيق' أو 'إضافة إلى الشاشة الرئيسية' 📲");
+      toast.info("لتثبيت التطبيق على هاتف أندرويد: اضغط على قائمة المتصفح (⋮) في أعلى اليسار/اليمين ثم اختر 'تثبيت التطبيق' أو 'إضافة إلى الشاشة الرئيسية' 📲");
     }
   };
 
