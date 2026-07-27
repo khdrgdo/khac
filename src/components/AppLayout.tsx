@@ -67,6 +67,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, [loading, profile, isAdmin, path, navigate]);
 
   async function signOut() {
+    try {
+      localStorage.removeItem(`nexus_pwa_dismissed_${profile?.id || "anon"}`);
+    } catch { /* ignore */ }
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
@@ -310,6 +313,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </div>
+
+      {/* PWA Install Banner — shows when not installed, dismissed per-user until logout */}
+      <InstallPWAButton variant="banner" userId={profile?.id} />
     </div>
   );
 }

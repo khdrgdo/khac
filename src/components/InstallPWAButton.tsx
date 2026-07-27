@@ -1,29 +1,41 @@
 import { useEffect, useState, useCallback } from "react";
-import { Download, Check, Smartphone } from "lucide-react";
+import { Download, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+function getDismissKey(userId?: string) {
+  return `nexus_pwa_dismissed_${userId || "anon"}`;
+}
+
 interface InstallPWAButtonProps {
-  variant?: "menu" | "button";
+  variant?: "menu" | "banner";
+  userId?: string;
   className?: string;
 }
 
 export function InstallPWAButton({
-  variant = "menu",
+  variant = "banner",
+  userId,
   className,
 }: InstallPWAButtonProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true);
+      return;
+    }
+
+    const dismissedVal = localStorage.getItem(getDismissKey(userId));
+    if (dismissedVal) {
+      setDismissed(true);
       return;
     }
 
@@ -36,7 +48,6 @@ export function InstallPWAButton({
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
-      toast.success("تم تثبيت تطبيق NEXUS بنجاح!");
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -51,7 +62,7 @@ export function InstallPWAButton({
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, []);
+  }, [userId]);
 
   const handleInstall = useCallback(async () => {
     const promptEvent =
@@ -66,20 +77,26 @@ export function InstallPWAButton({
           setIsInstalled(true);
         }
       } catch {
-        // prompt not supported
+        // silently fail
       } finally {
         setDeferredPrompt(null);
         delete (window as unknown as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt;
       }
-      return;
     }
-
-    toast.info("افتح الموقع في متصفح Chrome ثم اضغط على أيقونة التثبيت ⊕ في شريط العنوان", {
-      duration: 8000,
-    });
   }, [deferredPrompt]);
 
-  if (isInstalled) {
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem(getDismissKey(userId), "1");
+    } catch {
+      // ignore
+    }
+  };
+
+  const canInstall = deferredPrompt !== null;
+
+  if (isInstalled || dismissed) {
     if (variant === "menu") {
       return (
         <DropdownMenuItem
@@ -100,21 +117,33 @@ export function InstallPWAButton({
         onClick={handleInstall}
         className="rounded-xl cursor-pointer py-2 px-2.5 gap-2 text-xs font-semibold text-primary focus:bg-primary/10 focus:text-primary"
       >
-        <Smartphone className="w-4 h-4 text-primary" />
+        <Download className="w-4 h-4 text-primary" />
         تثبيت التطبيق
       </DropdownMenuItem>
     );
   }
 
   return (
-    <Button
-      onClick={handleInstall}
-      variant="default"
-      size="sm"
-      className={`gap-1.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm ${className}`}
+    <div
+      className={`fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300 ${className || ""}`}
     >
-      <Download className="w-3.5 h-3.5" />
-      <span>تثبيت التطبيق</span>
-    </Button>
+      <div className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-4 py-2.5 rounded-2xl shadow-lg shadow-violet-500/25 border border-violet-400/20 backdrop-blur-sm">
+        <button
+          onClick={handleDismiss}
+          className="shrink-0 w-6 h-6 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
+          aria-label="إخفاء"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+        <Button
+          onClick={handleInstall}
+          size="sm"
+          className="shrink-0 h-8 rounded-xl bg-white text-violet-700 hover:bg-white/90 text-xs font-bold px-4 gap-1.5 shadow-sm"
+        >
+          <Download className="w-3.5 h-3.5" />
+          {canInstall ? "تثبيت التطبيق" : "تثبيت"}
+        </Button>
+      </div>
+    </div>
   );
 }
