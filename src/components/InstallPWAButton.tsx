@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { detectPWADevice, type PWADeviceInfo } from "@/lib/pwaDetector";
-import { PWAInstallModal } from "@/components/PWAInstallModal";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -119,21 +118,30 @@ export function InstallPWAButton({
       return;
     }
 
-    // Attempt direct native prompt if available
+    // 1. If running inside an iframe (e.g. AI Studio preview), open in new window so browser can trigger native installation
+    if (typeof window !== "undefined" && window.self !== window.top) {
+      window.open(window.location.href, "_blank");
+      toast.success("جاري فتح التطبيق في المتصفح لتثبيته مباشرة... 🚀");
+      return;
+    }
+
+    // 2. Attempt direct native prompt if available
     const promptEvent =
       deferredPrompt ||
       (window as unknown as { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt;
 
-    if (promptEvent && !deviceInfo.isInAppBrowser) {
+    if (promptEvent) {
       const installed = await executeDirectInstall();
       if (installed) return;
+    }
+
+    // 3. Device specific guidance if direct prompt is not supported or not ready yet
+    if (deviceInfo.os === "ios") {
+      toast.info("للتثبيت على الآيفون: اضغط زر المشاركة (Share) ⎋ أسفل الشاشة ثم اختر 'إضافة إلى الشاشة الرئيسية' ➕");
+    } else if (deviceInfo.isInAppBrowser) {
+      toast.info(`أنت تستخدم متصفحاً مدمجاً (${deviceInfo.inAppBrowserName || "داخل تطبيق"}). يرجى فتح الرابط في متصفح Chrome أو Safari الرئيسي لتثبيت التطبيق.`);
     } else {
-      if (typeof window !== "undefined" && window.self !== window.top) {
-        window.open(window.location.href, "_blank");
-        toast.info("جاري فتح التطبيق في نافذة مستقلة لتتمكن من التثبيت المباشر.");
-      } else {
-        toast.info("لا يمكن تثبيت التطبيق مباشرة من هنا. الرجاء استخدام خيار 'تثبيت التطبيق' من قائمة المتصفح.");
-      }
+      toast.info("جاري إعداد التثبيت... اضغط على قائمة المتصفح (⋮) ثم اختر 'تثبيت التطبيق' أو 'إضافة إلى الشاشة الرئيسية' 📲");
     }
   };
 
