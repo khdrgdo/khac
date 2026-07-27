@@ -11,12 +11,14 @@ interface PWAInstallModalProps {
   deviceInfo?: PWADeviceInfo;
   onDirectInstall?: () => Promise<boolean>;
   hasDirectPrompt?: boolean;
+  onDownloadApp?: () => void;
 }
 
 export function PWAInstallModal({
   open,
   onOpenChange,
   onDirectInstall,
+  onDownloadApp,
   deviceInfo: initialDeviceInfo,
 }: PWAInstallModalProps) {
   const [installing, setInstalling] = useState(false);
@@ -84,6 +86,13 @@ export function PWAInstallModal({
     } finally {
       setInstalling(false);
     }
+  };
+
+  const handleDownloadClick = () => {
+    downloadNEXUSAppFile();
+    setTimeout(() => {
+      onOpenChange(false);
+    }, 500);
   };
 
   const renderInstructions = () => {
@@ -193,14 +202,20 @@ export function PWAInstallModal({
           />
         </div>
 
+        {/* Success Message when file is being downloaded */}
         {showInstructions ? (
           <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {renderInstructions()}
           </div>
-        ) : null}
+        ) : (
+          <div className="mb-6 text-right text-sm text-slate-300 leading-relaxed">
+            <p>اختر من الخيارات أدناه لتنزيل وتثبيت تطبيق NEXUS على جهازك:</p>
+            <p className="text-xs text-slate-400 mt-2">سيتم تنزيل ملف مشغل التطبيق في مجلد التنزيلات الخاص بك</p>
+          </div>
+        )}
 
         {/* Action Buttons matching native layout */}
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex flex-col gap-3 pt-2">
           {!showInstructions ? (
             <Button
               onClick={handleInstallClick}
@@ -213,7 +228,7 @@ export function PWAInstallModal({
           ) : (
             <Button
               onClick={() => onOpenChange(false)}
-              className="rounded-2xl px-7 h-11 font-bold text-sm bg-slate-700 hover:bg-slate-600 text-white transition-all"
+              className="rounded-2xl px-7 h-11 font-bold text-sm bg-slate-700 hover:bg-slate-600 text-white transition-all w-full"
             >
               حسناً، فهمت
             </Button>
@@ -223,7 +238,7 @@ export function PWAInstallModal({
             <Button
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className="rounded-2xl px-6 h-11 font-semibold text-sm text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+              className="rounded-2xl px-6 h-11 font-semibold text-sm text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors w-full"
             >
               إلغاء
             </Button>
