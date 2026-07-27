@@ -241,7 +241,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuItem>
                 )}
 
-                <InstallPWAButton variant="menu" showBanner={true} />
+                <InstallPWAButton variant="menu" />
 
                 <DropdownMenuSeparator />
 
@@ -310,8 +310,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </div>
-      {/* PWA Install Floating Notification Banner */}
-      <InstallPWAButton variant="banner" showBanner={true} />
     </div>
   );
 }
