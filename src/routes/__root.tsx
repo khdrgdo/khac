@@ -122,6 +122,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap",
       },
     ],
+    scripts: [
+      { src: "/register-sw.js" },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -152,13 +155,6 @@ function RootComponent() {
     const t =
       saved ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
     document.documentElement.classList.toggle("dark", t === "dark");
-
-    // FIXED: Register Service Worker once, centrally
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .catch(() => {});
-    }
 
     // FIXED: Capture beforeinstallprompt inside useEffect (not at module top-level)
     const handleBeforeInstallPrompt = (e: Event) => {
