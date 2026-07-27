@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { detectPWADevice, type PWADeviceInfo } from "@/lib/pwaDetector";
-import { PWAInstallModal } from "@/components/PWAInstallModal";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
