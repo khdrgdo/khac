@@ -11,14 +11,12 @@ interface PWAInstallModalProps {
   deviceInfo?: PWADeviceInfo;
   onDirectInstall?: () => Promise<boolean>;
   hasDirectPrompt?: boolean;
-  onDownloadApp?: () => void;
 }
 
 export function PWAInstallModal({
   open,
   onOpenChange,
   onDirectInstall,
-  onDownloadApp,
   deviceInfo: initialDeviceInfo,
 }: PWAInstallModalProps) {
   const [installing, setInstalling] = useState(false);
@@ -86,13 +84,6 @@ export function PWAInstallModal({
     } finally {
       setInstalling(false);
     }
-  };
-
-  const handleDownloadClick = () => {
-    downloadNEXUSAppFile();
-    setTimeout(() => {
-      onOpenChange(false);
-    }, 500);
   };
 
   const renderInstructions = () => {
