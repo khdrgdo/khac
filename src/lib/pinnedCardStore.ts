@@ -81,6 +81,17 @@ function mapRowToConfig(row: Record<string, unknown>): PinnedCardConfig {
 }
 
 export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
+  // Always load localStorage first so local votes/participants are never lost
+  let localConfig: PinnedCardConfig | null = null;
+  const localStr = localStorage.getItem("unihub_pinned_featured_card_v1");
+  if (localStr) {
+    try {
+      localConfig = { ...DEFAULT_PINNED_CARD, ...JSON.parse(localStr) };
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   try {
     const { data, error } = await supabase
       .from("pinned_cards" as never)
@@ -89,21 +100,19 @@ export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
       .single();
 
     if (!error && data) {
-      return mapRowToConfig(data);
+      const dbConfig = mapRowToConfig(data);
+      // Merge: DB is source of truth for settings, but always keep local votes/participants
+      if (localConfig) {
+        const mergedVotes = { ...localConfig.votes, ...dbConfig.votes };
+        const mergedParticipants = [...new Set([...localConfig.participants, ...dbConfig.participants])];
+        return { ...dbConfig, votes: mergedVotes, participants: mergedParticipants };
+      }
+      return dbConfig;
     }
   } catch (err) {
   }
 
-  // Fallback to local storage if offline/error
-  const localStr = localStorage.getItem("unihub_pinned_featured_card_v1");
-  if (localStr) {
-    try {
-      return { ...DEFAULT_PINNED_CARD, ...JSON.parse(localStr) };
-    } catch (e) {
-      /* ignore */
-    }
-  }
-  return DEFAULT_PINNED_CARD;
+  return localConfig || DEFAULT_PINNED_CARD;
 }
 
 export async function savePinnedCardToDb(config: PinnedCardConfig) {
