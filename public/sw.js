@@ -41,25 +41,51 @@ self.addEventListener("fetch", (event) => {
   // Skip non-GET requests
   if (request.method !== "GET") return;
 
-  // Skip Supabase API calls — always fetch fresh
-  if (request.url.includes("supabase.co")) return;
+  // Only handle http/https requests
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return;
+  }
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
+
+  // Skip Supabase API calls, dev hot reloads, and chrome extensions
+  if (
+    url.hostname.includes("supabase") ||
+    url.pathname.startsWith("/api") ||
+    url.pathname.includes("@vite") ||
+    url.pathname.includes("hot-update")
+  ) {
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, clone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
+      if (cachedResponse) {
+        // Return cached version immediately, revalidate in background if online
+        fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
+              const clone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            }
+          })
+          .catch(() => {
+            /* ignore background fetch failures */
+          });
+        return cachedResponse;
+      }
 
-      // Return cached version immediately if available, else fetch
-      return cachedResponse || fetchPromise;
+      // If not cached, fetch from network and cache if successful
+      return fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return networkResponse;
+      });
     })
   );
 });
