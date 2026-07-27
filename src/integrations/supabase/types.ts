@@ -157,6 +157,7 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           id: string;
+          is_important: boolean;
           link_type: string | null;
           title: string;
           url: string;
@@ -166,6 +167,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           id?: string;
+          is_important?: boolean;
           link_type?: string | null;
           title: string;
           url: string;
@@ -175,6 +177,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           id?: string;
+          is_important?: boolean;
           link_type?: string | null;
           title?: string;
           url?: string;

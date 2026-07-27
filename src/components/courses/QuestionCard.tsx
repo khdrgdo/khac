@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { type CourseQuestionPost, type CoursePublicProfile } from "@/components/courses/course-types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,18 +18,19 @@ import { toast } from "sonner";
 
 export function QuestionCard({
   q,
+  courseId,
   isTeacher,
   canDelete,
   onDelete,
   teacherId,
 }: {
   q: CourseQuestionPost;
+  courseId: string;
   isTeacher: boolean;
   canDelete: boolean;
   onDelete: () => void;
   teacherId?: string | null;
 }) {
-  const { id: courseId } = useParams({ from: "/_authenticated/courses/$id" });
   const { user, isAdmin, isSubAdmin } = useAuth();
   const qc = useQueryClient();
   const [replyText, setReplyText] = useState("");

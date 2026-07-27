@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { type CourseFile } from "@/components/courses/course-types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ExternalLink, Plus, Trash2, Loader2, MessageSquare, Clock } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ExternalLink, Plus, Trash2, Loader2, MessageSquare, Clock, Pencil } from "lucide-react";
 import { parseTitleAndNote, formatTitleAndNote } from "@/lib/courseUtils";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -26,6 +36,11 @@ import { toast } from "sonner";
 export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
+  const [linkToDelete, setLinkToDelete] = useState<CourseFile | null>(null);
+  const [editingLink, setEditingLink] = useState<CourseFile | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editUrl, setEditUrl] = useState("");
+  const [editNote, setEditNote] = useState("");
 
   const { data: links, isLoading } = useQuery({
     queryKey: ["course_links", courseId],
@@ -48,6 +63,24 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       toast.success("تم حذف الرابط بنجاح");
       qc.invalidateQueries({ queryKey: ["course_links", courseId] });
     },
+  });
+
+  const editLink = useMutation({
+    mutationFn: async () => {
+      if (!editingLink) return;
+      const formattedTitle = formatTitleAndNote(editTitle, editNote);
+      const { error } = await supabase
+        .from("course_links")
+        .update({ title: formattedTitle, url: editUrl })
+        .eq("id", editingLink.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم تعديل الرابط بنجاح");
+      qc.invalidateQueries({ queryKey: ["course_links", courseId] });
+      setEditingLink(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   return (
@@ -132,14 +165,30 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                     </Button>
 
                     {(isAdmin || l.created_by === user?.id) && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                        onClick={() => del.mutate(l.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground hover:bg-muted"
+                          onClick={() => {
+                            setEditingLink(l);
+                            setEditTitle(parsed.title);
+                            setEditUrl(l.url);
+                            setEditNote(parsed.note ?? "");
+                          }}
+                          title="تعديل الرابط"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          onClick={() => setLinkToDelete(l)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </CardContent>
@@ -148,6 +197,80 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
           })}
         </div>
       )}
+
+      {/* Edit Link Dialog */}
+      <Dialog open={!!editingLink} onOpenChange={() => setEditingLink(null)}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>تعديل الرابط</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">عنوان الرابط *</Label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">الرابط URL *</Label>
+              <Input
+                value={editUrl}
+                onChange={(e) => setEditUrl(e.target.value)}
+                dir="ltr"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">ملاحظة الأستاذ (اختياري)</Label>
+              <Textarea
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+                rows={3}
+                className="resize-none rounded-xl"
+              />
+            </div>
+          </div>
+          <DialogFooter className="pt-3">
+            <Button variant="outline" onClick={() => setEditingLink(null)} className="rounded-xl">
+              إلغاء
+            </Button>
+            <Button
+              onClick={() => editLink.mutate()}
+              disabled={!editTitle.trim() || !editUrl.trim() || editLink.isPending}
+              className="rounded-xl font-semibold"
+            >
+              {editLink.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />}
+              حفظ التعديلات
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!linkToDelete} onOpenChange={() => setLinkToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الرابط</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف هذا الرابط نهائياً. لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (linkToDelete) del.mutate(linkToDelete.id);
+                setLinkToDelete(null);
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

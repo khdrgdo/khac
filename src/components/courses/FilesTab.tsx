@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { type CourseFile } from "@/components/courses/course-types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Upload, Download, Play, Trash2, Loader2, FileText, Video, Image as ImageIcon, MessageSquare, Clock } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Upload, Download, Play, Trash2, Loader2, FileText, Video, Image as ImageIcon, MessageSquare, Clock, Pencil, Pin } from "lucide-react";
 import { parseTitleAndNote, formatTitleAndNote, getFileTypeInfo } from "@/lib/courseUtils";
 import { broadcastNotification } from "@/lib/notificationsStore";
 import { signedUrl } from "@/lib/storage";
@@ -25,7 +35,6 @@ import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { toast } from "sonner";
 
-/* Files Component with Video/PDF Support and Teacher Notes */
 export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boolean }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
@@ -36,6 +45,10 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
   const [customFileName, setCustomFileName] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedVideoUrl, setSelectedVideoUrl] = useState<string | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<CourseFile | null>(null);
+  const [editingFile, setEditingFile] = useState<CourseFile | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editNote, setEditNote] = useState("");
 
   const { data: files, isLoading } = useQuery({
     queryKey: ["course_files", courseId],
@@ -45,6 +58,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
         .select("*")
         .eq("course_id", courseId)
         .eq("link_type", "file")
+        .order("is_important", { ascending: false })
         .order("created_at", { ascending: false });
       return (data ?? []) as CourseFile[];
     },
@@ -136,12 +150,43 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
     },
   });
 
+  const editFile = useMutation({
+    mutationFn: async () => {
+      if (!editingFile) return;
+      const formattedTitle = formatTitleAndNote(editTitle, editNote);
+      const { error } = await supabase
+        .from("course_links")
+        .update({ title: formattedTitle })
+        .eq("id", editingFile.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم تعديل الملف بنجاح");
+      qc.invalidateQueries({ queryKey: ["course_files", courseId] });
+      setEditingFile(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const togglePin = useMutation({
+    mutationFn: async (f: CourseFile) => {
+      const { error } = await supabase
+        .from("course_links")
+        .update({ is_important: !f.is_important })
+        .eq("id", f.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["course_files", courseId] });
+    },
+  });
+
   return (
     <div className="space-y-3">
       {canEdit && (
         <div className="flex justify-between items-center bg-muted/30 p-3 rounded-xl border">
           <span className="text-xs font-semibold text-muted-foreground">
-            رفع ملفات PDF، مذكرات، عروض تقديمة، وفيديوهات قصيرة للمقرر
+            رفع ملفات PDF، مذكرات، عروض تقديمية، وفيديوهات قصيرة للمقرر
           </span>
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -223,7 +268,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
             const fileInfo = getFileTypeInfo(f.url, f.link_type);
 
             return (
-              <Card key={f.id} className="hover:border-primary/40 transition">
+              <Card key={f.id} className={`hover:border-primary/40 transition ${f.is_important ? "border-amber-400 bg-amber-500/5" : ""}`}>
                 <CardContent className="p-3.5 flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div
@@ -248,6 +293,9 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
 
                     <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {f.is_important && (
+                          <Pin className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
+                        )}
                         <h4 className="font-bold text-sm text-foreground truncate">
                           {parsed.title}
                         </h4>
@@ -298,14 +346,38 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                     </Button>
 
                     {(isAdmin || f.created_by === user?.id) && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                        onClick={() => del.mutate(f)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-amber-500 hover:bg-amber-500/10"
+                          onClick={() => togglePin.mutate(f)}
+                          title={f.is_important ? "إلغاء التثبيت" : "تثبيت الملف"}
+                        >
+                          <Pin className={`w-3.5 h-3.5 ${f.is_important ? "fill-amber-500" : ""}`} />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground hover:bg-muted"
+                          onClick={() => {
+                            setEditingFile(f);
+                            setEditTitle(parsed.title);
+                            setEditNote(parsed.note ?? "");
+                          }}
+                          title="تعديل الملف"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          onClick={() => setFileToDelete(f)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </CardContent>
@@ -314,6 +386,71 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
           })}
         </div>
       )}
+
+      {/* Edit File Dialog */}
+      <Dialog open={!!editingFile} onOpenChange={() => setEditingFile(null)}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>تعديل الملف</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">عنوان الملف *</Label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">ملاحظة الأستاذ (اختياري)</Label>
+              <Textarea
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+                rows={3}
+                className="resize-none rounded-xl"
+              />
+            </div>
+          </div>
+          <DialogFooter className="pt-3">
+            <Button variant="outline" onClick={() => setEditingFile(null)} className="rounded-xl">
+              إلغاء
+            </Button>
+            <Button
+              onClick={() => editFile.mutate()}
+              disabled={!editTitle.trim() || editFile.isPending}
+              className="rounded-xl font-semibold"
+            >
+              {editFile.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />}
+              حفظ التعديلات
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الملف</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف هذا الملف نهائياً من التخزين. لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (fileToDelete) del.mutate(fileToDelete);
+                setFileToDelete(null);
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Video Modal Player */}
       {selectedVideoUrl && (

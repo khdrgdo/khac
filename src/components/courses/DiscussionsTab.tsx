@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { type CourseQuestionPost, type CoursePublicProfile } from "@/components/courses/course-types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,11 @@ import { QuestionCard } from "@/components/courses/QuestionCard";
 export function DiscussionsTab({
   courseId,
   teacherId,
+  canEdit,
 }: {
   courseId: string;
   teacherId?: string | null;
+  canEdit?: boolean;
 }) {
   const { user, isAdmin, isSubAdmin } = useAuth();
   const qc = useQueryClient();
@@ -149,6 +151,7 @@ export function DiscussionsTab({
               <QuestionCard
                 key={q.id}
                 q={q}
+                courseId={courseId}
                 isTeacher={isTeacher}
                 canDelete={canDel}
                 onDelete={() => deleteQuestion.mutate(q.id)}

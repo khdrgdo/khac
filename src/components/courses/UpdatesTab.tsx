@@ -1,14 +1,31 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { renderMarkdownContent } from "@/lib/markdown";
 import type { CourseUpdate } from "@/components/courses/course-types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Megaphone, Trash2, Clock, Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Megaphone, Trash2, Clock, Loader2, Pencil } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { toast } from "sonner";
@@ -18,6 +35,9 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [content, setContent] = useState("");
+  const [updateToDelete, setUpdateToDelete] = useState<CourseUpdate | null>(null);
+  const [editingUpdate, setEditingUpdate] = useState<CourseUpdate | null>(null);
+  const [editContent, setEditContent] = useState("");
 
   const { data: updates, isLoading } = useQuery({
     queryKey: ["course_updates", courseId],
@@ -64,6 +84,23 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
       toast.success("تم حذف الإعلان");
       qc.invalidateQueries({ queryKey: ["course_updates", courseId] });
     },
+  });
+
+  const editUpdate = useMutation({
+    mutationFn: async () => {
+      if (!editingUpdate) return;
+      const { error } = await supabase
+        .from("course_updates")
+        .update({ content: editContent.trim() })
+        .eq("id", editingUpdate.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم تعديل الإعلان بنجاح");
+      qc.invalidateQueries({ queryKey: ["course_updates", courseId] });
+      setEditingUpdate(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   return (
@@ -120,14 +157,28 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
                   </div>
 
                   {(isAdmin || u.author_id === user?.id) && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                      onClick={() => del.mutate(u.id)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:bg-muted"
+                        onClick={() => {
+                          setEditingUpdate(u);
+                          setEditContent(u.content);
+                        }}
+                        title="تعديل الإعلان"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                        onClick={() => setUpdateToDelete(u)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   )}
                 </div>
 
@@ -139,6 +190,61 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
           ))}
         </div>
       )}
+
+      {/* Edit Announcement Dialog */}
+      <Dialog open={!!editingUpdate} onOpenChange={() => setEditingUpdate(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>تعديل الإعلان</DialogTitle>
+          </DialogHeader>
+          <div className="pt-2">
+            <Label className="text-xs font-semibold">نص الإعلان</Label>
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={5}
+              className="resize-none rounded-xl text-sm mt-2"
+            />
+          </div>
+          <DialogFooter className="pt-3">
+            <Button variant="outline" onClick={() => setEditingUpdate(null)} className="rounded-xl">
+              إلغاء
+            </Button>
+            <Button
+              onClick={() => editUpdate.mutate()}
+              disabled={!editContent.trim() || editUpdate.isPending}
+              className="rounded-xl font-semibold"
+            >
+              {editUpdate.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />}
+              حفظ التعديلات
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!updateToDelete} onOpenChange={() => setUpdateToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الإعلان</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف هذا الإعلان نهائياً. لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (updateToDelete) del.mutate(updateToDelete.id);
+                setUpdateToDelete(null);
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

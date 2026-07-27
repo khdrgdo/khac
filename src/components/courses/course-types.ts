@@ -5,6 +5,7 @@ export interface CourseFile {
   link_type: string;
   created_by: string;
   created_at: string;
+  is_important?: boolean;
 }
 
 export interface CourseUpdate {

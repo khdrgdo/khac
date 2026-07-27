@@ -19,7 +19,7 @@ export function DeleteCourseDialog({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={isPending ? undefined : setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -41,14 +41,14 @@ export function DeleteCourseDialog({
           والإعلانات التابعة له بشكل لا يمكن التراجع عنه.
         </p>
         <DialogFooter className="pt-4 gap-2 flex flex-col-reverse sm:flex-row sm:justify-end">
-          <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl">
+          <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl" disabled={isPending}>
             إلغاء
           </Button>
           <Button
             variant="destructive"
             onClick={() => {
               onDelete();
-              setOpen(false);
+              if (!isPending) setOpen(false);
             }}
             disabled={isPending}
             className="rounded-xl font-semibold"
