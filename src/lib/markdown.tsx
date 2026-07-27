@@ -3,13 +3,20 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
-const MENTION_REGEX_TIPTAP = /\[@\s+id="([^"]+)"\s+label="([^"]+)"\]/g;
-const MENTION_REGEX_LEGACY = /\[@([^\]]+)\]\(([^)]+)\)/g;
+const MENTION_SPAN_REGEX = /<span\b([^>]*?)data-type="mention"([^>]*?)>([^<]*)<\/span>/gi;
+
+function convertMentionHtml(content: string): string {
+  return content.replace(MENTION_SPAN_REGEX, (_full, before: string, after: string, text: string) => {
+    const tagContent = before + after;
+    const idMatch = tagContent.match(/data-id="([^"]*)"/);
+    const id = idMatch?.[1] ?? "";
+    const name = text.replace(/^@/, "").trim() || id;
+    return `[${name}](/profile/${id})`;
+  });
+}
 
 export const renderMarkdownContent = (content: string, className?: string) => {
-  const transformedContent = content
-    .replace(MENTION_REGEX_TIPTAP, '[$2](/profile/$1)')
-    .replace(MENTION_REGEX_LEGACY, '[$1](/profile/$2)');
+  const transformedContent = convertMentionHtml(content);
 
   return (
     <div className={cn("markdown-body", className)}>
