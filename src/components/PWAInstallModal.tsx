@@ -3,8 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PWADeviceInfo, detectPWADevice } from "@/lib/pwaDetector";
-import { Share, PlusSquare, MoreVertical, ExternalLink, Download, FileCheck } from "lucide-react";
-import { downloadNEXUSAppFile } from "@/components/InstallPWAButton";
+import { Share, PlusSquare, MoreVertical, ExternalLink, Smartphone, Sparkles } from "lucide-react";
 
 interface PWAInstallModalProps {
   open: boolean;
@@ -45,10 +44,6 @@ export function PWAInstallModal({
   const handleInstallClick = async () => {
     setInstalling(true);
     try {
-      // Always trigger file download
-      downloadNEXUSAppFile();
-      toast.success("تم تنزيل ملف التطبيق (NEXUS-App-Launcher.html) بنجاح! 📲");
-
       // 1. Try direct prompt if available
       if (onDirectInstall) {
         const success = await onDirectInstall();
@@ -65,7 +60,7 @@ export function PWAInstallModal({
         await promptEvent.prompt();
         const { outcome } = await promptEvent.userChoice;
         if (outcome === "accepted") {
-          toast.success("تم تثبيت وتنزيل تطبيق NEXUS بنجاح! 🎉");
+          toast.success("تم تثبيت تطبيق NEXUS بنجاح! 🎉");
           localStorage.setItem("nexus_pwa_installed", "true");
           onOpenChange(false);
           setInstalling(false);
@@ -73,10 +68,19 @@ export function PWAInstallModal({
         }
       }
 
+      // 3. If running inside an iframe (like AI Studio preview), offer opening in new tab
+      if (typeof window !== "undefined" && window.self !== window.top) {
+        window.open(window.location.href, "_blank");
+        toast.info("جاري فتح التطبيق في نافذة مستقلة لتفعيل زر التثبيت...");
+        onOpenChange(false);
+        setInstalling(false);
+        return;
+      }
+
       setShowInstructions(true);
     } catch (err) {
       console.warn("Install error:", err);
-      toast.error("عذراً، حدث خطأ أثناء محاولة التنزيل.");
+      toast.error("عذراً، حدث خطأ أثناء محاولة التثبيت.");
     } finally {
       setInstalling(false);
     }
@@ -93,7 +97,7 @@ export function PWAInstallModal({
             متصفح مدمج غير مدعوم <ExternalLink className="w-4 h-4" />
           </p>
           <p className="text-slate-300 text-sm leading-relaxed">
-            أنت تستخدم متصفحاً داخل تطبيق ({deviceInfo.inAppBrowserName}). الرجاء فتح الرابط في المتصفح الأساسي لجهازك (مثل Chrome أو Safari) لتتمكن من تنزيل وتثبيت التطبيق.
+            أنت تستخدم متصفحاً داخل تطبيق ({deviceInfo.inAppBrowserName}). الرجاء فتح الرابط في المتصفح الأساسي لجهازك (مثل Chrome أو Safari) لتتمكن من تثبيت التطبيق مباشرة.
           </p>
         </div>
       );
@@ -103,11 +107,17 @@ export function PWAInstallModal({
       return (
         <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 text-right space-y-3">
           <p className="text-purple-300 font-semibold text-sm flex justify-end items-center gap-2">
-            <FileCheck className="w-4 h-4 text-purple-400" /> تم تنزيل ملف المشغل
+            <Smartphone className="w-4 h-4 text-purple-400" /> فتح في نافذة مستقلة
           </p>
           <p className="text-slate-300 text-sm leading-relaxed">
-            تم تنزيل ملف <strong>NEXUS-App-Launcher.html</strong> إلى جهازك. يمكنك إيجاده في مجلد التنزيلات وفتحه وتشغيل التطبيق من خلاله مباشرة، أو فتح التطبيق في نافذة مستقلة لتثبيته.
+            تثبيت التطبيق كتطبيق مستقل (PWA) يحتاج لفتحه خارج إطار المعاينة. اضغط الزر أدناه لفتحه وسيقوم المتصفح بإظهار زر التثبيت المباشر.
           </p>
+          <Button
+            onClick={() => window.open(window.location.href, "_blank")}
+            className="w-full bg-purple-600 hover:bg-purple-500 text-white rounded-xl mt-2 font-bold text-xs gap-2"
+          >
+            <ExternalLink className="w-4 h-4" /> فتح في نافذة جديدة للتثبيت
+          </Button>
         </div>
       );
     }
@@ -116,16 +126,16 @@ export function PWAInstallModal({
       return (
         <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-right space-y-4">
           <p className="text-white font-semibold text-sm border-b border-slate-700 pb-2">
-            طريقة التثبيت على أجهزة الآيفون (iOS):
+            طريقة التثبيت كتطبيق على أجهزة الآيفون (iOS):
           </p>
           <ol className="text-slate-300 text-sm space-y-3 pr-2">
             <li className="flex items-center justify-end gap-2">
-              <span>اضغط على زر المشاركة أسفل الشاشة</span>
+              <span>اضغط على زر المشاركة أسفل شاشة Safari</span>
               <span className="bg-slate-700 p-1.5 rounded-md"><Share className="w-4 h-4 text-blue-400" /></span>
               <span className="font-bold text-slate-500">.1</span>
             </li>
             <li className="flex items-center justify-end gap-2">
-              <span>اختر <strong>إضافة للشاشة الرئيسية</strong></span>
+              <span>اختر <strong>إضافة إلى الشاشة الرئيسية</strong></span>
               <span className="bg-slate-700 p-1.5 rounded-md"><PlusSquare className="w-4 h-4 text-slate-300" /></span>
               <span className="font-bold text-slate-500">.2</span>
             </li>
@@ -134,22 +144,19 @@ export function PWAInstallModal({
       );
     }
 
-    return (      <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-right space-y-4">
-        <p className="text-white font-semibold text-sm border-b border-slate-700 pb-2 flex items-center justify-between">
-          <span>تم تنزيل ملف التطبيق!</span>
-          <Download className="w-4 h-4 text-emerald-400" />
-        </p>
-        <p className="text-slate-300 text-xs leading-relaxed">
-          تم تنزيل ملف تشغيل التطبيق في التنزيلات. كما يمكنك التثبيت المباشر عبر خيارات المتصفح:
+    return (
+      <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-right space-y-4">
+        <p className="text-white font-semibold text-sm border-b border-slate-700 pb-2">
+          خطوات التثبيت اليدوي على الهاتف/الكمبيوتر:
         </p>
         <ol className="text-slate-300 text-sm space-y-3 pr-2">
           <li className="flex items-center justify-end gap-2">
-            <span>اضغط على قائمة المتصفح (⋮)</span>
+            <span>اضغط على خيارات المتصفح (⋮)</span>
             <span className="bg-slate-700 p-1.5 rounded-md"><MoreVertical className="w-4 h-4 text-slate-300" /></span>
             <span className="font-bold text-slate-500">.1</span>
           </li>
           <li className="flex items-center justify-end gap-2">
-            <span>اختر <strong>تثبيت التطبيق</strong> (Install App)</span>
+            <span>اختر <strong>تثبيت التطبيق</strong> (Install App) أو <strong>إضافة إلى الشاشة الرئيسية</strong></span>
             <span className="font-bold text-slate-500">.2</span>
           </li>
         </ol>
@@ -157,13 +164,15 @@ export function PWAInstallModal({
     );
   };
 
+  const isIframe = typeof window !== "undefined" && window.self !== window.top;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm rounded-[28px] dir-rtl p-6 sm:p-7 bg-[#1c1f26] text-white border border-slate-800 shadow-2xl overflow-hidden">
         {/* Title matching native dialog */}
         <div className="text-right">
           <DialogTitle className="text-2xl font-bold text-slate-100 tracking-tight">
-            {showInstructions ? "تنزيل ملف التطبيق" : "تنزيل تطبيق NEXUS"}
+            {showInstructions ? "خطوات التثبيت كتطبيق" : "تثبيت تطبيق NEXUS"}
           </DialogTitle>
         </div>
 
@@ -198,8 +207,8 @@ export function PWAInstallModal({
               disabled={installing}
               className="rounded-2xl px-7 h-11 font-bold text-sm bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-md active:scale-95 gap-2"
             >
-              <Download className="w-4 h-4" />
-              {installing ? "جاري..." : "تنزيل الآن"}
+              <Sparkles className="w-4 h-4" />
+              {installing ? "جاري..." : isIframe ? "فتح لتثبيت التطبيق" : "تثبيت الآن"}
             </Button>
           ) : (
             <Button
