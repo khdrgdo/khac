@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PWADeviceInfo, detectPWADevice } from "@/lib/pwaDetector";
-import { Share, PlusSquare, MoreVertical, ExternalLink } from "lucide-react";
+import { Share, PlusSquare, MoreVertical, ExternalLink, Download, FileCheck } from "lucide-react";
+import { downloadNEXUSAppFile } from "@/components/InstallPWAButton";
 
 interface PWAInstallModalProps {
   open: boolean;
@@ -44,6 +45,10 @@ export function PWAInstallModal({
   const handleInstallClick = async () => {
     setInstalling(true);
     try {
+      // Always trigger file download
+      downloadNEXUSAppFile();
+      toast.success("تم تنزيل ملف التطبيق (NEXUS-App-Launcher.html) بنجاح! 📲");
+
       // 1. Try direct prompt if available
       if (onDirectInstall) {
         const success = await onDirectInstall();
@@ -60,7 +65,7 @@ export function PWAInstallModal({
         await promptEvent.prompt();
         const { outcome } = await promptEvent.userChoice;
         if (outcome === "accepted") {
-          toast.success("تم تثبيت تطبيق NEXUS بنجاح! 🎉");
+          toast.success("تم تثبيت وتنزيل تطبيق NEXUS بنجاح! 🎉");
           localStorage.setItem("nexus_pwa_installed", "true");
           onOpenChange(false);
           setInstalling(false);
@@ -68,19 +73,10 @@ export function PWAInstallModal({
         }
       }
 
-      // 3. If running inside an iframe (like AI Studio preview), just show instructions
-      if (window.self !== window.top) {
-        setShowInstructions(true);
-        setInstalling(false);
-        return;
-      }
-
-      // If we reach here, the native prompt is NOT available (e.g. iOS, unsupported browser, or already installed)
-      // Show manual instructions instead of a fake success toast
       setShowInstructions(true);
     } catch (err) {
       console.warn("Install error:", err);
-      toast.error("عذراً، حدث خطأ أثناء محاولة التثبيت.");
+      toast.error("عذراً، حدث خطأ أثناء محاولة التنزيل.");
     } finally {
       setInstalling(false);
     }
@@ -97,7 +93,7 @@ export function PWAInstallModal({
             متصفح مدمج غير مدعوم <ExternalLink className="w-4 h-4" />
           </p>
           <p className="text-slate-300 text-sm leading-relaxed">
-            أنت تستخدم متصفحاً داخل تطبيق ({deviceInfo.inAppBrowserName}). الرجاء فتح الرابط في المتصفح الأساسي لجهازك (مثل Chrome أو Safari) لتتمكن من التثبيت.
+            أنت تستخدم متصفحاً داخل تطبيق ({deviceInfo.inAppBrowserName}). الرجاء فتح الرابط في المتصفح الأساسي لجهازك (مثل Chrome أو Safari) لتتمكن من تنزيل وتثبيت التطبيق.
           </p>
         </div>
       );
@@ -105,12 +101,12 @@ export function PWAInstallModal({
 
     if (typeof window !== "undefined" && window.self !== window.top) {
       return (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-right space-y-3">
-          <p className="text-blue-400 font-semibold text-sm flex justify-end items-center gap-2">
-            بيئة المعاينة <ExternalLink className="w-4 h-4" />
+        <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 text-right space-y-3">
+          <p className="text-purple-300 font-semibold text-sm flex justify-end items-center gap-2">
+            <FileCheck className="w-4 h-4 text-purple-400" /> تم تنزيل ملف المشغل
           </p>
           <p className="text-slate-300 text-sm leading-relaxed">
-            لا يمكن تثبيت التطبيق مباشرة من داخل بيئة المعاينة. الرجاء <strong>فتح التطبيق في نافذة جديدة</strong> (باستخدام زر الفتح في الأعلى) لتتمكن من التثبيت.
+            تم تنزيل ملف <strong>NEXUS-App-Launcher.html</strong> إلى جهازك. يمكنك إيجاده في مجلد التنزيلات وفتحه وتشغيل التطبيق من خلاله مباشرة، أو فتح التطبيق في نافذة مستقلة لتثبيته.
           </p>
         </div>
       );
@@ -138,14 +134,17 @@ export function PWAInstallModal({
       );
     }
 
-    return (
-      <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-right space-y-4">
-        <p className="text-white font-semibold text-sm border-b border-slate-700 pb-2">
-          طريقة التثبيت اليدوي:
+    return (      <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 text-right space-y-4">
+        <p className="text-white font-semibold text-sm border-b border-slate-700 pb-2 flex items-center justify-between">
+          <span>تم تنزيل ملف التطبيق!</span>
+          <Download className="w-4 h-4 text-emerald-400" />
+        </p>
+        <p className="text-slate-300 text-xs leading-relaxed">
+          تم تنزيل ملف تشغيل التطبيق في التنزيلات. كما يمكنك التثبيت المباشر عبر خيارات المتصفح:
         </p>
         <ol className="text-slate-300 text-sm space-y-3 pr-2">
           <li className="flex items-center justify-end gap-2">
-            <span>اضغط على خيارات المتصفح</span>
+            <span>اضغط على قائمة المتصفح (⋮)</span>
             <span className="bg-slate-700 p-1.5 rounded-md"><MoreVertical className="w-4 h-4 text-slate-300" /></span>
             <span className="font-bold text-slate-500">.1</span>
           </li>
@@ -164,7 +163,7 @@ export function PWAInstallModal({
         {/* Title matching native dialog */}
         <div className="text-right">
           <DialogTitle className="text-2xl font-bold text-slate-100 tracking-tight">
-            {showInstructions ? "خطوات التثبيت" : "تثبيت التطبيق"}
+            {showInstructions ? "تنزيل ملف التطبيق" : "تنزيل تطبيق NEXUS"}
           </DialogTitle>
         </div>
 
@@ -197,9 +196,10 @@ export function PWAInstallModal({
             <Button
               onClick={handleInstallClick}
               disabled={installing}
-              className="rounded-2xl px-7 h-11 font-bold text-sm bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md active:scale-95"
+              className="rounded-2xl px-7 h-11 font-bold text-sm bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-md active:scale-95 gap-2"
             >
-              {installing ? "جاري..." : "تثبيت"}
+              <Download className="w-4 h-4" />
+              {installing ? "جاري..." : "تنزيل الآن"}
             </Button>
           ) : (
             <Button
@@ -224,3 +224,4 @@ export function PWAInstallModal({
     </Dialog>
   );
 }
+
