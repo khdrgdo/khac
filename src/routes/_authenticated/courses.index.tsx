@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,7 +81,8 @@ export const Route = createFileRoute("/_authenticated/courses/")({
 });
 
 export function CoursesPage() {
-  const { user, profile, isTeacher, isAdmin } = useAuth();
+  const { user, profile, isTeacher, isAdmin, isMainAdmin, isSubAdmin } = useAuth();
+  const permissions = getSubAdminPermissions(profile);
   const qc = useQueryClient();
 
   const [majorFilter, setMajorFilter] = useState<string>(profile?.major ?? "all");
@@ -628,7 +629,7 @@ export function CoursesPage() {
 
                           <EditCourseDialog course={c} />
 
-                          {isAdmin && <DeleteCourseAction courseId={c.id} courseName={c.name} />}
+                          {(isMainAdmin || (isSubAdmin && permissions.can_courses)) && <DeleteCourseAction courseId={c.id} courseName={c.name} />}
                         </div>
                       </CardContent>
                     </Card>

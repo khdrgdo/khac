@@ -216,7 +216,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
                 <DropdownMenuSeparator />
 
-                {profile && (
+                {profile && !isSubAdmin && (
                   <DropdownMenuItem
                     onClick={() => navigate({ to: "/profile/$id", params: { id: profile.id } })}
                     className="rounded-xl cursor-pointer py-2 px-2.5 gap-2 text-xs font-semibold"

@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_authenticated/courses/$id/manage")({
 
 function ManageCoursePage() {
   const { id } = useParams({ from: "/_authenticated/courses/$id/manage" });
-  const { user, isAdmin, isSubAdmin, profile, loading } = useAuth();
+  const { user, isAdmin, isMainAdmin, isSubAdmin, profile, loading } = useAuth();
   const permissions = getSubAdminPermissions(profile);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -62,7 +62,7 @@ function ManageCoursePage() {
   });
 
   const canManage =
-    !!user && (isAdmin || (isSubAdmin && permissions.can_courses) || user.id === course?.created_by || user.id === course?.teacher_id);
+    !!user && (isMainAdmin || (isSubAdmin && permissions.can_courses) || user.id === course?.created_by || user.id === course?.teacher_id);
 
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
@@ -84,7 +84,7 @@ function ManageCoursePage() {
 
   const { data: teachers } = useQuery({
     queryKey: ["teachers-list"],
-    enabled: isAdmin,
+    enabled: isMainAdmin,
     queryFn: async () => {
       const { data: roles } = await supabase
         .from("user_roles")
@@ -106,7 +106,7 @@ function ManageCoursePage() {
         year: Number(year),
         semester: Number(semester),
       };
-      if (isAdmin) payload.teacher_id = teacherId || null;
+      if (isMainAdmin) payload.teacher_id = teacherId || null;
       const { error } = await supabase.from("courses").update(payload).eq("id", id);
       if (error) throw error;
     },
@@ -254,7 +254,7 @@ function ManageCoursePage() {
             </div>
           </div>
 
-          {isAdmin && (
+          {isMainAdmin && (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" /> الأستاذ المسؤول

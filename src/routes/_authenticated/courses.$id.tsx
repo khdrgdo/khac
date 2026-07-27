@@ -31,9 +31,9 @@ export const Route = createFileRoute("/_authenticated/courses/$id")({
 function CourseDetailPage() {
   const { id } = useParams({ from: "/_authenticated/courses/$id" });
   const { tab } = Route.useSearch();
-  const { user, isTeacher, isAdmin, isSubAdmin, profile } = useAuth();
+  const { user, isTeacher, isAdmin, isMainAdmin, isSubAdmin, profile } = useAuth();
   const permissions = getSubAdminPermissions(profile);
-  const canModifyCourse = isAdmin || (isSubAdmin && permissions.can_courses) || isTeacher;
+  const canModifyCourse = isMainAdmin || (isSubAdmin && permissions.can_courses) || isTeacher;
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -102,7 +102,7 @@ function CourseDetailPage() {
 
   const canEdit = canModifyCourse;
   const canDeleteCourse =
-    !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
+    !!user && (isMainAdmin || (isSubAdmin && permissions.can_courses) || user.id === course?.created_by || user.id === course?.teacher_id);
 
   if (isCourseLoading) {
     return (

@@ -26,8 +26,14 @@ export const Route = createFileRoute("/_authenticated/profile/$id")({
 
 function ProfilePage() {
   const { id } = useParams({ from: "/_authenticated/profile/$id" });
-  const { user, isMainAdmin } = useAuth();
+  const { user, isMainAdmin, isSubAdmin } = useAuth();
   const navigate = useNavigate();
+
+  // Sub-admins (guards) should not have a profile page at all
+  if (isSubAdmin && user?.id === id) {
+    navigate({ to: "/feed", replace: true });
+    return null;
+  }
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
