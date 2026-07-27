@@ -16,13 +16,14 @@ export function RankBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-full border font-bold shrink-0",
+        "inline-flex items-center gap-1 rounded-full border font-medium",
         r.color,
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-1.5 py-px text-[9px]",
+        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-1.5 py-0.5 text-[10px]",
       )}
     >
-      <span className={size === "xs" ? "text-[10px]" : ""}>{r.emoji}</span>
-      <span>{r.label}</span>
+      <span>{r.emoji}</span>
+      {r.label}
+      {typeof points === "number" && <span className="opacity-70">· {points}</span>}
     </span>
   );
 }

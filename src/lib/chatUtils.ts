@@ -16,6 +16,7 @@ export async function getOrCreateDM(currentUserId: string, otherUserId: string):
       return data;
     }
   } catch (e) {
+    console.warn("RPC create_dm exception, trying direct database operations:", e);
   }
 
   // 2. Check if a non-group conversation already exists between currentUserId and otherUserId

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,16 +31,16 @@ import {
   ShieldCheck,
   Eye,
   User,
-  HelpCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { DeleteCourseDialog } from "@/components/courses/DeleteCourseDialog";
-import { LinksTab } from "@/components/courses/LinksTab";
-import { FilesTab } from "@/components/courses/FilesTab";
-import { ScheduleTab } from "@/components/courses/ScheduleTab";
-import { UpdatesTab } from "@/components/courses/UpdatesTab";
-import { DiscussionsTab } from "@/components/courses/DiscussionsTab";
-import type { ScheduleEntry } from "@/components/courses/course-types";
+import {
+  DeleteCourseDialog,
+  LinksTab,
+  FilesTab,
+  ScheduleTab,
+  UpdatesTab,
+  type ScheduleEntry,
+} from "./courses.$id";
 
 export const Route = createFileRoute("/_authenticated/courses/$id/manage")({
   component: ManageCoursePage,
@@ -48,8 +48,7 @@ export const Route = createFileRoute("/_authenticated/courses/$id/manage")({
 
 function ManageCoursePage() {
   const { id } = useParams({ from: "/_authenticated/courses/$id/manage" });
-  const { user, isAdmin, isMainAdmin, isSubAdmin, profile, loading } = useAuth();
-  const permissions = getSubAdminPermissions(profile);
+  const { user, isAdmin, loading } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -62,7 +61,7 @@ function ManageCoursePage() {
   });
 
   const canManage =
-    !!user && (isMainAdmin || (isSubAdmin && permissions.can_courses) || user.id === course?.created_by || user.id === course?.teacher_id);
+    !!user && (isAdmin || user.id === course?.created_by || user.id === course?.teacher_id);
 
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
@@ -84,7 +83,7 @@ function ManageCoursePage() {
 
   const { data: teachers } = useQuery({
     queryKey: ["teachers-list"],
-    enabled: isMainAdmin,
+    enabled: isAdmin,
     queryFn: async () => {
       const { data: roles } = await supabase
         .from("user_roles")
@@ -106,7 +105,7 @@ function ManageCoursePage() {
         year: Number(year),
         semester: Number(semester),
       };
-      if (isMainAdmin) payload.teacher_id = teacherId || null;
+      if (isAdmin) payload.teacher_id = teacherId || null;
       const { error } = await supabase.from("courses").update(payload).eq("id", id);
       if (error) throw error;
     },
@@ -254,7 +253,7 @@ function ManageCoursePage() {
             </div>
           </div>
 
-          {isMainAdmin && (
+          {isAdmin && (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" /> الأستاذ المسؤول
@@ -295,15 +294,12 @@ function ManageCoursePage() {
       </Card>
 
       <Tabs defaultValue="links">
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="links">
             <ExternalLink className="w-4 h-4" /> روابط
           </TabsTrigger>
           <TabsTrigger value="files">
             <FileText className="w-4 h-4" /> ملفات
-          </TabsTrigger>
-          <TabsTrigger value="discussions">
-            <HelpCircle className="w-4 h-4" /> النقاشات
           </TabsTrigger>
           <TabsTrigger value="schedule">
             <Calendar className="w-4 h-4" /> الجدول
@@ -317,9 +313,6 @@ function ManageCoursePage() {
         </TabsContent>
         <TabsContent value="files" className="pt-3">
           <FilesTab courseId={id} canEdit={true} />
-        </TabsContent>
-        <TabsContent value="discussions" className="pt-3">
-          <DiscussionsTab courseId={id} teacherId={course.teacher_id} canEdit={true} />
         </TabsContent>
         <TabsContent value="schedule" className="pt-3">
           <ScheduleTab

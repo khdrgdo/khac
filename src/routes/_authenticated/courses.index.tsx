@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,8 +55,7 @@ import {
   Filter,
 } from "lucide-react";
 import { toast } from "sonner";
-import { EditCourseDialog } from "@/components/courses/EditCourseDialog";
-import { DeleteCourseDialog } from "@/components/courses/DeleteCourseDialog";
+import { EditCourseDialog, DeleteCourseDialog } from "./courses.$id";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 
@@ -81,14 +80,11 @@ export const Route = createFileRoute("/_authenticated/courses/")({
 });
 
 export function CoursesPage() {
-  const { user, profile, isTeacher, isAdmin, isMainAdmin, isSubAdmin } = useAuth();
-  const permissions = getSubAdminPermissions(profile);
+  const { user, profile, isTeacher, isAdmin } = useAuth();
   const qc = useQueryClient();
 
   const [majorFilter, setMajorFilter] = useState<string>(profile?.major ?? "all");
   const [yearFilter, setYearFilter] = useState<string>("all");
-  const [semesterFilter, setSemesterFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("name");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<string>(
     isTeacher || isAdmin ? "management" : "catalog",
@@ -124,7 +120,7 @@ export function CoursesPage() {
 
   // Fetch courses with links and teacher details
   const { data: courses, isLoading } = useQuery({
-    queryKey: ["courses", majorFilter, yearFilter, semesterFilter],
+    queryKey: ["courses", majorFilter, yearFilter],
     queryFn: async () => {
       let q = supabase
         .from("courses")
@@ -133,7 +129,6 @@ export function CoursesPage() {
         .order("semester");
       if (majorFilter !== "all") q = q.eq("major", majorFilter as "it" | "is" | "se");
       if (yearFilter !== "all") q = q.eq("year", Number(yearFilter));
-      if (semesterFilter !== "all") q = q.eq("semester", Number(semesterFilter));
       const { data, error } = await q;
       if (error) throw error;
 
@@ -213,18 +208,6 @@ export function CoursesPage() {
       (c.description && c.description.toLowerCase().includes(query)) ||
       (c.teacher_name && c.teacher_name.toLowerCase().includes(query))
     );
-  }).sort((a, b) => {
-    if (sortBy === "name") return a.name.localeCompare(b.name, "ar");
-    if (sortBy === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    if (sortBy === "files") {
-      const aFiles = a.course_links?.filter((l: { link_type: string | null }) => l.link_type === "file").length ?? 0;
-      const bFiles = b.course_links?.filter((l: { link_type: string | null }) => l.link_type === "file").length ?? 0;
-      return bFiles - aFiles;
-    }
-    if (sortBy === "updated") {
-      return new Date(b.last_updated_at).getTime() - new Date(a.last_updated_at).getTime();
-    }
-    return 0;
   });
 
   // Assigned courses for current user (if teacher or admin)
@@ -368,38 +351,6 @@ export function CoursesPage() {
                           السنة {y}
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Semester Filter */}
-                <div className="w-full sm:w-32">
-                  <Select value={semesterFilter} onValueChange={setSemesterFilter}>
-                    <SelectTrigger className="rounded-xl bg-background">
-                      <SelectValue placeholder="الفصل" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">كل الفصول</SelectItem>
-                      {SEMESTERS.map((s) => (
-                        <SelectItem key={s} value={String(s)}>
-                          الفصل {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Sort */}
-                <div className="w-full sm:w-40">
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="rounded-xl bg-background">
-                      <SelectValue placeholder="ترتيب حسب" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="name">الاسم</SelectItem>
-                      <SelectItem value="newest">الأحدث إضافة</SelectItem>
-                      <SelectItem value="files">الأكثر ملفات</SelectItem>
-                      <SelectItem value="updated">آخر تحديث</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -629,7 +580,7 @@ export function CoursesPage() {
 
                           <EditCourseDialog course={c} />
 
-                          {(isMainAdmin || (isSubAdmin && permissions.can_courses)) && <DeleteCourseAction courseId={c.id} courseName={c.name} />}
+                          {isAdmin && <DeleteCourseAction courseId={c.id} courseName={c.name} />}
                         </div>
                       </CardContent>
                     </Card>
@@ -844,7 +795,6 @@ export function NewCourseDialog({
       });
       if (error) throw error;
 
-      const { data: allProfiles } = await supabase.from("profiles").select("id");
       broadcastNotification({
         actorId: user.id,
         actorName: user.user_metadata?.full_name || "إدارة الكلية",
@@ -852,7 +802,7 @@ export function NewCourseDialog({
         title: "إضافة مادة جديدة 📚",
         body: `تم إضافة المقرر الدراسي "${name}" لطلاب قسم ${major.toUpperCase()} السنة ${year}`,
         link: "/courses",
-        targetUserIds: (allProfiles ?? []).map((p) => p.id),
+        currentUserId: user.id,
       });
     },
     onSuccess: () => {

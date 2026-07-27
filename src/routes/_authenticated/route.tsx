@@ -10,28 +10,44 @@ function AuthenticatedLayout() {
   );
 }
 
-let lastCheck = 0;
-const CHECK_COOLDOWN = 2000;
-
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
     if (typeof window === "undefined") {
       return {};
     }
-
-    const now = Date.now();
-    if (now - lastCheck < CHECK_COOLDOWN) {
-      return {};
-    }
-    lastCheck = now;
-
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      // First check cached local session
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionUser = sessionData?.session?.user;
+
+      if (!sessionUser) {
         throw redirect({ to: "/auth" });
       }
-      return { user: session.user };
+
+      // Try validating user via getUser()
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userData?.user) {
+          return { user: userData.user };
+        }
+        if (
+          userError &&
+          (userError.status === 401 || userError.message?.includes("Invalid token"))
+        ) {
+          throw redirect({ to: "/auth" });
+        }
+      } catch (innerErr) {
+        if (
+          innerErr &&
+          typeof innerErr === "object" &&
+          ("isRedirect" in innerErr || "to" in innerErr || "options" in innerErr)
+        ) {
+          throw innerErr;
+        }
+      }
+      
+      throw redirect({ to: "/auth" });
     } catch (err) {
       if (
         err &&
@@ -40,6 +56,7 @@ export const Route = createFileRoute("/_authenticated")({
       ) {
         throw err;
       }
+      console.warn("Auth check fallback to login:", err);
       throw redirect({ to: "/auth" });
     }
   },

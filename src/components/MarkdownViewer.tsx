@@ -1,10 +1,7 @@
 import React from "react";
-import { Link } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import rehypeRaw from "rehype-raw";
-import DOMPurify from "dompurify";
 import "highlight.js/styles/github-dark.css";
 import { cn } from "@/lib/utils";
 
@@ -13,43 +10,14 @@ interface MarkdownViewerProps {
   className?: string;
 }
 
-const MENTION_SPAN_REGEX = /<span\b([^>]*?)data-type="mention"([^>]*?)>([^<]*)<\/span>/gi;
-
-function convertMentionHtml(content: string): string {
-  return content.replace(MENTION_SPAN_REGEX, (_full, before: string, after: string, text: string) => {
-    const tagContent = before + after;
-    const idMatch = tagContent.match(/data-id="([^"]*)"/);
-    const id = idMatch?.[1] ?? "";
-    const name = text.replace(/^@/, "").trim() || id;
-    return `[${name}](/profile/${id})`;
-  });
-}
-
-function sanitizeContent(content: string): string {
-  return DOMPurify.sanitize(content, {
-    ALLOWED_TAGS: [
-      "p", "br", "strong", "em", "u", "s", "code", "pre", "blockquote",
-      "ul", "ol", "li", "a", "h1", "h2", "h3", "h4", "h5", "h6",
-      "table", "thead", "tbody", "tr", "th", "td", "hr", "img",
-      "span", "div", "del", "sup", "sub",
-    ],
-    ALLOWED_ATTR: [
-      "href", "target", "rel", "className", "class", "id", "src", "alt",
-      "width", "height", "title", "dir",
-    ],
-    ALLOW_DATA_ATTR: false,
-  });
-}
-
-function isSafeUrl(href: string): boolean {
-  if (!href) return false;
-  const trimmed = href.trim().toLowerCase();
-  return trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/");
-}
-
 export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
-  const transformedContent = convertMentionHtml(content);
-  const sanitizedContent = sanitizeContent(transformedContent);
+  // Simple hashtag parser to turn #tag into a span
+  const processHashtags = (text: string) => {
+    // We will let react-markdown handle most things, but we can't easily parse hashtags
+    // into links without a custom remark plugin. For now, we'll just style them later or
+    // we can use a custom renderer for text.
+    return text;
+  };
 
   return (
     <div
@@ -57,76 +25,51 @@ export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight, rehypeRaw]}
+        rehypePlugins={[rehypeHighlight]}
         components={{
-          a: (props) => {
-            const href = props.href || "";
-            if (href.startsWith("/profile/")) {
-              const profileId = href.replace("/profile/", "");
-              return (
-                <Link
-                  to="/profile/$id"
-                  params={{ id: profileId } as never}
-                  className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-semibold hover:underline inline-flex items-center gap-1"
-                >
-                  {props.children}
-                </Link>
-              );
-            }
-            if (!isSafeUrl(href)) {
-              return <span className="text-muted-foreground">{props.children}</span>;
-            }
+          a: ({ node, ...props }) => {
+            // Check if it's a hashtag (we could implement hashtag linking if we pre-processed)
             return (
               <a
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
-                href={href}
-              >
-                {props.children}
-              </a>
+                {...props}
+              />
             );
           },
-          code: ({ className: codeClassName, children, ...restProps }) => {
+          code: ({ node, className, children, ...props }) => {
             return (
               <code
                 className={cn(
                   "bg-muted px-1.5 py-0.5 rounded-md font-mono text-[0.9em]",
-                  codeClassName,
+                  className,
                 )}
-                {...restProps}
+                {...props}
               >
                 {children}
               </code>
             );
           },
-          pre: (props) => (
+          pre: ({ node, ...props }) => (
             <pre
               className="bg-[#0d1117] p-4 rounded-xl overflow-x-auto border border-border/50 my-4 shadow-sm"
               dir="ltr"
               {...props}
             />
           ),
-          p: (props) => <p className="mb-2 last:mb-0" {...props} />,
-          ul: (props) => <ul className="list-disc list-inside mb-2" {...props} />,
-          ol: (props) => <ol className="list-decimal list-inside mb-2" {...props} />,
-          blockquote: (props) => (
+          p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+          ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2" {...props} />,
+          ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2" {...props} />,
+          blockquote: ({ node, ...props }) => (
             <blockquote
               className="border-l-4 border-primary/50 pl-4 italic text-muted-foreground my-2"
               {...props}
             />
           ),
-          img: (props) => (
-            <img
-              {...props}
-              alt={props.alt || ""}
-              loading="lazy"
-              className="max-w-full h-auto rounded-md"
-            />
-          ),
         }}
       >
-        {sanitizedContent}
+        {content}
       </ReactMarkdown>
     </div>
   );

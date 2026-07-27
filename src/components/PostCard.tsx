@@ -102,20 +102,18 @@ export function PostCard({ post }: { post: PostWithMeta }) {
     mutationFn: async (type: ReactionType | null) => {
       if (!user) return;
       if (type === null) {
-        const { error } = await supabase
+        await supabase
           .from("post_reactions")
           .delete()
           .eq("post_id", post.id)
           .eq("user_id", user.id);
-        if (error) throw error;
       } else {
-        const { error } = await supabase
+        await supabase
           .from("post_reactions")
           .upsert(
             { post_id: post.id, user_id: user.id, reaction: type },
             { onConflict: "post_id,user_id" },
           );
-        if (error) throw error;
 
         if (post.author_id !== user.id) {
           const matchedReaction = REACTIONS.find((r) => r.type === type);
@@ -131,70 +129,19 @@ export function PostCard({ post }: { post: PostWithMeta }) {
         }
       }
     },
-    onMutate: async (type) => {
-      await qc.cancelQueries({ queryKey: ["posts"] });
-      const previous = qc.getQueriesData<PostWithMeta[]>({ queryKey: ["posts"] });
-      qc.setQueriesData<PostWithMeta[]>(
-        { queryKey: ["posts"] },
-        (old) =>
-          old?.map((p) => {
-            if (p.id !== post.id) return p;
-            if (type === null) {
-              return {
-                ...p,
-                myReaction: null,
-                reactions: p.reactions.filter((r) => r.user_id !== user?.id),
-              };
-            }
-            const filtered = p.reactions.filter((r) => r.user_id !== user?.id);
-            return {
-              ...p,
-              myReaction: type,
-              reactions: [...filtered, { post_id: post.id, user_id: user?.id ?? "", reaction: type }],
-            };
-          }) ?? old,
-      );
-      return { previous };
-    },
-    onError: (_err, _type, context) => {
-      if (context?.previous) {
-        for (const [key, data] of context.previous) {
-          qc.setQueryData(key, data);
-        }
-      }
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["posts"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["posts"] }),
   });
 
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!user) return;
       if (post.saved) {
-        const { error } = await supabase.from("saved_posts").delete().eq("post_id", post.id).eq("user_id", user.id);
-        if (error) throw error;
+        await supabase.from("saved_posts").delete().eq("post_id", post.id).eq("user_id", user.id);
       } else {
-        const { error } = await supabase.from("saved_posts").insert({ post_id: post.id, user_id: user.id });
-        if (error) throw error;
+        await supabase.from("saved_posts").insert({ post_id: post.id, user_id: user.id });
       }
     },
-    onMutate: async () => {
-      await qc.cancelQueries({ queryKey: ["posts"] });
-      const previous = qc.getQueriesData<PostWithMeta[]>({ queryKey: ["posts"] });
-      qc.setQueriesData<PostWithMeta[]>(
-        { queryKey: ["posts"] },
-        (old) =>
-          old?.map((p) => (p.id === post.id ? { ...p, saved: !p.saved } : p)) ?? old,
-      );
-      return { previous };
-    },
-    onError: (_err, _type, context) => {
-      if (context?.previous) {
-        for (const [key, data] of context.previous) {
-          qc.setQueryData(key, data);
-        }
-      }
-    },
-    onSettled: () => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["posts"] });
       toast.success(post.saved ? "أُزيل من المحفوظات" : "تمّ الحفظ");
     },

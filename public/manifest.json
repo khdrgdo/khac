@@ -1,16 +1,16 @@
 {
+  "id": "nexus-academic-platform",
   "name": "NEXUS — المنصة الأكاديمية الذكية",
   "short_name": "NEXUS",
   "description": "NEXUS المنصة الأكاديمية للطلاب والأساتذة: كورسات، مسابقات، منشورات وتواصل تفاعلي.",
-  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone"],
+  "display_override": ["standalone", "minimal-ui"],
   "prefer_related_applications": false,
   "background_color": "#090d16",
   "theme_color": "#8b5cf6",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "dir": "rtl",
   "lang": "ar",
   "categories": ["education", "social", "productivity"],
@@ -42,24 +42,12 @@
     {
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/pwa-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "NEXUS على الجوال"
+      "type": "image/png"
     },
     {
-      "src": "/pwa-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "NEXUS المنصة الأكاديمية الذكية"
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
     }
   ],
   "shortcuts": [

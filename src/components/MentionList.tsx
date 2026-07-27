@@ -1,43 +1,29 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { cn } from "@/lib/utils";
 
-interface MentionItem {
-  id: string;
-  full_name: string;
-}
-
-interface MentionListProps {
-  items: MentionItem[];
-  command: (item: { id: string; label: string }) => void;
-}
-
-interface MentionListRef {
-  onKeyDown: (ctx: { event: KeyboardEvent }) => boolean;
-}
-
-export const MentionList = forwardRef<MentionListRef, MentionListProps>(({ items, command }, ref) => {
+export const MentionList = forwardRef((props: any, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const selectItem = (index: number) => {
-    const item = items[index];
+    const item = props.items[index];
     if (item) {
-      command({ id: item.id, label: item.full_name });
+      props.command({ id: item.id, label: item.full_name });
     }
   };
 
   const upHandler = () => {
-    setSelectedIndex((selectedIndex + items.length - 1) % items.length);
+    setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length);
   };
 
   const downHandler = () => {
-    setSelectedIndex((selectedIndex + 1) % items.length);
+    setSelectedIndex((selectedIndex + 1) % props.items.length);
   };
 
   const enterHandler = () => {
     selectItem(selectedIndex);
   };
 
-  useEffect(() => setSelectedIndex(0), [items]);
+  useEffect(() => setSelectedIndex(0), [props.items]);
 
   useImperativeHandle(ref, () => ({
     onKeyDown: ({ event }: { event: KeyboardEvent }) => {
@@ -59,8 +45,8 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>(({ items
 
   return (
     <div className="bg-popover border border-border rounded-md shadow-md overflow-hidden min-w-[200px] z-50">
-      {items.length ? (
-        items.map((item, index) => (
+      {props.items.length ? (
+        props.items.map((item: any, index: number) => (
           <button
             key={item.id}
             className={cn(

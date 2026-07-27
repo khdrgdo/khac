@@ -375,6 +375,7 @@ function CommentReactionsBar({ commentId }: { commentId: string }) {
       try {
         localStorage.setItem(storageKey, JSON.stringify(newMap));
       } catch (e) {
+        console.warn(e);
       }
       return newMap;
     });

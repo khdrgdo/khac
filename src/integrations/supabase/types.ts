@@ -99,19 +99,16 @@ export type Database = {
         Row: {
           conversation_id: string;
           joined_at: string;
-          last_read_at: string | null;
           user_id: string;
         };
         Insert: {
           conversation_id: string;
           joined_at?: string;
-          last_read_at?: string | null;
           user_id: string;
         };
         Update: {
           conversation_id?: string;
           joined_at?: string;
-          last_read_at?: string | null;
           user_id?: string;
         };
         Relationships: [
@@ -157,7 +154,6 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           id: string;
-          is_important: boolean;
           link_type: string | null;
           title: string;
           url: string;
@@ -167,7 +163,6 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           id?: string;
-          is_important?: boolean;
           link_type?: string | null;
           title: string;
           url: string;
@@ -177,7 +172,6 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           id?: string;
-          is_important?: boolean;
           link_type?: string | null;
           title?: string;
           url?: string;
@@ -566,51 +560,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      notifications: {
-        Row: {
-          id: string;
-          recipient_id: string;
-          actor_id: string | null;
-          actor_name: string | null;
-          actor_avatar: string | null;
-          type: string;
-          priority: string;
-          title: string;
-          body: string;
-          link: string | null;
-          read: boolean;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          recipient_id: string;
-          actor_id?: string | null;
-          actor_name?: string | null;
-          actor_avatar?: string | null;
-          type?: string;
-          priority?: string;
-          title: string;
-          body: string;
-          link?: string | null;
-          read?: boolean;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          recipient_id?: string;
-          actor_id?: string | null;
-          actor_name?: string | null;
-          actor_avatar?: string | null;
-          type?: string;
-          priority?: string;
-          title?: string;
-          body?: string;
-          link?: string | null;
-          read?: boolean;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
       saved_posts: {
         Row: {
           created_at: string;
@@ -802,29 +751,6 @@ export type Database = {
           id: string;
           university_number: string;
         }[];
-      };
-      get_unread_message_count: {
-        Args: { _user_id: string };
-        Returns: number;
-      };
-      get_conversation_unread_counts: {
-        Args: { _user_id: string };
-        Returns: {
-          conversation_id: string;
-          unread_count: number;
-        }[];
-      };
-      mark_conversation_read: {
-        Args: { _conv_id: string; _user_id: string };
-        Returns: void;
-      };
-      leave_conversation: {
-        Args: { _conv_id: string; _user_id: string };
-        Returns: void;
-      };
-      delete_conversation: {
-        Args: { _conv_id: string; _user_id: string };
-        Returns: void;
       };
     };
     Enums: {

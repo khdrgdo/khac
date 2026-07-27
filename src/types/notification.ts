@@ -8,19 +8,16 @@ export type NotificationType =
   | "announcement"
   | "points_awarded";
 
-export type NotificationPriority = "urgent" | "important" | "normal";
-
 export interface NotificationItem {
   id: string;
-  userId: string;
-  actorId?: string;
+  userId: string; // Recipient user ID (or "all" for global broadcast)
+  actorId?: string; // User ID who initiated the action
   actorName?: string;
   actorAvatar?: string | null;
   type: NotificationType;
-  priority?: NotificationPriority;
   title: string;
   body: string;
-  link?: string;
+  link?: string; // Navigation link (e.g. /posts/123 or /courses/456)
   read: boolean;
-  createdAt: string;
+  createdAt: string; // ISO date string
 }
