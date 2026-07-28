@@ -26,8 +26,15 @@ export const Route = createFileRoute("/_authenticated/profile/$id")({
 
 function ProfilePage() {
   const { id } = useParams({ from: "/_authenticated/profile/$id" });
-  const { user, isMainAdmin } = useAuth();
+  const { user, isMainAdmin, isSubAdmin } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isSubAdmin && user?.id === id) {
+      navigate({ to: "/feed", replace: true });
+    }
+  }, [isSubAdmin, user?.id, id, navigate]);
+
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -57,9 +64,7 @@ function ProfilePage() {
             if (directProfile && (directProfile as any).theme) {
               data.theme = (directProfile as any).theme;
             }
-          } catch (err) {
-            console.warn("Could not fetch theme directly:", err);
-          }
+          } catch (err) { /* ignore */ }
         }
       }
 

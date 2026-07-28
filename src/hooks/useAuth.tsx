@@ -10,6 +10,7 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { bindAccountToDevice } from "@/lib/deviceGuard";
+import { ensureAdminOrTeacherRole } from "@/lib/roleGuard";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 
@@ -127,23 +128,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           p?.email?.endsWith("@subadmin.edu");
 
         if (isUserSubAdmin && uid) {
+          ensureAdminOrTeacherRole(uid);
           setSubAdminPermissions(getSubAdminPermissions(p as Profile));
         }
 
         if (uid && sessionRef.current?.user?.email) {
           bindAccountToDevice(uid, sessionRef.current.user.email);
         }
-      } catch (err) {
-        console.error("Failed to load user profile extras:", err);
-      } finally {
+      } catch (err) { /* ignore */ } finally {
         if (mounted) setLoading(false);
       }
     }
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
-      if (_e === "SIGNED_IN") {
-        await queryClient.invalidateQueries();
-      } else if (_e === "SIGNED_OUT") {
+      if (_e === "SIGNED_OUT") {
         queryClient.clear();
       }
       if (!mounted) return;
@@ -169,8 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (s) loadExtras(s.user.id);
         else setLoading(false);
       })
-      .catch((err) => {
-        console.error("Failed to get session:", err);
+      .catch(() => {
         if (mounted) setLoading(false);
       });
 
@@ -204,25 +201,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSubAdminPermissions(getSubAdminPermissions(p as Profile));
         }
       }
-    } catch (err) {
-      console.warn("Failed to refresh profile:", err);
-    }
+    } catch (err) { /* ignore */ }
   }, [roles]);
 
-  const isMainAdmin =
-    profile?.university_number === "2011099840" ||
-    profile?.email?.toLowerCase() === "khdrmamon@gmail.com" ||
-    user?.email?.toLowerCase() === "khdrmamon@gmail.com";
+  // Main admin is determined ONLY by role in user_roles table
+  const isMainAdmin = roles.includes("admin");
 
-  const isSubAdmin =
-    roles.includes("sub_admin" as AppRole) ||
-    (profile?.university_number
-      ? profile.university_number.startsWith("SUBADMIN_") ||
-        profile.university_number.toLowerCase().includes("guard")
-      : false) ||
-    (profile?.email ? profile.email.toLowerCase().includes("@subadmin.") : false) ||
-    (user?.email ? user.email.toLowerCase().includes("@subadmin.") : false) ||
-    (profile?.full_name ? profile.full_name.toLowerCase().includes("guard") : false);
+  // Sub-admin is determined ONLY by role in user_roles table
+  const isSubAdmin = roles.includes("sub_admin" as AppRole);
 
   const isKnownAdminUser =
     isMainAdmin ||
@@ -285,6 +271,8 @@ export interface SubAdminPermissions {
   [key: string]: boolean;
 }
 
+const PERMS_PREFIX = "__PERMS__:";
+
 export function getSubAdminPermissions(profile: Profile | null): SubAdminPermissions {
   const defaults: SubAdminPermissions = {
     can_warn: true,
@@ -296,8 +284,10 @@ export function getSubAdminPermissions(profile: Profile | null): SubAdminPermiss
   };
   if (!profile || !profile.bio) return defaults;
   try {
-    if (profile.bio.trim().startsWith("{")) {
-      const parsed = JSON.parse(profile.bio);
+    const bio = profile.bio;
+    if (bio.startsWith(PERMS_PREFIX)) {
+      const jsonStr = bio.slice(PERMS_PREFIX.length);
+      const parsed = JSON.parse(jsonStr);
       if (parsed && typeof parsed === "object") {
         return {
           can_warn: parsed.can_warn !== false,
@@ -309,10 +299,14 @@ export function getSubAdminPermissions(profile: Profile | null): SubAdminPermiss
         };
       }
     }
-  } catch (e) {
-    // ignore
+  } catch {
+    // ignore parse errors
   }
   return defaults;
+}
+
+export function serializeSubAdminPermissions(perms: SubAdminPermissions): string {
+  return PERMS_PREFIX + JSON.stringify(perms);
 }
 
 export function useAuth(): AuthContextValue {

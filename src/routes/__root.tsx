@@ -135,7 +135,6 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="ar" dir="rtl">
       <head>
-        <HeadContent />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -199,6 +198,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider delayDuration={200}>
+          <HeadContent />
           <Outlet />
           <Toaster position="top-center" richColors />
         </TooltipProvider>

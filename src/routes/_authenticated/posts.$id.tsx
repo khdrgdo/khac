@@ -374,9 +374,7 @@ function CommentReactionsBar({ commentId }: { commentId: string }) {
       const newMap = { ...prev, [emoji]: updated };
       try {
         localStorage.setItem(storageKey, JSON.stringify(newMap));
-      } catch (e) {
-        console.warn(e);
-      }
+      } catch (e) { /* ignore */ }
       return newMap;
     });
   };

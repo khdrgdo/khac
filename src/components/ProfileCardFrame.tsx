@@ -108,7 +108,7 @@ export function ProfileCardFrame({
         .eq("id", profile.id);
 
       if (error) {
-        console.warn("Could not save theme to profiles table:", error);
+        console.warn("Error updating profile theme:", error);
       }
 
       // 2. Also record in local theme map so all client queries immediately reflect the choice

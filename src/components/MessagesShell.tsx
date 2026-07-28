@@ -1,5 +1,5 @@
 import { formatUnivNumber } from "@/lib/privacy";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,17 +7,44 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MessageCircle, Plus, Search, Users, ShieldAlert } from "lucide-react";
+import {
+  MessageCircle,
+  Plus,
+  Search,
+  Users,
+  Trash2,
+  LogOut,
+  MoreVertical,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { NewConversationDialog } from "@/components/NewConversationDialog";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, type ReactNode } from "react";
+import { toast } from "sonner";
 
 interface ConvRow {
   id: string;
   is_group: boolean;
   name: string | null;
+  created_by: string | null;
   updated_at: string;
   other?: {
     id: string;
@@ -26,42 +53,59 @@ interface ConvRow {
     avatar_url?: string | null;
   } | null;
   lastMessage?: { content: string; created_at: string; sender_id: string } | null;
+  unread?: number;
 }
 
 export function MessagesShell({ activeId, children }: { activeId?: string; children?: ReactNode }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const inChat = !!activeId;
+  const [convToDelete, setConvToDelete] = useState<ConvRow | null>(null);
+  const [convToLeave, setConvToLeave] = useState<ConvRow | null>(null);
 
-  const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem("blocked_users");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
+  const { data: unreadCounts } = useQuery({
+    queryKey: ["conversation_unreads", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data } = await supabase.rpc("get_conversation_unread_counts", { _user_id: user.id });
+      return data ?? [];
+    },
+    refetchInterval: 10000,
   });
 
-  useEffect(() => {
-    let lastRaw = localStorage.getItem("blocked_users");
-    const handleStorage = () => {
-      try {
-        const stored = localStorage.getItem("blocked_users");
-        if (stored !== lastRaw) {
-          lastRaw = stored;
-          setBlockedUsers(stored ? JSON.parse(stored) : []);
-        }
-      } catch (e) {
-        console.warn(e);
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-    const interval = setInterval(handleStorage, 3000);
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      clearInterval(interval);
-    };
-  }, []);
+  const unreadMap = new Map((unreadCounts ?? []).map((u) => [u.conversation_id, u.unread_count]));
+
+  const leaveMut = useMutation({
+    mutationFn: async (convId: string) => {
+      const { error } = await supabase.rpc("leave_conversation", {
+        _conv_id: convId,
+        _user_id: user!.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      toast.info("تم المغادرة من المحادثة");
+    },
+    onError: () => toast.error("حدث خطأ أثناء المغادرة"),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async (convId: string) => {
+      const { error } = await supabase.rpc("delete_conversation", {
+        _conv_id: convId,
+        _user_id: user!.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      toast.info("تم حذف المحادثة");
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف — تأكد أنك أنشأت المحادثة"),
+  });
 
   const { data: conversations, isLoading } = useQuery({
     queryKey: ["conversations", user?.id],
@@ -81,7 +125,6 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
         .order("updated_at", { ascending: false });
       const list = (convs ?? []) as ConvRow[];
 
-      // Fetch last messages + other members in parallel
       const enriched = await Promise.all(
         list.map(async (c) => {
           const [{ data: members }, { data: lastMsg }] = await Promise.all([
@@ -163,62 +206,158 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
             filtered.map((c) => {
               const title = c.is_group ? (c.name ?? "مجموعة") : (c.other?.full_name ?? "مستخدم");
               const isActive = c.id === activeId;
-              const isBlocked = c.other?.id ? blockedUsers.includes(c.other.id) : false;
-              const preview = isBlocked
-                ? "لقد قمت بحظر هذا المستخدم"
-                : c.lastMessage?.content
-                  ? (c.lastMessage.sender_id === user?.id ? "أنت: " : "") +
-                    c.lastMessage.content.slice(0, 40)
-                  : "لا توجد رسائل بعد";
+              const unread = unreadMap.get(c.id) || 0;
+              const isOwnConv = c.created_by === user?.id;
+              const preview = c.lastMessage?.content
+                ? (c.lastMessage.sender_id === user?.id ? "أنت: " : "") +
+                  c.lastMessage.content.slice(0, 40)
+                : "لا توجد رسائل بعد";
               return (
-                <Link
-                  key={c.id}
-                  to="/messages/$id"
-                  params={{ id: c.id }}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60 transition border-b border-border/40",
-                    isActive && "bg-primary/10 hover:bg-primary/15",
-                    isBlocked && "opacity-60",
-                  )}
-                >
-                  {c.is_group ? (
-                    <Avatar className="w-12 h-12 shrink-0">
-                      <AvatarFallback className="bg-accent text-accent-foreground font-semibold">
-                        <Users className="w-5 h-5" />
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <UserAvatar
-                      avatarUrl={c.other?.avatar_url}
-                      fullName={title}
-                      className="w-12 h-12"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-semibold truncate text-sm flex items-center gap-1.5">
-                        {title}
-                        {isBlocked && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/20 font-medium">
-                            محظور
-                          </span>
-                        )}
+                <div key={c.id} className="relative group">
+                  <Link
+                    to="/messages/$id"
+                    params={{ id: c.id }}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60 transition border-b border-border/40",
+                      isActive && "bg-primary/10 hover:bg-primary/15",
+                      unread > 0 && !isActive && "bg-primary/5",
+                    )}
+                  >
+                    {c.is_group ? (
+                      <Avatar className="w-12 h-12 shrink-0">
+                        <AvatarFallback className="bg-accent text-accent-foreground font-semibold">
+                          <Users className="w-5 h-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <UserAvatar
+                        avatarUrl={c.other?.avatar_url}
+                        fullName={title}
+                        className="w-12 h-12"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-semibold truncate text-sm flex items-center gap-1.5">
+                          {title}
+                          {unread > 0 && (
+                            <span className="min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center shrink-0">
+                              {unread > 99 ? "99+" : unread}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground shrink-0">
+                          {formatDistanceToNow(new Date(c.lastMessage?.created_at ?? c.updated_at), {
+                            addSuffix: false,
+                            locale: ar,
+                          })}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-muted-foreground shrink-0">
-                        {formatDistanceToNow(new Date(c.lastMessage?.created_at ?? c.updated_at), {
-                          addSuffix: false,
-                          locale: ar,
-                        })}
+                      <div className={cn(
+                        "text-xs truncate",
+                        unread > 0 ? "text-foreground font-medium" : "text-muted-foreground",
+                      )}>
+                        {preview}
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">{preview}</div>
+                  </Link>
+
+                  {/* Conversation Options Menu */}
+                  <div className="absolute top-2.5 start-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full bg-background/80 hover:bg-background border shadow-xs"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <MoreVertical className="w-3 h-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-44 rounded-xl">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setConvToLeave(c);
+                          }}
+                          className="rounded-lg text-xs gap-2"
+                        >
+                          <LogOut className="w-3.5 h-3.5 text-amber-500" />
+                          مغادرة المحادثة
+                        </DropdownMenuItem>
+                        {isOwnConv && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setConvToDelete(c);
+                              }}
+                              className="rounded-lg text-xs gap-2 text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              حذف المحادثة
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </Link>
+                </div>
               );
             })
           )}
         </div>
       </aside>
+
+      {/* Leave Conversation Dialog */}
+      <AlertDialog open={!!convToLeave} onOpenChange={() => setConvToLeave(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>مغادرة المحادثة</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل تريد مغادرة هذه المحادثة؟ لن تتمكن من رؤية الرسائل الجديدة بعد المغادرة.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (convToLeave) leaveMut.mutate(convToLeave.id);
+                setConvToLeave(null);
+              }}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              مغادرة
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Conversation Dialog */}
+      <AlertDialog open={!!convToDelete} onOpenChange={() => setConvToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف المحادثة</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف هذه المحادثة نهائياً من حسابك. هذا الإجراء لا يمكن التراجع عنه.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (convToDelete) deleteMut.mutate(convToDelete.id);
+                setConvToDelete(null);
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Main area */}
       <section className={cn("flex-1 flex flex-col min-w-0", !inChat && "hidden md:flex")}>

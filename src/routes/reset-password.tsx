@@ -36,7 +36,6 @@ function ResetPasswordPage() {
         }
       })
       .catch((err) => {
-        console.error("Session check 1 error:", err);
       });
   }, []);
 

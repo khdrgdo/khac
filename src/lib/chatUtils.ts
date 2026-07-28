@@ -15,9 +15,7 @@ export async function getOrCreateDM(currentUserId: string, otherUserId: string):
     if (!error && data && typeof data === "string" && data.length > 0) {
       return data;
     }
-  } catch (e) {
-    console.warn("RPC create_dm exception, trying direct database operations:", e);
-  }
+  } catch (e) { /* ignore */ }
 
   // 2. Check if a non-group conversation already exists between currentUserId and otherUserId
   const { data: myConvs } = await supabase

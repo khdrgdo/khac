@@ -41,9 +41,7 @@ export async function setUnivNumberHidden(userId: string, hidden: boolean): Prom
         })
         .eq("id", userId);
     }
-  } catch (err) {
-    console.error(err);
-  } finally {
+  } catch (err) { /* ignore */ } finally {
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("univ_privacy_changed", { detail: { userId, hidden } }),
