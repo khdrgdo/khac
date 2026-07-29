@@ -183,7 +183,7 @@ function RootComponent() {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+      if (event === "SIGNED_OUT") {
         router.invalidate();
       }
     });
