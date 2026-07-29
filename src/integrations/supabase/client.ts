@@ -31,6 +31,7 @@ async function doFetch(
   input: RequestInfo | URL,
   init: RequestInit | undefined,
   supabaseKey: string,
+  retried = false,
 ): Promise<Response> {
   const headers = new Headers(
     typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
@@ -47,6 +48,14 @@ async function doFetch(
   headers.set("apikey", supabaseKey);
 
   const res = await fetch(input, { ...init, headers });
+
+  // Retry refresh_token requests on 429 once after the Retry-After delay,
+  // so a transient rate-limit doesn't destroy the session.
+  if (!retried && res.status === 429) {
+    const retryAfter = parseInt(res.headers.get("Retry-After") || "5", 10);
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+    return doFetch(input, init, supabaseKey, true);
+  }
 
   return res;
 }
