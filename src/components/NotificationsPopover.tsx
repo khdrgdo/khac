@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationItem, NotificationType, NotificationPriority } from "@/types/notification";
+import { sendNativeNotification } from "@/lib/pushNotifications";
 import {
   fetchRealtimeNotifications,
   markNotificationAsRead,

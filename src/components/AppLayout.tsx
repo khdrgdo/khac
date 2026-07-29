@@ -315,7 +315,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* PWA Install Banner — shows when not installed, dismissed per-user until logout */}
-      <InstallPWAButton variant="banner" userId={profile?.id} />
+      <InstallPWAButton variant="banner" />
     </div>
   );
 }

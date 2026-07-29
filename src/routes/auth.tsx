@@ -195,81 +195,37 @@ function LoginForm({ initialId = "" }: { initialId?: string }) {
     setUnconfirmedEmail(null);
     try {
       const value = id.trim();
-      if (!value) return;
-
-      const candidates: string[] = [];
-
-      if (value.includes("@")) {
-        candidates.push(value.toLowerCase());
-        if (value !== value.toLowerCase()) {
-          candidates.push(value);
-        }
-      } else {
-        // Query profiles table to see if a user with this university_number exists and has an email
-        try {
-          const { data: prof } = await supabase
-            .from("profiles")
-            .select("email, university_number")
-            .eq("university_number", value)
-            .maybeSingle();
-
-          if (prof?.email) {
-            candidates.push(prof.email.toLowerCase());
-            candidates.push(prof.email);
+      let email = value;
+      if (!value.includes("@")) {
+        const isNumericOnly = /^\d+$/.test(value);
+        if (isNumericOnly) {
+          email = universityNumberToEmail(value);
+        } else {
+          let normalized = value.toLowerCase().replace(/\s+/g, "");
+          if (normalized.startsWith("sub_")) {
+            normalized = normalized.substring(4);
           }
-        } catch {
-          /* ignore */
-        }
-
-        // Add university number synthetic email
-        const numericEmail = universityNumberToEmail(value);
-        if (!candidates.includes(numericEmail)) {
-          candidates.push(numericEmail);
-        }
-
-        // Add sub-admin synthetic email
-        let normalized = value.toLowerCase().replace(/\s+/g, "");
-        if (normalized.startsWith("sub_")) {
-          normalized = normalized.substring(4);
-        }
-        const subAdminEmail = `${normalized}@subadmin.edu`;
-        if (!candidates.includes(subAdminEmail)) {
-          candidates.push(subAdminEmail);
+          email = `${normalized}@subadmin.edu`;
         }
       }
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      let lastError: any = null;
-      let loggedIn = false;
-
-      for (const emailToTry of candidates) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: emailToTry,
-          password,
-        });
-
-        if (!error && data?.session) {
-          loggedIn = true;
-          toast.success("أهلاً بك! تم تسجيل الدخول بنجاح");
-          navigate({ to: "/feed" });
-          break;
+      if (error) {
+        if (
+          error.message.toLowerCase().includes("email not confirmed") ||
+          error.message.toLowerCase().includes("not verified")
+        ) {
+          setUnconfirmedEmail(email);
+          toast.error("البريد الإلكتروني لم يتفعل بعد. يرجى مراجعة بريدك وتأكيده.");
+          return;
         }
-
-        if (error) {
-          lastError = error;
-          if (
-            error.message.toLowerCase().includes("email not confirmed") ||
-            error.message.toLowerCase().includes("not verified")
-          ) {
-            setUnconfirmedEmail(emailToTry);
-            toast.error("البريد الإلكتروني لم يتفعل بعد. يرجى مراجعة بريدك وتأكيده.");
-            setLoading(false);
-            return;
-          }
-        }
-      }
-
-      if (!loggedIn && lastError) {
         toast.error("البريد الإلكتروني أو الرقم الجامعي أو كلمة السر غير صحيحة");
+        return;
+      }
+
+      if (data?.session) {
+        toast.success("أهلاً بك! تم تسجيل الدخول بنجاح");
+        navigate({ to: "/feed" });
       }
     } catch {
       toast.error("حدث خطأ أثناء الاتصال. حاول مرة أخرى.");

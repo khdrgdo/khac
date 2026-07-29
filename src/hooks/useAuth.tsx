@@ -10,7 +10,7 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { bindAccountToDevice } from "@/lib/deviceGuard";
-import { ensureAdminOrTeacherRole } from "@/lib/roleGuard";
+
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 
@@ -128,7 +128,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           p?.email?.endsWith("@subadmin.edu");
 
         if (isUserSubAdmin && uid) {
-          ensureAdminOrTeacherRole(uid);
           setSubAdminPermissions(getSubAdminPermissions(p as Profile));
         }
 

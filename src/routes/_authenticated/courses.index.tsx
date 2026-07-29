@@ -28,7 +28,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MAJORS, YEARS, SEMESTERS, majorLabel } from "@/lib/college";
 import { parseTitleAndNote, getFileTypeInfo } from "@/lib/courseUtils";
 import { broadcastNotification } from "@/lib/notificationsStore";
-import { ensureAdminOrTeacherRole } from "@/lib/roleGuard";
 import {
   BookOpen,
   Plus,
@@ -66,7 +65,6 @@ function DeleteCourseAction({ courseId, courseName }: { courseId: string; course
   const { user } = useAuth();
   const mut = useMutation({
     mutationFn: async () => {
-      if (user?.id) await ensureAdminOrTeacherRole(user.id);
       const { error } = await supabase.from("courses").delete().eq("id", courseId);
       if (error) throw error;
     },
@@ -836,7 +834,6 @@ export function NewCourseDialog({
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) return;
-      await ensureAdminOrTeacherRole(user.id);
       const { error } = await supabase.from("courses").insert({
         name,
         description: desc || null,

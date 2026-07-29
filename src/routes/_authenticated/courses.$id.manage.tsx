@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
-import { ensureAdminOrTeacherRole } from "@/lib/roleGuard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,7 +99,6 @@ function ManageCoursePage() {
 
   const saveInfo = useMutation({
     mutationFn: async () => {
-      if (user?.id) await ensureAdminOrTeacherRole(user.id);
       const payload: Database["public"]["Tables"]["courses"]["Update"] = {
         name,
         description: desc || null,
@@ -122,7 +120,6 @@ function ManageCoursePage() {
 
   const deleteCourse = useMutation({
     mutationFn: async () => {
-      if (user?.id) await ensureAdminOrTeacherRole(user.id);
       const { error } = await supabase.from("courses").delete().eq("id", id);
       if (error) throw error;
     },

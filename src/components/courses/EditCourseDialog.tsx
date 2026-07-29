@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ensureAdminOrTeacherRole } from "@/lib/roleGuard";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
@@ -63,7 +62,6 @@ export function EditCourseDialog({
   const mut = useMutation({
     mutationFn: async () => {
       if (!course?.id) return;
-      if (user?.id) await ensureAdminOrTeacherRole(user.id);
       const { error } = await supabase
         .from("courses")
         .update({
@@ -116,7 +114,7 @@ export function EditCourseDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {MAJORS.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
+                    <SelectItem key={m.code} value={m.code}>
                       {m.label}
                     </SelectItem>
                   ))}
@@ -131,9 +129,7 @@ export function EditCourseDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {YEARS.map((y) => (
-                    <SelectItem key={y.id} value={y.id}>
-                      {y.label}
-                    </SelectItem>
+                    <SelectItem key={y} value={String(y)}>{`السنة ${y}`}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -146,9 +142,7 @@ export function EditCourseDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {SEMESTERS.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.label}
-                    </SelectItem>
+                    <SelectItem key={s} value={String(s)}>{`الفصل ${s}`}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
