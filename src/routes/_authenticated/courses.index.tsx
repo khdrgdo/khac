@@ -267,7 +267,7 @@ export function CoursesPage() {
           </div>
         </div>
 
-        {isAdmin && (
+        {(isMainAdmin || (isSubAdmin && permissions.can_courses)) && (
           <div className="shrink-0 flex items-center gap-2">
             <NewCourseDialog
               currentMajor={majorFilter}
@@ -533,7 +533,7 @@ export function CoursesPage() {
                   </p>
                 </div>
 
-                {isAdmin && (
+                {(isMainAdmin || (isSubAdmin && permissions.can_courses)) && (
                   <NewCourseDialog
                     currentMajor={majorFilter}
                     currentYear={yearFilter}
