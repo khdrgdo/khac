@@ -1,49 +1,88 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, BookOpen, MessageSquare, Bell } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Users, FileText, Flag, MessageSquare } from "lucide-react";
 
 export function StatsCards() {
-  const { data: stats } = useQuery({
-    queryKey: ["admin-stats-summary"],
+  const { data } = useQuery({
+    queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [
-        { count: usersCount },
-        { count: coursesCount },
-        { count: postsCount },
-        { count: notifsCount },
-      ] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("courses").select("id", { count: "exact", head: true }),
-        supabase.from("posts").select("id", { count: "exact", head: true }),
-        supabase.from("notifications").select("id", { count: "exact", head: true }),
-      ]);
-
-      return {
-        users: usersCount ?? 0,
-        courses: coursesCount ?? 0,
-        posts: postsCount ?? 0,
-        notifs: notifsCount ?? 0,
-      };
+      const [{ count: users }, { count: posts }, { count: reports }, { count: msgs }] =
+        await Promise.all([
+          supabase.from("profiles").select("*", { count: "exact", head: true }),
+          supabase.from("posts").select("*", { count: "exact", head: true }),
+          supabase
+            .from("post_reports")
+            .select("*", { count: "exact", head: true })
+            .eq("status", "pending"),
+          supabase.from("messages").select("*", { count: "exact", head: true }),
+        ]);
+      return { users: users ?? 0, posts: posts ?? 0, reports: reports ?? 0, msgs: msgs ?? 0 };
     },
   });
 
-  const cards = [
-    { title: "إجمالي الطلاب", count: stats?.users ?? 0, icon: <Users className="w-5 h-5 text-indigo-500" />, bg: "bg-indigo-500/10 text-indigo-500" },
-    { title: "المواد الدراسية", count: stats?.courses ?? 0, icon: <BookOpen className="w-5 h-5 text-emerald-500" />, bg: "bg-emerald-500/10 text-emerald-500" },
-    { title: "المنشورات والتفاعلات", count: stats?.posts ?? 0, icon: <MessageSquare className="w-5 h-5 text-purple-500" />, bg: "bg-purple-500/10 text-purple-500" },
-    { title: "الإشعارات المرسلة", count: stats?.notifs ?? 0, icon: <Bell className="w-5 h-5 text-amber-500" />, bg: "bg-amber-500/10 text-amber-500" },
+  const items = [
+    {
+      icon: Users,
+      label: "╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä┘à╪│╪¬╪«╪»┘à┘è┘å",
+      value: data?.users ?? 0,
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      trend: "+41% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è",
+    },
+    {
+      icon: FileText,
+      label: "╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä┘à┘å╪┤┘ê╪▒╪º╪¬",
+      value: data?.posts ?? 0,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      trend: "+41% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è",
+    },
+    {
+      icon: Flag,
+      label: "╪º┘ä╪¿┘ä╪º╪║╪º╪¬ ╪º┘ä┘à╪╣┘ä┘é╪⌐",
+      value: data?.reports ?? 0,
+      color: "text-cyan-600",
+      bg: "bg-cyan-50",
+      trend: "-50% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è",
+      trendDown: true,
+    },
+    {
+      icon: MessageSquare,
+      label: "╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä╪▒╪│╪º╪ª┘ä",
+      value: data?.msgs ?? 0,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      trend: "+41% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((c, i) => (
-        <div key={i} className="bg-card border border-border/60 rounded-2xl p-5 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">{c.title}</span>
-            <div className={`p-2.5 rounded-xl ${c.bg}`}>{c.icon}</div>
-          </div>
-          <div className="text-2xl font-black text-foreground">{c.count}</div>
-        </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {items.map((it) => (
+        <Card
+          key={it.label}
+          className="border border-border/40 shadow-sm rounded-xl bg-card hover:shadow-md transition-shadow duration-200"
+        >
+          <CardContent className="p-5 flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className={`w-8 h-8 rounded-lg flex items-center justify-center ${it.bg} ${it.color}`}
+              >
+                <it.icon className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">{it.label}</span>
+            </div>
+            <div className="text-3xl font-bold tracking-tight text-foreground">
+              {it.value.toLocaleString()}
+            </div>
+            <div
+              className={`text-xs mt-2 font-medium ${it.trendDown ? "text-rose-500" : "text-emerald-500"}`}
+            >
+              {it.trend}
+            </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   );

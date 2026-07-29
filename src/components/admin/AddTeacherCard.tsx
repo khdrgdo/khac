@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,7 +37,7 @@ export function AddTeacherCard() {
 
   const mut = useMutation({
     mutationFn: async () => {
-      if (pw.length < 6) throw new Error("كلمة السر قصيرة");
+      if (pw.length < 6) throw new Error("┘â┘ä┘à╪⌐ ╪º┘ä╪│╪▒ ┘é╪╡┘è╪▒╪⌐");
       const uniqueUniv = "T" + Date.now().toString().slice(-8);
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -52,12 +52,12 @@ export function AddTeacherCard() {
         },
       });
       if (error) throw error;
-      if (!data.user) throw new Error("لم يتم إنشاء الحساب");
+      if (!data.user) throw new Error("┘ä┘à ┘è╪¬┘à ╪Ñ┘å╪┤╪º╪í ╪º┘ä╪¡╪│╪º╪¿");
 
       // Promote user to teacher role securely using RPC, falling back to direct table write if RPC fails
       let roleError;
       try {
-         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await supabase.rpc("admin_set_teacher_role" as any, {
           _user: data.user.id,
         });
@@ -87,12 +87,11 @@ export function AddTeacherCard() {
           .update({ teacher_id: data.user.id })
           .in("id", selectedCourses);
         if (coursesError) {
-          console.warn("Error assigning courses to teacher:", coursesError);
         }
       }
     },
     onSuccess: () => {
-      toast.success("تم إنشاء حساب الأستاذ وتعيين المقررات");
+      toast.success("╪¬┘à ╪Ñ┘å╪┤╪º╪í ╪¡╪│╪º╪¿ ╪º┘ä╪ú╪│╪¬╪º╪░ ┘ê╪¬╪╣┘è┘è┘å ╪º┘ä┘à┘é╪▒╪▒╪º╪¬");
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       qc.invalidateQueries({ queryKey: ["courses"] });
       setOpen(false);
@@ -108,25 +107,25 @@ export function AddTeacherCard() {
     <Card className="border-border/40 shadow-none bg-card">
       <CardContent className="p-4">
         <p className="text-sm text-muted-foreground mb-3">
-          أنشئ حساب أستاذ يدخل بالبريد الإلكتروني، وحدد المقررات التي يدرسها.
+          ╪ú┘å╪┤╪ª ╪¡╪│╪º╪¿ ╪ú╪│╪¬╪º╪░ ┘è╪»╪«┘ä ╪¿╪º┘ä╪¿╪▒┘è╪» ╪º┘ä╪Ñ┘ä┘â╪¬╪▒┘ê┘å┘è╪î ┘ê╪¡╪»╪» ╪º┘ä┘à┘é╪▒╪▒╪º╪¬ ╪º┘ä╪¬┘è ┘è╪»╪▒╪│┘ç╪º.
         </p>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
-              <UserPlus className="w-4 h-4" /> إضافة أستاذ
+              <UserPlus className="w-4 h-4" /> ╪Ñ╪╢╪º┘ü╪⌐ ╪ú╪│╪¬╪º╪░
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>حساب أستاذ جديد</DialogTitle>
+              <DialogTitle>╪¡╪│╪º╪¿ ╪ú╪│╪¬╪º╪░ ╪¼╪»┘è╪»</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>الاسم الكامل</Label>
+                <Label>╪º┘ä╪º╪│┘à ╪º┘ä┘â╪º┘à┘ä</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label>البريد الإلكتروني</Label>
+                <Label>╪º┘ä╪¿╪▒┘è╪» ╪º┘ä╪Ñ┘ä┘â╪¬╪▒┘ê┘å┘è</Label>
                 <Input
                   type="email"
                   value={email}
@@ -135,7 +134,7 @@ export function AddTeacherCard() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>كلمة السر</Label>
+                <Label>┘â┘ä┘à╪⌐ ╪º┘ä╪│╪▒</Label>
                 <Input
                   type="text"
                   value={pw}
@@ -145,7 +144,7 @@ export function AddTeacherCard() {
               </div>
 
               <div className="space-y-2">
-                <Label>المقررات التي يدرسها</Label>
+                <Label>╪º┘ä┘à┘é╪▒╪▒╪º╪¬ ╪º┘ä╪¬┘è ┘è╪»╪▒╪│┘ç╪º</Label>
                 <ScrollArea className="h-40 border rounded-md p-3">
                   <div className="space-y-2">
                     {courses?.map((course) => (
@@ -170,7 +169,7 @@ export function AddTeacherCard() {
                       </div>
                     ))}
                     {courses?.length === 0 && (
-                      <p className="text-sm text-muted-foreground">لا يوجد مقررات متاحة</p>
+                      <p className="text-sm text-muted-foreground">┘ä╪º ┘è┘ê╪¼╪» ┘à┘é╪▒╪▒╪º╪¬ ┘à╪¬╪º╪¡╪⌐</p>
                     )}
                   </div>
                 </ScrollArea>
@@ -181,7 +180,7 @@ export function AddTeacherCard() {
                 onClick={() => mut.mutate()}
                 disabled={!email || !name || !pw || mut.isPending}
               >
-                {mut.isPending && <Loader2 className="w-4 h-4 animate-spin ml-2" />} إنشاء وتعيين
+                {mut.isPending && <Loader2 className="w-4 h-4 animate-spin ml-2" />} ╪Ñ┘å╪┤╪º╪í ┘ê╪¬╪╣┘è┘è┘å
               </Button>
             </DialogFooter>
           </DialogContent>
