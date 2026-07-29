@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { serializeSubAdminPermissions, type SubAdminPermissions } from "@/hooks/useAuth";
@@ -105,10 +105,10 @@ export function SubAdminsTab() {
   const createSubAdmin = useMutation({
     mutationFn: async () => {
       if (!nameId.trim() || !fullName.trim() || !password.trim()) {
-        throw new Error("┘è╪▒╪¼┘ë ┘à┘ä╪í ╪¼┘à┘è╪╣ ╪º┘ä╪¡┘é┘ê┘ä ╪º┘ä┘à╪╖┘ä┘ê╪¿╪⌐");
+        throw new Error("يرجى ملء جميع الحقول المطلوبة");
       }
       if (password.length < 6) {
-        throw new Error("┘è╪¼╪¿ ╪ú┘å ╪¬┘â┘ê┘å ┘â┘ä┘à╪⌐ ╪º┘ä┘à╪▒┘ê╪▒ 6 ╪ú╪¡╪▒┘ü ╪╣┘ä┘ë ╪º┘ä╪ú┘é┘ä");
+        throw new Error("يجب أن تكون كلمة المرور 6 أحرف على الأقل");
       }
 
       // 1. Create normalized email e.g. "aguard1@subadmin.edu"
@@ -141,11 +141,11 @@ export function SubAdminsTab() {
           msg.includes("already exists") ||
           msg.includes("unique constraint")
         ) {
-          throw new Error("╪º╪│┘à ╪º┘ä┘à╪│╪¬╪«╪»┘à (╪ú┘ê ╪º┘ä╪¡╪│╪º╪¿) ┘ç╪░╪º ┘à╪│╪¼┘ä ╪¿╪º┘ä┘ü╪╣┘ä. ┘è╪▒╪¼┘ë ╪º╪«╪¬┘è╪º╪▒ ╪º╪│┘à ┘à╪│╪¬╪«╪»┘à ╪ó╪«╪▒.");
+          throw new Error("اسم المستخدم (أو الحساب) هذا مسجل بالفعل. يرجى اختيار اسم مستخدم آخر.");
         }
         throw signUpError;
       }
-      if (!data?.user?.id) throw new Error("╪¬╪╣╪░┘æ╪▒ ╪Ñ┘å╪┤╪º╪í ┘à╪│╪¬╪«╪»┘à ┘ü┘è ┘å╪╕╪º┘à ╪º┘ä┘à╪╡╪º╪»┘é╪⌐");
+      if (!data?.user?.id) throw new Error("تعذّر إنشاء مستخدم في نظام المصادقة");
 
       // 4. Construct granular permissions object
       const permissionsObj = {
@@ -174,7 +174,7 @@ export function SubAdminsTab() {
 
       if (!profileExists) {
         throw new Error(
-          "╪¬╪╣╪░┘æ╪▒ ╪¬┘ç┘è╪ª╪⌐ ╪º┘ä┘à┘ä┘ü ╪º┘ä╪┤╪«╪╡┘è ┘ä┘ä┘à╪┤╪▒┘ü ╪º┘ä┘à╪│╪º╪╣╪» ┘ü┘è ╪º┘ä┘ê┘é╪¬ ╪º┘ä┘à╪¡╪»╪»╪î ┘è╪▒╪¼┘ë ╪º┘ä┘à╪¡╪º┘ê┘ä╪⌐ ┘à╪▒╪⌐ ╪ú╪«╪▒┘ë.",
+          "تعذّر تهيئة الملف الشخصي للمشرف المساعد في الوقت المحدد، يرجى المحاولة مرة أخرى.",
         );
       }
 
@@ -219,7 +219,7 @@ export function SubAdminsTab() {
       // 7. (Removed: store actual permissions in the subadmin_permissions table, rely only on bio)
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪Ñ┘å╪┤╪º╪í ╪¡╪│╪º╪¿ ╪º┘ä┘à╪┤╪▒┘ü ╪º┘ä┘à╪│╪º╪╣╪» (╪│╪¿ ╪ú╪»┘à┘å) ╪¿┘å╪¼╪º╪¡!");
+      toast.success("تم إنشاء حساب المشرف المساعد (سب أدمن) بنجاح!");
       setOpen(false);
       setNameId("");
       setFullName("");
@@ -234,7 +234,7 @@ export function SubAdminsTab() {
       qc.invalidateQueries({ queryKey: ["sub-admins-list"] });
     },
     onError: (e: Error) => {
-      toast.error(e.message || "╪¡╪»╪½ ╪«╪╖╪ú ╪ú╪½┘å╪º╪í ╪Ñ┘å╪┤╪º╪í ╪º┘ä╪¡╪│╪º╪¿");
+      toast.error(e.message || "حدث خطأ أثناء إنشاء الحساب");
     },
   });
 
@@ -244,7 +244,7 @@ export function SubAdminsTab() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¡╪░┘ü ╪º┘ä┘à╪┤╪▒┘ü ╪º┘ä┘à╪│╪º╪╣╪» ╪¿┘å╪¼╪º╪¡");
+      toast.success("تم حذف المشرف المساعد بنجاح");
       qc.invalidateQueries({ queryKey: ["sub-admins-list"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -271,7 +271,7 @@ export function SubAdminsTab() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¬╪¡╪»┘è╪½ ╪º┘ä╪╡┘ä╪º╪¡┘è╪⌐ ╪¿┘å╪¼╪º╪¡");
+      toast.success("تم تحديث الصلاحية بنجاح");
       qc.invalidateQueries({ queryKey: ["sub-admins-list"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -281,62 +281,62 @@ export function SubAdminsTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-base font-bold">╪Ñ╪»╪º╪▒╪⌐ ╪¡╪│╪º╪¿╪º╪¬ ╪│╪¿ ╪ú╪»┘à┘å</h2>
+          <h2 className="text-base font-bold">إدارة حسابات سب أدمن</h2>
           <p className="text-xs text-muted-foreground">
-            ╪Ñ┘å╪┤╪º╪í ┘ê╪¬╪╣╪»┘è┘ä ╪╡┘ä╪º╪¡┘è╪º╪¬ ╪º┘ä┘à╪┤╪▒┘ü┘è┘å ╪º┘ä┘à╪│╪º╪╣╪»┘è┘å ┘ä┘ä┘à┘ê┘é╪╣
+            إنشاء وتعديل صلاحيات المشرفين المساعدين للموقع
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="gap-1 text-xs">
-              <Plus className="w-4 h-4" /> ╪Ñ╪╢╪º┘ü╪⌐ ╪│╪¿ ╪ú╪»┘à┘å ╪¼╪»┘è╪»
+              <Plus className="w-4 h-4" /> إضافة سب أدمن جديد
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md text-right">
             <DialogHeader>
-              <DialogTitle>╪Ñ┘å╪┤╪º╪í ╪¡╪│╪º╪¿ ┘à╪┤╪▒┘ü ┘à╪│╪º╪╣╪» ╪¼╪»┘è╪»</DialogTitle>
+              <DialogTitle>إنشاء حساب مشرف مساعد جديد</DialogTitle>
               <DialogDescription className="text-xs">
-                ╪│┘è╪¬┘à┘â┘å ┘ç╪░╪º ╪º┘ä╪¡╪│╪º╪¿ ┘à┘å ╪º┘ä╪»╪«┘ê┘ä ┘ä┘ä┘ê╪¡╪⌐ ╪º┘ä╪¬╪¡┘â┘à ╪¿╪╡┘ä╪º╪¡┘è╪º╪¬ ┘à╪«╪╡╪╡╪⌐ ╪¬╪¡╪»╪»┘ç╪º ╪ú╪»┘å╪º┘ç
+                سيتمكن هذا الحساب من الدخول للوحة التحكم بصلاحيات مخصصة تحددها أدناه
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 my-2">
               <div className="space-y-1.5">
-                <Label className="text-xs">╪º┘ä╪▒┘à╪▓ ╪º┘ä╪¬╪╣╪▒┘è┘ü┘è ╪º┘ä┘ü╪▒┘è╪» (ID) ┘ä┘ä╪»╪«┘ê┘ä</Label>
+                <Label className="text-xs">الرمز التعريفي الفريد (ID) للدخول</Label>
                 <Input
-                  placeholder="┘à╪½╪º┘ä: a guard 1"
+                  placeholder="مثال: a guard 1"
                   value={nameId}
                   onChange={(e) => setNameId(e.target.value)}
                   dir="ltr"
                   className="font-mono"
                 />
                 <p className="text-[10px] text-muted-foreground">
-                  ╪│┘è╪│╪¬╪«╪»┘à ┘ç╪░╪º ╪º┘ä╪▒┘à╪▓ ┘ä┘ä╪»╪«┘ê┘ä ╪¿╪»┘ä╪º┘ï ┘à┘å ╪º┘ä╪¿╪▒┘è╪» ╪º┘ä╪Ñ┘ä┘â╪¬╪▒┘ê┘å┘è (╪│┘è╪¬╪¡┘ê┘ä ╪¬┘ä┘é╪º╪ª┘è╪º┘ï ╪Ñ┘ä┘ë ╪¿╪▒┘è╪»
-                  ┘ü╪▒┘è╪»)
+                  سيستخدم هذا الرمز للدخول بدلاً من البريد الإلكتروني (سيتحول تلقائياً إلى بريد
+                  فريد)
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">╪º┘ä╪º╪│┘à ╪º┘ä┘â╪º┘à┘ä ┘ä┘ä┘à╪┤╪▒┘ü</Label>
+                <Label className="text-xs">الاسم الكامل للمشرف</Label>
                 <Input
-                  placeholder="┘à╪½╪º┘ä: ╪º┘ä┘à╪┤╪▒┘ü ╪╣┘ä┘è - ╪¡╪º╪▒╪│ ╪º┘ä╪¿┘ê╪º╪¿╪⌐ 1"
+                  placeholder="مثال: المشرف علي - حارس البوابة 1"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">┘â┘ä┘à╪⌐ ╪º┘ä╪│╪▒</Label>
+                <Label className="text-xs">كلمة السر</Label>
                 <Input
                   type="text"
-                  placeholder="╪º╪«╪¬╪▒ ┘â┘ä┘à╪⌐ ╪│╪▒ ┘é┘ê┘è╪⌐ (6 ╪ú╪¡╪▒┘ü ╪╣┘ä┘ë ╪º┘ä╪ú┘é┘ä)"
+                  placeholder="اختر كلمة سر قوية (6 أحرف على الأقل)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2 border rounded-lg p-3">
-                <h3 className="text-xs font-bold text-primary mb-2">╪¬╪¡╪»┘è╪» ╪╡┘ä╪º╪¡┘è╪º╪¬ ╪º┘ä╪¡╪│╪º╪¿:</h3>
+                <h3 className="text-xs font-bold text-primary mb-2">تحديد صلاحيات الحساب:</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -345,7 +345,7 @@ export function SubAdminsTab() {
                       onCheckedChange={(c) => setCanReports(!!c)}
                     />
                     <Label htmlFor="perm-reports" className="text-xs font-normal cursor-pointer">
-                      ╪▒╪ñ┘è╪⌐ ┘ê╪Ñ╪»╪º╪▒╪⌐ ╪º┘ä╪¿┘ä╪º╪║╪º╪¬
+                      رؤية وإدارة البلاغات
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -355,7 +355,7 @@ export function SubAdminsTab() {
                       onCheckedChange={(c) => setCanTeachers(!!c)}
                     />
                     <Label htmlFor="perm-teachers" className="text-xs font-normal cursor-pointer">
-                      ╪Ñ╪╢╪º┘ü╪⌐ ┘ê╪Ñ╪»╪º╪▒╪⌐ ╪º┘ä╪ú╪│╪º╪¬╪░╪⌐
+                      إضافة وإدارة الأساتذة
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -365,7 +365,7 @@ export function SubAdminsTab() {
                       onCheckedChange={(c) => setCanCourses(!!c)}
                     />
                     <Label htmlFor="perm-courses" className="text-xs font-normal cursor-pointer">
-                      ╪Ñ╪»╪º╪▒╪⌐ ╪º┘ä┘à┘é╪▒╪▒╪º╪¬ ╪º┘ä╪»╪▒╪º╪│┘è╪⌐
+                      إدارة المقررات الدراسية
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -375,7 +375,7 @@ export function SubAdminsTab() {
                       onCheckedChange={(c) => setCanWarn(!!c)}
                     />
                     <Label htmlFor="perm-warn" className="text-xs font-normal cursor-pointer">
-                      ╪Ñ╪▒╪│╪º┘ä ╪Ñ┘å╪░╪º╪▒╪º╪¬ ┘ä┘ä┘à╪│╪¬╪«╪»┘à┘è┘å
+                      إرسال إنذارات للمستخدمين
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -385,7 +385,7 @@ export function SubAdminsTab() {
                       onCheckedChange={(c) => setCanSuspend(!!c)}
                     />
                     <Label htmlFor="perm-suspend" className="text-xs font-normal cursor-pointer">
-                      ╪¬╪╣┘ä┘è┘é ┘ê╪Ñ┘è┘é╪º┘ü ╪º┘ä╪¡╪│╪º╪¿╪º╪¬ ┘à╪ñ┘é╪¬╪º┘ï
+                      تعليق وإيقاف الحسابات مؤقتاً
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
@@ -395,7 +395,7 @@ export function SubAdminsTab() {
                       onCheckedChange={(c) => setCanWords(!!c)}
                     />
                     <Label htmlFor="perm-words" className="text-xs font-normal cursor-pointer">
-                      ╪Ñ╪»╪º╪▒╪⌐ ╪º┘ä┘â┘ä┘à╪º╪¬ ╪º┘ä┘à╪¡╪╕┘ê╪▒╪⌐
+                      إدارة الكلمات المحظورة
                     </Label>
                   </div>
                 </div>
@@ -409,7 +409,7 @@ export function SubAdminsTab() {
                 className="w-full sm:w-auto"
               >
                 {createSubAdmin.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />}
-                ╪¬╪ú┘â┘è╪» ┘ê╪Ñ┘å╪┤╪º╪í ╪º┘ä╪¡╪│╪º╪¿
+                تأكيد وإنشاء الحساب
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -422,7 +422,7 @@ export function SubAdminsTab() {
         </div>
       ) : subAdmins?.length === 0 ? (
         <Card className="border-border/40 shadow-none bg-card p-8 text-center text-muted-foreground text-xs">
-          ┘ä╪º ┘è┘ê╪¼╪» ╪¡╪│╪º╪¿╪º╪¬ ╪│╪¿ ╪ú╪»┘à┘å ╪¡╪º┘ä┘è╪º┘ï. ╪º╪╢╪║╪╖ ╪╣┘ä┘ë ╪º┘ä╪▓╪▒ ╪ú╪╣┘ä╪º┘ç ┘ä╪Ñ╪╢╪º┘ü╪⌐ ╪ú┘ê┘ä ╪¡╪│╪º╪¿.
+          لا يوجد حسابات سب أدمن حالياً. اضغط على الزر أعلاه لإضافة أول حساب.
         </Card>
       ) : (
         <div className="grid gap-3">
@@ -464,7 +464,7 @@ export function SubAdminsTab() {
                             : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
                         }`}
                       >
-                        ╪Ñ╪»╪º╪▒╪⌐ ╪º┘ä╪¿┘ä╪º╪║╪º╪¬
+                        إدارة البلاغات
                       </button>
                       <button
                         onClick={() =>
@@ -480,7 +480,7 @@ export function SubAdminsTab() {
                             : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
                         }`}
                       >
-                        ╪Ñ╪»╪º╪▒╪⌐ ╪º┘ä╪ú╪│╪º╪¬╪░╪⌐
+                        إدارة الأساتذة
                       </button>
                       <button
                         onClick={() =>
@@ -496,7 +496,7 @@ export function SubAdminsTab() {
                             : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
                         }`}
                       >
-                        ╪Ñ╪»╪º╪▒╪⌐ ╪º┘ä┘à┘é╪▒╪▒╪º╪¬
+                        إدارة المقررات
                       </button>
                       <button
                         onClick={() =>
@@ -512,7 +512,7 @@ export function SubAdminsTab() {
                             : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
                         }`}
                       >
-                        ╪Ñ╪▒╪│╪º┘ä ╪Ñ┘å╪░╪º╪▒╪º╪¬
+                        إرسال إنذارات
                       </button>
                       <button
                         onClick={() =>
@@ -528,7 +528,7 @@ export function SubAdminsTab() {
                             : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
                         }`}
                       >
-                        ╪¬╪╣┘ä┘è┘é ╪º┘ä╪¡╪│╪º╪¿╪º╪¬
+                        تعليق الحسابات
                       </button>
                       <button
                         onClick={() =>
@@ -544,7 +544,7 @@ export function SubAdminsTab() {
                             : "bg-muted text-muted-foreground border-transparent line-through opacity-60"
                         }`}
                       >
-                        ╪Ñ╪»╪º╪▒╪⌐ ╪º┘ä┘â┘ä┘à╪º╪¬ ╪º┘ä┘à╪¡╪╕┘ê╪▒╪⌐
+                        إدارة الكلمات المحظورة
                       </button>
                     </div>
                   </div>
@@ -553,7 +553,7 @@ export function SubAdminsTab() {
                     {deleteConfirmId === sub.id ? (
                       <div className="flex items-center gap-1.5 bg-destructive/5 border border-destructive/20 rounded-lg p-1 animate-in fade-in zoom-in-95 duration-200">
                         <span className="text-[10px] font-bold text-destructive px-1.5">
-                          {"┘à╪¬╪ú┘â╪»╪ƒ"}
+                          {"متأكد؟"}
                         </span>
                         <Button
                           size="sm"
@@ -565,7 +565,7 @@ export function SubAdminsTab() {
                           }}
                           disabled={deleteSubAdmin.isPending}
                         >
-                          ┘å╪╣┘à╪î ╪¡╪░┘ü
+                          نعم، حذف
                         </Button>
                         <Button
                           size="sm"
@@ -574,7 +574,7 @@ export function SubAdminsTab() {
                           onClick={() => setDeleteConfirmId(null)}
                           disabled={deleteSubAdmin.isPending}
                         >
-                          ╪Ñ┘ä╪║╪º╪í
+                          إلغاء
                         </Button>
                       </div>
                     ) : (
@@ -585,7 +585,7 @@ export function SubAdminsTab() {
                         onClick={() => setDeleteConfirmId(sub.id)}
                         disabled={deleteSubAdmin.isPending}
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> ╪¡╪░┘ü ╪º┘ä╪¡╪│╪º╪¿
+                        <Trash2 className="w-3.5 h-3.5" /> حذف الحساب
                       </Button>
                     )}
                   </div>

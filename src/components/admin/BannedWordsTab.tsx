@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,7 +18,7 @@ export function BannedWordsTab() {
   const add = useMutation({
     mutationFn: async () => {
       const w = word.trim().toLowerCase();
-      if (!w) throw new Error("╪ú╪»╪«┘ä ┘â┘ä┘à╪⌐");
+      if (!w) throw new Error("أدخل كلمة");
       const { error } = await supabase.from("banned_words").insert({ word: w });
       if (error) throw error;
     },
@@ -26,7 +26,7 @@ export function BannedWordsTab() {
       setWord("");
       qc.invalidateQueries({ queryKey: ["banned-words-admin"] });
       qc.invalidateQueries({ queryKey: ["banned-words"] });
-      toast.success("╪¬┘à╪¬ ╪º┘ä╪Ñ╪╢╪º┘ü╪⌐");
+      toast.success("تمت الإضافة");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -47,10 +47,10 @@ export function BannedWordsTab() {
           <Input
             value={word}
             onChange={(e) => setWord(e.target.value)}
-            placeholder="╪ú╪╢┘ü ┘â┘ä┘à╪⌐ ┘à╪¡╪╕┘ê╪▒╪⌐"
+            placeholder="أضف كلمة محظورة"
           />
           <Button onClick={() => add.mutate()} disabled={add.isPending}>
-            <Plus className="w-4 h-4" /> ╪Ñ╪╢╪º┘ü╪⌐
+            <Plus className="w-4 h-4" /> إضافة
           </Button>
         </div>
         <div className="flex flex-wrap gap-2">

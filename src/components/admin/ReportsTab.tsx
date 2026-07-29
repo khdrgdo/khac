@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { renderMarkdownContent } from "@/lib/markdown";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,7 +80,7 @@ export function ReportsTab() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪▒┘ü╪╢ ╪º┘ä╪¿┘ä╪º╪║");
+      toast.success("تم رفض البلاغ");
       invalidateAfterAction();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -111,7 +111,7 @@ export function ReportsTab() {
       await supabase.from("post_reports").update({ status: "confirmed" }).eq("id", reportId);
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¡╪░┘ü ╪º┘ä┘à┘å╪┤┘ê╪▒");
+      toast.success("تم حذف المنشور");
       invalidateAfterAction();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -160,10 +160,10 @@ export function ReportsTab() {
     onSuccess: (_, v) => {
       toast.success(
         v.action === "warn"
-          ? "╪¬┘à ╪Ñ╪▒╪│╪º┘ä ╪Ñ┘å╪░╪º╪▒ ┘ä╪╡╪º╪¡╪¿ ╪º┘ä┘à┘å╪┤┘ê╪▒"
+          ? "تم إرسال إنذار لصاحب المنشور"
           : v.action === "suspend"
-            ? "╪¬┘à ╪Ñ┘è┘é╪º┘ü ╪º┘ä┘à╪│╪¬╪«╪»┘à ┘à╪ñ┘é╪¬┘ï╪º"
-            : "╪¬┘à ╪¡╪╕╪▒ ╪º┘ä┘à╪│╪¬╪«╪»┘à",
+            ? "تم إيقاف المستخدم مؤقتًا"
+            : "تم حظر المستخدم",
       );
       invalidateAfterAction();
       setReasonFor(null);
@@ -179,7 +179,7 @@ export function ReportsTab() {
         </div>
       )}
       {!isLoading && (data ?? []).length === 0 && (
-        <div className="text-sm text-muted-foreground text-center py-8">┘ä╪º ╪¬┘ê╪¼╪» ╪¿┘ä╪º╪║╪º╪¬</div>
+        <div className="text-sm text-muted-foreground text-center py-8">لا توجد بلاغات</div>
       )}
       <Card className="border-border/40 shadow-none bg-card">
         <div className="divide-y divide-border/40">
@@ -187,9 +187,9 @@ export function ReportsTab() {
             <div key={r.id} className="p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="text-sm flex items-center gap-2">
-                  <span className="text-muted-foreground">╪¿┘ä╪º╪║ ┘à┘å:</span>
+                  <span className="text-muted-foreground">بلاغ من:</span>
                   <span className="font-semibold text-foreground">
-                    {r.reporter?.full_name ?? "ΓÇö"}
+                    {r.reporter?.full_name ?? "—"}
                   </span>
                 </div>
                 <Badge
@@ -203,17 +203,17 @@ export function ReportsTab() {
                   }
                 >
                   {r.status === "pending"
-                    ? "┘é┘è╪» ╪º┘ä┘à╪▒╪º╪¼╪╣╪⌐"
+                    ? "قيد المراجعة"
                     : r.status === "confirmed"
-                      ? "╪¬┘à╪¬ ╪º┘ä┘à╪╣╪º┘ä╪¼╪⌐"
-                      : "┘à╪▒┘ü┘ê╪╢"}
+                      ? "تمت المعالجة"
+                      : "مرفوض"}
                 </Badge>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="text-sm bg-muted/30 border border-border/40 rounded-lg p-3">
                   <div className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                    <Flag className="w-3.5 h-3.5" /> ╪│╪¿╪¿ ╪º┘ä╪¿┘ä╪º╪║
+                    <Flag className="w-3.5 h-3.5" /> سبب البلاغ
                   </div>
                   <p className="whitespace-pre-wrap text-foreground/90">{r.reason}</p>
                 </div>
@@ -221,7 +221,7 @@ export function ReportsTab() {
                 {r.post ? (
                   <div className="text-sm bg-card border border-border/40 shadow-sm rounded-lg p-3">
                     <div className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5" /> ┘à╪¡╪¬┘ê┘ë ╪º┘ä┘à┘å╪┤┘ê╪▒
+                      <FileText className="w-3.5 h-3.5" /> محتوى المنشور
                     </div>
                     <div className="line-clamp-3 text-foreground/90">
                       {renderMarkdownContent(r.post.content)}
@@ -229,7 +229,7 @@ export function ReportsTab() {
                   </div>
                 ) : (
                   <div className="text-sm bg-muted/30 border border-border/40 rounded-lg p-3 flex items-center text-muted-foreground italic">
-                    ╪º┘ä┘à┘å╪┤┘ê╪▒ ┘à╪¡╪░┘ê┘ü ┘à╪│╪¿┘é┘ï╪º
+                    المنشور محذوف مسبقًا
                   </div>
                 )}
               </div>
@@ -247,7 +247,7 @@ export function ReportsTab() {
                         onClick={() => dismiss.mutate(r.id)}
                         disabled={dismiss.isPending}
                       >
-                        <X className="w-4 h-4 ml-1.5" /> ╪▒┘ü╪╢ ╪º┘ä╪¿┘ä╪º╪║
+                        <X className="w-4 h-4 ml-1.5" /> رفض البلاغ
                       </Button>
                       <Button
                         size="sm"
@@ -256,7 +256,7 @@ export function ReportsTab() {
                         onClick={() => deletePost.mutate({ reportId: r.id, postId: r.post_id })}
                         disabled={deletePost.isPending}
                       >
-                        <Trash2 className="w-4 h-4 ml-1.5" /> ╪¡╪░┘ü ╪º┘ä┘à┘å╪┤┘ê╪▒
+                        <Trash2 className="w-4 h-4 ml-1.5" /> حذف المنشور
                       </Button>
                       {canWarn && (
                         <Button
@@ -271,7 +271,7 @@ export function ReportsTab() {
                             })
                           }
                         >
-                          <AlertTriangle className="w-4 h-4 ml-1.5" /> ╪Ñ┘å╪░╪º╪▒
+                          <AlertTriangle className="w-4 h-4 ml-1.5" /> إنذار
                         </Button>
                       )}
                       {canSuspend && (
@@ -287,7 +287,7 @@ export function ReportsTab() {
                             })
                           }
                         >
-                          <Clock className="w-4 h-4 ml-1.5" /> ╪Ñ┘è┘é╪º┘ü
+                          <Clock className="w-4 h-4 ml-1.5" /> إيقاف
                         </Button>
                       )}
                       {canSuspend && (
@@ -303,7 +303,7 @@ export function ReportsTab() {
                             })
                           }
                         >
-                          <Ban className="w-4 h-4 ml-1.5" /> ╪¡╪╕╪▒
+                          <Ban className="w-4 h-4 ml-1.5" /> حظر
                         </Button>
                       )}
                     </div>
@@ -353,7 +353,7 @@ function ConsequenceForm({
   const [days, setDays] = useState("3");
   if (!action) return null;
   const title =
-    action === "warn" ? "╪Ñ╪▒╪│╪º┘ä ╪Ñ┘å╪░╪º╪▒" : action === "suspend" ? "╪Ñ┘è┘é╪º┘ü ┘à╪ñ┘é╪¬" : "╪¡╪╕╪▒ ╪º┘ä┘à╪│╪¬╪«╪»┘à";
+    action === "warn" ? "إرسال إنذار" : action === "suspend" ? "إيقاف مؤقت" : "حظر المستخدم";
   return (
     <>
       <DialogHeader>
@@ -361,17 +361,17 @@ function ConsequenceForm({
       </DialogHeader>
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Label>╪º┘ä╪│╪¿╪¿ (┘è╪╕┘ç╪▒ ┘ü┘è ╪│╪¼┘ä ╪º┘ä┘å╪┤╪º╪╖)</Label>
+          <Label>السبب (يظهر في سجل النشاط)</Label>
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="╪º┘â╪¬╪¿ ╪│╪¿╪¿ ╪º┘ä╪Ñ╪¼╪▒╪º╪í"
+            placeholder="اكتب سبب الإجراء"
             rows={3}
           />
         </div>
         {action === "suspend" && (
           <div className="space-y-1.5">
-            <Label>╪╣╪»╪» ╪ú┘è╪º┘à ╪º┘ä╪Ñ┘è┘é╪º┘ü</Label>
+            <Label>عدد أيام الإيقاف</Label>
             <Input
               type="number"
               min={1}
@@ -384,7 +384,7 @@ function ConsequenceForm({
       </div>
       <DialogFooter>
         <Button variant="ghost" onClick={onCancel}>
-          ╪Ñ┘ä╪║╪º╪í
+          إلغاء
         </Button>
         <Button
           variant={action === "ban" ? "destructive" : "default"}
@@ -393,7 +393,7 @@ function ConsequenceForm({
             onConfirm(reason.trim(), action === "suspend" ? Number(days) || 3 : undefined)
           }
         >
-          {pending && <Loader2 className="w-4 h-4 animate-spin" />} ╪¬╪ú┘â┘è╪»
+          {pending && <Loader2 className="w-4 h-4 animate-spin" />} تأكيد
         </Button>
       </DialogFooter>
     </>

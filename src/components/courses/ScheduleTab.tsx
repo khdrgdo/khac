@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { ScheduleEntry } from "@/components/courses/course-types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Plus, Trash2, Loader2, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 /* Course Schedule Component */
-const DAYS = ["╪º┘ä╪ú╪¡╪»", "╪º┘ä╪º╪½┘å┘è┘å", "╪º┘ä╪½┘ä╪º╪½╪º╪í", "╪º┘ä╪ú╪▒╪¿╪╣╪º╪í", "╪º┘ä╪«┘à┘è╪│"];
+const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"];
 
 export function ScheduleTab({
   course,
@@ -40,7 +40,7 @@ export function ScheduleTab({
       toast.error(error.message);
       return;
     }
-    toast.success("╪¬┘à ╪¡┘ü╪╕ ╪¼╪»┘ê┘ä ╪º┘ä┘à╪¡╪º╪╢╪▒╪º╪¬ ╪¿┘å╪¼╪º╪¡");
+    toast.success("تم حفظ جدول المحاضرات بنجاح");
     onSaved();
   }
 
@@ -50,7 +50,7 @@ export function ScheduleTab({
     return existing.length === 0 ? (
       <div className="text-center py-8 border rounded-2xl border-dashed bg-muted/5">
         <Calendar className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-        <p className="text-xs text-muted-foreground">┘ä┘à ┘è╪¬┘à ╪Ñ╪╢╪º┘ü╪⌐ ┘à┘ê╪º╪╣┘è╪» ╪ú╪│╪¿┘ê╪╣┘è╪⌐ ┘ä┘ç╪░╪º ╪º┘ä┘à┘é╪▒╪▒ ╪¿╪╣╪»</p>
+        <p className="text-xs text-muted-foreground">لم يتم إضافة مواعيد أسبوعية لهذا المقرر بعد</p>
       </div>
     ) : (
       <div className="grid gap-2">
@@ -66,7 +66,7 @@ export function ScheduleTab({
                 </span>
               </div>
               <div className="text-xs text-muted-foreground bg-muted/30 px-2.5 py-1 rounded-lg">
-                ╪º┘ä┘é╪º╪╣╪⌐ / ╪º┘ä┘à╪╣┘à┘ä: <strong>{e.room || "╪║┘è╪▒ ┘à╪¡╪»╪»"}</strong>
+                القاعة / المعمل: <strong>{e.room || "غير محدد"}</strong>
               </div>
             </CardContent>
           </Card>
@@ -115,7 +115,7 @@ export function ScheduleTab({
             />
 
             <Input
-              placeholder="╪º╪│┘à ╪º┘ä┘é╪º╪╣╪⌐ ╪ú┘ê ╪▒┘é┘à ╪º┘ä┘é╪º╪╣╪⌐"
+              placeholder="اسم القاعة أو رقم القاعة"
               value={e.room}
               onChange={(ev) =>
                 setEntries((p) => p.map((x, j) => (j === i ? { ...x, room: ev.target.value } : x)))
@@ -144,7 +144,7 @@ export function ScheduleTab({
             setEntries([...entries, { day: DAYS[0], start: "08:00", end: "09:30", room: "" }])
           }
         >
-          <Plus className="w-4 h-4" /> ╪Ñ╪╢╪º┘ü╪⌐ ┘à┘ê╪╣╪» ╪ó╪«╪▒
+          <Plus className="w-4 h-4" /> إضافة موعد آخر
         </Button>
 
         <Button
@@ -153,7 +153,7 @@ export function ScheduleTab({
           disabled={saving}
           className="rounded-xl font-semibold text-xs"
         >
-          {saving && <Loader2 className="w-4 h-4 animate-spin ml-1" />} ╪¡┘ü╪╕ ╪º┘ä╪¼╪»┘ê┘ä ┘ä┘ä┘à┘é╪▒╪▒
+          {saving && <Loader2 className="w-4 h-4 animate-spin ml-1" />} حفظ الجدول للمقرر
         </Button>
       </div>
     </div>

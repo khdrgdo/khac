@@ -1,4 +1,4 @@
-﻿import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   BarChart,
@@ -39,12 +39,12 @@ export function DashboardCharts() {
         <CardContent className="p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä┘å╪┤╪º╪╖</p>
+              <p className="text-sm font-medium text-muted-foreground">إجمالي النشاط</p>
               <h3 className="text-2xl font-bold tracking-tight mt-1">1,525</h3>
-              <p className="text-xs text-emerald-500 mt-1 font-medium">+20.3% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è</p>
+              <p className="text-xs text-emerald-500 mt-1 font-medium">+20.3% منذ الشهر الماضي</p>
             </div>
             <Button variant="outline" size="sm" className="h-8 text-xs bg-muted/30">
-              <Calendar className="w-3.5 h-3.5 ml-1.5" /> ╪ó╪«╪▒ 30 ┘è┘ê┘à╪º┘ï
+              <Calendar className="w-3.5 h-3.5 ml-1.5" /> آخر 30 يوماً
             </Button>
           </div>
           <div className="h-[200px] w-full">
@@ -83,9 +83,9 @@ export function DashboardCharts() {
         <CardContent className="p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">╪º┘ä╪¬┘ü╪º╪╣┘ä ╪º┘ä┘â┘ä┘è</p>
+              <p className="text-sm font-medium text-muted-foreground">التفاعل الكلي</p>
               <h3 className="text-2xl font-bold tracking-tight mt-1">20,462.89</h3>
-              <p className="text-xs text-emerald-500 mt-1 font-medium">+20.1% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è</p>
+              <p className="text-xs text-emerald-500 mt-1 font-medium">+20.1% منذ الشهر الماضي</p>
             </div>
           </div>
           <div className="h-[200px] w-full">

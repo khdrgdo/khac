@@ -1,4 +1,4 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, FileText, Flag, MessageSquare } from "lucide-react";
@@ -24,36 +24,36 @@ export function StatsCards() {
   const items = [
     {
       icon: Users,
-      label: "╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä┘à╪│╪¬╪«╪»┘à┘è┘å",
+      label: "إجمالي المستخدمين",
       value: data?.users ?? 0,
       color: "text-indigo-600",
       bg: "bg-indigo-50",
-      trend: "+41% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è",
+      trend: "+41% منذ الشهر الماضي",
     },
     {
       icon: FileText,
-      label: "╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä┘à┘å╪┤┘ê╪▒╪º╪¬",
+      label: "إجمالي المنشورات",
       value: data?.posts ?? 0,
       color: "text-blue-600",
       bg: "bg-blue-50",
-      trend: "+41% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è",
+      trend: "+41% منذ الشهر الماضي",
     },
     {
       icon: Flag,
-      label: "╪º┘ä╪¿┘ä╪º╪║╪º╪¬ ╪º┘ä┘à╪╣┘ä┘é╪⌐",
+      label: "البلاغات المعلقة",
       value: data?.reports ?? 0,
       color: "text-cyan-600",
       bg: "bg-cyan-50",
-      trend: "-50% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è",
+      trend: "-50% منذ الشهر الماضي",
       trendDown: true,
     },
     {
       icon: MessageSquare,
-      label: "╪Ñ╪¼┘à╪º┘ä┘è ╪º┘ä╪▒╪│╪º╪ª┘ä",
+      label: "إجمالي الرسائل",
       value: data?.msgs ?? 0,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
-      trend: "+41% ┘à┘å╪░ ╪º┘ä╪┤┘ç╪▒ ╪º┘ä┘à╪º╪╢┘è",
+      trend: "+41% منذ الشهر الماضي",
     },
   ];
 

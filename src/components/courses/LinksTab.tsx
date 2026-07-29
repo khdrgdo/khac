@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,7 +60,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       await supabase.from("course_links").delete().eq("id", linkId);
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¡╪░┘ü ╪º┘ä╪▒╪º╪¿╪╖ ╪¿┘å╪¼╪º╪¡");
+      toast.success("تم حذف الرابط بنجاح");
       qc.invalidateQueries({ queryKey: ["course_links", courseId] });
     },
   });
@@ -76,7 +76,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¬╪╣╪»┘è┘ä ╪º┘ä╪▒╪º╪¿╪╖ ╪¿┘å╪¼╪º╪¡");
+      toast.success("تم تعديل الرابط بنجاح");
       qc.invalidateQueries({ queryKey: ["course_links", courseId] });
       setEditingLink(null);
     },
@@ -88,7 +88,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       {canEdit && (
         <div className="flex justify-between items-center bg-muted/30 p-3 rounded-xl border">
           <span className="text-xs font-semibold text-muted-foreground">
-            ╪Ñ╪╢╪º┘ü╪⌐ ╪▒╪º╪¿╪╖ ╪º┘ä┘à╪¡╪º╪╢╪▒╪⌐╪î ╪º╪¼╪¬┘à╪º╪╣╪î ╪ú┘ê ┘à╪╡╪»╪▒ ╪«╪º╪▒╪¼┘è ┘ä┘ä┘à╪¡╪º╪╢╪▒╪⌐
+            إضافة رابط المحاضرة، اجتماع، أو مصدر خارجي للمحاضرة
           </span>
           <AddLinkDialog courseId={courseId} />
         </div>
@@ -101,7 +101,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       ) : !links || links.length === 0 ? (
         <div className="text-center py-8 border rounded-2xl border-dashed bg-muted/5">
           <ExternalLink className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">┘ä╪º ╪¬┘ê╪¼╪» ╪▒┘ê╪º╪¿╪╖ ┘à╪╢╪º┘ü╪⌐ ┘ä┘ç╪░╪º ╪º┘ä┘à┘é╪▒╪▒ ╪¿╪╣╪»</p>
+          <p className="text-xs text-muted-foreground">لا توجد روابط مضافة لهذا المقرر بعد</p>
         </div>
       ) : (
         <div className="grid gap-2.5">
@@ -130,7 +130,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                         <div className="bg-muted/40 border rounded-lg p-2 text-xs text-foreground/90 flex items-start gap-1.5 my-1">
                           <MessageSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
                           <p className="leading-relaxed">
-                            <strong className="text-primary font-semibold">┘à┘ä╪º╪¡╪╕╪⌐ ╪º┘ä╪ú╪│╪¬╪º╪░:</strong>{" "}
+                            <strong className="text-primary font-semibold">ملاحظة الأستاذ:</strong>{" "}
                             {parsed.note}
                           </p>
                         </div>
@@ -140,7 +140,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                         <span className="truncate max-w-[200px] sm:max-w-xs" dir="ltr">
                           {l.url}
                         </span>
-                        <span>ΓÇó</span>
+                        <span>•</span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />{" "}
                           {formatDistanceToNow(new Date(l.created_at), {
@@ -160,7 +160,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                       asChild
                     >
                       <a href={l.url} target="_blank" rel="noreferrer">
-                        ┘ü╪¬╪¡ ╪º┘ä╪▒╪º╪¿╪╖ <ExternalLink className="w-3 h-3" />
+                        فتح الرابط <ExternalLink className="w-3 h-3" />
                       </a>
                     </Button>
 
@@ -176,7 +176,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                             setEditUrl(l.url);
                             setEditNote(parsed.note ?? "");
                           }}
-                          title="╪¬╪╣╪»┘è┘ä ╪º┘ä╪▒╪º╪¿╪╖"
+                          title="تعديل الرابط"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
@@ -202,11 +202,11 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       <Dialog open={!!editingLink} onOpenChange={() => setEditingLink(null)}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>╪¬╪╣╪»┘è┘ä ╪º┘ä╪▒╪º╪¿╪╖</DialogTitle>
+            <DialogTitle>تعديل الرابط</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">╪╣┘å┘ê╪º┘å ╪º┘ä╪▒╪º╪¿╪╖ *</Label>
+              <Label className="text-xs font-semibold">عنوان الرابط *</Label>
               <Input
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
@@ -214,7 +214,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">╪º┘ä╪▒╪º╪¿╪╖ URL *</Label>
+              <Label className="text-xs font-semibold">الرابط URL *</Label>
               <Input
                 value={editUrl}
                 onChange={(e) => setEditUrl(e.target.value)}
@@ -223,7 +223,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">┘à┘ä╪º╪¡╪╕╪⌐ ╪º┘ä╪ú╪│╪¬╪º╪░ (╪º╪«╪¬┘è╪º╪▒┘è)</Label>
+              <Label className="text-xs font-semibold">ملاحظة الأستاذ (اختياري)</Label>
               <Textarea
                 value={editNote}
                 onChange={(e) => setEditNote(e.target.value)}
@@ -234,7 +234,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
           </div>
           <DialogFooter className="pt-3">
             <Button variant="outline" onClick={() => setEditingLink(null)} className="rounded-xl">
-              ╪Ñ┘ä╪║╪º╪í
+              إلغاء
             </Button>
             <Button
               onClick={() => editLink.mutate()}
@@ -242,7 +242,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
               className="rounded-xl font-semibold"
             >
               {editLink.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />}
-              ╪¡┘ü╪╕ ╪º┘ä╪¬╪╣╪»┘è┘ä╪º╪¬
+              حفظ التعديلات
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -252,13 +252,13 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       <AlertDialog open={!!linkToDelete} onOpenChange={() => setLinkToDelete(null)}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>╪¡╪░┘ü ╪º┘ä╪▒╪º╪¿╪╖</AlertDialogTitle>
+            <AlertDialogTitle>حذف الرابط</AlertDialogTitle>
             <AlertDialogDescription>
-              ╪│┘è╪¬┘à ╪¡╪░┘ü ┘ç╪░╪º ╪º┘ä╪▒╪º╪¿╪╖ ┘å┘ç╪º╪ª┘è╪º┘ï. ┘ä╪º ┘è┘à┘â┘å ╪º┘ä╪¬╪▒╪º╪¼╪╣ ╪╣┘å ┘ç╪░╪º ╪º┘ä╪Ñ╪¼╪▒╪º╪í.
+              سيتم حذف هذا الرابط نهائياً. لا يمكن التراجع عن هذا الإجراء.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>╪Ñ┘ä╪║╪º╪í</AlertDialogCancel>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (linkToDelete) del.mutate(linkToDelete.id);
@@ -266,7 +266,7 @@ export function LinksTab({ courseId, canEdit }: { courseId: string; canEdit: boo
               }}
               className="bg-destructive hover:bg-destructive/90"
             >
-              ╪¡╪░┘ü
+              حذف
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -297,7 +297,7 @@ function AddLinkDialog({ courseId }: { courseId: string }) {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à╪¬ ╪Ñ╪╢╪º┘ü╪⌐ ╪º┘ä╪▒╪º╪¿╪╖ ╪¿┘å╪¼╪º╪¡");
+      toast.success("تمت إضافة الرابط بنجاح");
       qc.invalidateQueries({ queryKey: ["course_links", courseId] });
       setOpen(false);
       setTitle("");
@@ -311,26 +311,26 @@ function AddLinkDialog({ courseId }: { courseId: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" className="rounded-xl gap-1">
-          <Plus className="w-4 h-4" /> ╪Ñ╪╢╪º┘ü╪⌐ ╪▒╪º╪¿╪╖
+          <Plus className="w-4 h-4" /> إضافة رابط
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[450px]">
         <DialogHeader>
-          <DialogTitle>╪Ñ╪╢╪º┘ü╪⌐ ╪▒╪º╪¿╪╖ ╪ú┘ê ┘à╪╡╪»╪▒ ╪«╪º╪▒╪¼┘è</DialogTitle>
+          <DialogTitle>إضافة رابط أو مصدر خارجي</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 pt-2">
           <div className="space-y-1">
-            <Label className="text-xs font-semibold">╪╣┘å┘ê╪º┘å ╪º┘ä╪▒╪º╪¿╪╖ / ╪º╪│┘à ╪º┘ä┘à╪╡╪»╪▒ *</Label>
+            <Label className="text-xs font-semibold">عنوان الرابط / اسم المصدر *</Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="┘à╪½╪º┘ä: ╪▒╪º╪¿╪╖ ╪º┘ä┘à╪¡╪º╪╢╪▒╪⌐ ╪º┘ä┘à╪¿╪º╪┤╪▒╪⌐ ╪╣┘ä┘ë ╪▓┘ê┘à╪î ┘â╪¬╪º╪¿ ╪º┘ä┘à┘é╪▒╪▒..."
+              placeholder="مثال: رابط المحاضرة المباشرة على زوم، كتاب المقرر..."
               className="rounded-xl"
             />
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs font-semibold">╪╣┘å┘ê╪º┘å URL *</Label>
+            <Label className="text-xs font-semibold">عنوان URL *</Label>
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -341,11 +341,11 @@ function AddLinkDialog({ courseId }: { courseId: string }) {
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs font-semibold">┘à┘ä╪º╪¡╪╕╪⌐ ╪ú┘ê ╪¬╪╣┘ä┘è┘é ┘ä┘ä╪╖┘ä╪º╪¿ (╪º╪«╪¬┘è╪º╪▒┘è)</Label>
+            <Label className="text-xs font-semibold">ملاحظة أو تعليق للطلاب (اختياري)</Label>
             <Textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="┘à╪½╪º┘ä: ╪▒╪º╪¿╪╖ ╪º┘ä┘à╪¡╪º╪╢╪▒╪⌐ ╪º┘ä┘à╪│╪¼┘ä╪⌐ ┘ä┘è┘ê┘à ╪º┘ä╪ú╪¡╪» ╪º┘ä┘à╪º╪╢┘è╪î ┘è╪▒╪¼┘ë ╪º┘ä┘à╪┤╪º┘ç╪»╪⌐ ┘é╪¿┘ä ╪º┘ä╪º╪«╪¬╪¿╪º╪▒..."
+              placeholder="مثال: رابط المحاضرة المسجلة ليوم الأحد الماضي، يرجى المشاهدة قبل الاختبار..."
               rows={2}
               className="resize-none rounded-xl"
             />
@@ -357,7 +357,7 @@ function AddLinkDialog({ courseId }: { courseId: string }) {
             disabled={!title.trim() || !url.trim() || mut.isPending}
             className="rounded-xl font-semibold"
           >
-            {mut.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />} ╪¡┘ü╪╕ ╪º┘ä╪▒╪º╪¿╪╖
+            {mut.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />} حفظ الرابط
           </Button>
         </DialogFooter>
       </DialogContent>

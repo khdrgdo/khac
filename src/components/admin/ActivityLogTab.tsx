@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatUnivNumber } from "@/lib/privacy";
@@ -91,11 +91,11 @@ export function ActivityLogTab() {
         timeline.push({
           id: `post_${p.id}`,
           userId: p.author_id,
-          userName: u?.full_name || "┘à╪│╪¬╪«╪»┘à",
+          userName: u?.full_name || "مستخدم",
           userAvatar: u?.avatar_url,
           year: u?.year,
           type: "post",
-          title: "┘å╪┤╪▒ ┘à┘å╪┤┘ê╪▒╪º┘ï ╪¼╪»┘è╪»╪º┘ï",
+          title: "نشر منشوراً جديداً",
           details: p.content.slice(0, 60),
           createdAt: p.created_at,
         });
@@ -106,11 +106,11 @@ export function ActivityLogTab() {
         timeline.push({
           id: `comment_${c.id}`,
           userId: c.author_id,
-          userName: u?.full_name || "┘à╪│╪¬╪«╪»┘à",
+          userName: u?.full_name || "مستخدم",
           userAvatar: u?.avatar_url,
           year: u?.year,
           type: "comment",
-          title: "╪ú╪╢╪º┘ü ╪¬╪╣┘ä┘è┘é╪º┘ï",
+          title: "أضاف تعليقاً",
           details: c.content.slice(0, 60),
           createdAt: c.created_at,
         });
@@ -121,12 +121,12 @@ export function ActivityLogTab() {
         timeline.push({
           id: `react_${r.post_id}_${r.user_id}_${r.reaction}`,
           userId: r.user_id,
-          userName: u?.full_name || "┘à╪│╪¬╪«╪»┘à",
+          userName: u?.full_name || "مستخدم",
           userAvatar: u?.avatar_url,
           year: u?.year,
           type: "reaction",
-          title: "╪¬┘ü╪º╪╣┘ä ┘à╪╣ ┘à┘å╪┤┘ê╪▒",
-          details: `┘å┘ê╪╣ ╪º┘ä╪¬┘ü╪º╪╣┘ä: ${r.reaction}`,
+          title: "تفاعل مع منشور",
+          details: `نوع التفاعل: ${r.reaction}`,
           createdAt: r.created_at,
         });
       });
@@ -159,8 +159,8 @@ export function ActivityLogTab() {
       const nameMap = new Map((profs ?? []).map((p) => [p.id, p.full_name]));
       return actions.map((a) => ({
         ...a,
-        adminName: nameMap.get(a.admin_id) ?? "ΓÇö",
-        targetName: a.target_user_id ? (nameMap.get(a.target_user_id) ?? "┘à╪│╪¬╪«╪»┘à ┘à╪¡╪░┘ê┘ü") : null,
+        adminName: nameMap.get(a.admin_id) ?? "—",
+        targetName: a.target_user_id ? (nameMap.get(a.target_user_id) ?? "مستخدم محذوف") : null,
       }));
     },
   });
@@ -185,14 +185,14 @@ export function ActivityLogTab() {
   };
 
   const actionLabel: Record<string, string> = {
-    warn: "╪Ñ┘å╪░╪º╪▒",
-    suspend: "╪Ñ┘è┘é╪º┘ü ┘à╪ñ┘é╪¬",
-    ban: "╪¡╪╕╪▒",
-    unban: "╪Ñ┘ä╪║╪º╪í ╪¡╪╕╪▒/╪Ñ┘è┘é╪º┘ü",
-    delete_user: "╪¡╪░┘ü ┘à╪│╪¬╪«╪»┘à",
-    set_year: "╪¬╪║┘è┘è╪▒ ╪º┘ä╪│┘å╪⌐",
-    verify: "╪¬┘ê╪½┘è┘é ╪º┘ä╪¡╪│╪º╪¿",
-    unverify: "╪Ñ┘ä╪║╪º╪í ╪º┘ä╪¬┘ê╪½┘è┘é",
+    warn: "إنذار",
+    suspend: "إيقاف مؤقت",
+    ban: "حظر",
+    unban: "إلغاء حظر/إيقاف",
+    delete_user: "حذف مستخدم",
+    set_year: "تغيير السنة",
+    verify: "توثيق الحساب",
+    unverify: "إلغاء التوثيق",
   };
 
   return (
@@ -209,7 +209,7 @@ export function ActivityLogTab() {
             }`}
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>╪ú╪¡╪»╪½ ╪º┘ä┘à╪│╪¼┘ä┘è┘å ╪º┘ä╪¼╪»╪» ({newUsers.length})</span>
+            <span>أحدث المسجلين الجدد ({newUsers.length})</span>
           </button>
           <button
             onClick={() => setSubTab("recent_activity")}
@@ -220,7 +220,7 @@ export function ActivityLogTab() {
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>╪│╪¼┘ä ╪º┘ä┘å╪┤╪º╪╖ ┘ê╪º┘ä╪¬┘ê╪º╪¼╪»</span>
+            <span>سجل النشاط والتواجد</span>
           </button>
           <button
             onClick={() => setSubTab("admin_actions")}
@@ -231,7 +231,7 @@ export function ActivityLogTab() {
             }`}
           >
             <ScrollText className="w-3.5 h-3.5" />
-            <span>╪º┘ä╪│╪¼┘ä ╪º┘ä╪Ñ╪»╪º╪▒┘è</span>
+            <span>السجل الإداري</span>
           </button>
         </div>
 
@@ -240,7 +240,7 @@ export function ActivityLogTab() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="╪¿╪¡╪½ ┘ü┘è ╪º┘ä╪│╪¼┘ä..."
+            placeholder="بحث في السجل..."
             className="pr-9 h-9 text-xs rounded-xl"
           />
         </div>
@@ -252,13 +252,13 @@ export function ActivityLogTab() {
           <div className="p-3.5 bg-muted/30 border-b border-border/40 flex items-center justify-between">
             <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-emerald-500" />
-              <span>┘é╪º╪ª┘à╪⌐ ╪ú╪¡╪»╪½ ╪¡╪│╪º╪¿╪º╪¬ ╪º┘ä┘à╪│╪¬╪«╪»┘à┘è┘å ╪º┘ä╪¼╪»╪» ┘ê╪º┘ä╪¬╪│╪¼┘è┘ä╪º╪¬</span>
+              <span>قائمة أحدث حسابات المستخدمين الجدد والتسجيلات</span>
             </h4>
             <Badge
               variant="outline"
               className="text-[11px] font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
             >
-              {filteredNewUsers.length} ┘à╪│╪¬╪«╪»┘à
+              {filteredNewUsers.length} مستخدم
             </Badge>
           </div>
 
@@ -268,7 +268,7 @@ export function ActivityLogTab() {
             </div>
           ) : filteredNewUsers.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-xs">
-              ┘ä╪º ┘è┘ê╪¼╪» ┘à╪│╪¬╪«╪»┘à┘ê┘å ┘à╪╖╪º╪¿┘é┘ê┘å ┘ä┘ä╪¿╪¡╪½
+              لا يوجد مستخدمون مطابقون للبحث
             </div>
           ) : (
             <div className="divide-y divide-border/30">
@@ -283,7 +283,7 @@ export function ActivityLogTab() {
                       <div className="relative">
                         <UserAvatar
                           avatarUrl={u.avatar_url}
-                          fullName={u.full_name || "┘à╪│╪¬╪«╪»┘à"}
+                          fullName={u.full_name || "مستخدم"}
                           className="w-10 h-10 border border-border/60"
                         />
                         {fresh && (
@@ -298,26 +298,26 @@ export function ActivityLogTab() {
                           {u.verified && <VerifiedBadge />}
                           {fresh && (
                             <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-none text-[10px] px-2 py-0.5 rounded-full font-bold">
-                              ╪╣╪╢┘ê ╪¼╪»┘è╪» ≡ƒÄë
+                              عضو جديد 🎉
                             </Badge>
                           )}
                           {u.year && (
                             <Badge variant="outline" className="text-[10px] px-2 py-0">
-                              ╪º┘ä╪│┘å╪⌐ {u.year}
+                              السنة {u.year}
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                           <span>
-                            ╪º┘ä╪▒┘é┘à ╪º┘ä╪¼╪º┘à╪╣┘è:{" "}
+                            الرقم الجامعي:{" "}
                             <strong className="font-mono text-foreground/90">
                               {formatUnivNumber(u.university_number, u.id, false, true) ||
-                                "╪║┘è╪▒ ┘à╪¡╪»╪»"}
+                                "غير محدد"}
                             </strong>
                           </span>
                           {u.major && (
                             <span>
-                              ╪º┘ä╪¬╪«╪╡╪╡:{" "}
+                              التخصص:{" "}
                               <strong className="text-foreground/90">
                                 {majorLabel(u.major) || u.major}
                               </strong>
@@ -334,7 +334,7 @@ export function ActivityLogTab() {
 
                     <div className="text-left shrink-0">
                       <span className="text-[11px] text-muted-foreground font-mono block">
-                        ╪º┘å╪╢┘à: {format(new Date(u.created_at), "yyyy/MM/dd HH:mm")}
+                        انضم: {format(new Date(u.created_at), "yyyy/MM/dd HH:mm")}
                       </span>
                       <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 block">
                         {formatArabicTimeAgo(u.created_at)}
@@ -354,13 +354,13 @@ export function ActivityLogTab() {
           <div className="p-3.5 bg-muted/30 border-b border-border/40 flex items-center justify-between">
             <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
               <Clock className="w-4 h-4 text-primary" />
-              <span>╪│╪¼┘ä ╪º┘ä╪¬┘ü╪º╪╣┘ä ┘ê╪º┘ä╪¬┘ê╪º╪¼╪» ╪º┘ä╪ú╪«┘è╪▒ ╪¿╪º┘ä┘à┘å╪╡╪⌐</span>
+              <span>سجل التفاعل والتواجد الأخير بالمنصة</span>
             </h4>
             <Badge
               variant="outline"
               className="text-[11px] font-mono bg-primary/10 text-primary border-primary/20"
             >
-              {filteredTimeline.length} ┘å╪┤╪º╪╖
+              {filteredTimeline.length} نشاط
             </Badge>
           </div>
 
@@ -370,7 +370,7 @@ export function ActivityLogTab() {
             </div>
           ) : filteredTimeline.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-xs">
-              ┘ä╪º ┘è┘ê╪¼╪» ┘å╪┤╪º╪╖ ┘à╪│╪¼┘ä ╪¿╪╣╪»
+              لا يوجد نشاط مسجل بعد
             </div>
           ) : (
             <div className="divide-y divide-border/30">
@@ -390,7 +390,7 @@ export function ActivityLogTab() {
                         <span className="font-bold text-sm text-foreground">{item.userName}</span>
                         {item.year && (
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            ╪│┘å╪⌐ {item.year}
+                            سنة {item.year}
                           </Badge>
                         )}
                         <Badge
@@ -430,13 +430,13 @@ export function ActivityLogTab() {
           <div className="p-3.5 bg-muted/30 border-b border-border/40 flex items-center justify-between">
             <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
               <ScrollText className="w-4 h-4 text-amber-500" />
-              <span>╪│╪¼┘ä ╪º┘ä╪Ñ╪¼╪▒╪º╪í╪º╪¬ ┘ê╪º┘ä╪¬╪╣╪»┘è┘ä╪º╪¬ ╪º┘ä╪Ñ╪»╪º╪▒┘è╪⌐</span>
+              <span>سجل الإجراءات والتعديلات الإدارية</span>
             </h4>
             <Badge
               variant="outline"
               className="text-[11px] font-mono bg-amber-500/10 text-amber-600 border-amber-500/20"
             >
-              {adminActions.length} ╪Ñ╪¼╪▒╪º╪í
+              {adminActions.length} إجراء
             </Badge>
           </div>
 
@@ -446,7 +446,7 @@ export function ActivityLogTab() {
             </div>
           ) : adminActions.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-xs">
-              ┘ä╪º ┘è┘ê╪¼╪» ┘å╪┤╪º╪╖ ╪Ñ╪»╪º╪▒┘è ╪¿╪╣╪»
+              لا يوجد نشاط إداري بعد
             </div>
           ) : (
             <div className="divide-y divide-border/30">
@@ -462,7 +462,7 @@ export function ActivityLogTab() {
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-foreground">{a.adminName}</span>
-                        <span className="text-muted-foreground">╪ú╪¼╪▒┘ë</span>
+                        <span className="text-muted-foreground">أجرى</span>
                         <Badge
                           variant="secondary"
                           className="font-bold text-[10px] bg-muted text-foreground"
@@ -471,7 +471,7 @@ export function ActivityLogTab() {
                         </Badge>
                         {a.targetName && (
                           <>
-                            <span className="text-muted-foreground">╪╣┘ä┘ë</span>
+                            <span className="text-muted-foreground">على</span>
                             <span className="font-bold text-foreground">{a.targetName}</span>
                           </>
                         )}
@@ -485,7 +485,7 @@ export function ActivityLogTab() {
                     typeof a.details === "object" &&
                     "reason" in (a.details as Record<string, unknown>) && (
                       <div className="text-xs text-foreground/90 bg-muted/40 border border-border/40 rounded-xl p-2.5 mt-0.5 w-full md:w-3/4">
-                        <span className="text-muted-foreground mr-1">╪º┘ä╪│╪¿╪¿:</span>
+                        <span className="text-muted-foreground mr-1">السبب:</span>
                         {String((a.details as Record<string, unknown>).reason)}
                       </div>
                     )}

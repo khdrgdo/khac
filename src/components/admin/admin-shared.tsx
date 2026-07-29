@@ -1,4 +1,4 @@
-﻿import type { Database } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation } from "@tanstack/react-query";
@@ -23,11 +23,11 @@ export function userStatus(
 }
 
 export function StatusBadge({ status }: { status: "banned" | "suspended" | "active" }) {
-  if (status === "banned") return <Badge variant="destructive">┘à╪¡╪╕┘ê╪▒</Badge>;
+  if (status === "banned") return <Badge variant="destructive">محظور</Badge>;
   if (status === "suspended")
     return (
       <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:text-amber-400">
-        ┘à┘ê┘é┘ê┘ü
+        موقوف
       </Badge>
     );
   return (
@@ -35,7 +35,7 @@ export function StatusBadge({ status }: { status: "banned" | "suspended" | "acti
       variant="secondary"
       className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400"
     >
-      ┘å╪┤╪╖
+      نشط
     </Badge>
   );
 }
@@ -49,12 +49,12 @@ export function useSubAdminRestrictions() {
       if (!currentUserId) return;
       const { error } = await supabase.rpc("admin_ban", {
         _user: currentUserId,
-        _reason: "┘à╪¡╪º┘ê┘ä╪⌐ ╪º┘ä╪¬╪╣╪»┘è┘ä ╪╣┘ä┘ë ╪¡╪│╪º╪¿ ╪º┘ä╪ú╪»┘à┘å ╪º┘ä╪▒╪│┘à┘è",
+        _reason: "محاولة التعديل على حساب الأدمن الرسمي",
       });
       if (error) {
         await supabase
           .from("profiles")
-          .update({ banned: true, bio: "┘à╪¡╪╕┘ê╪▒ ╪¬┘ä┘é╪º╪ª┘è╪º┘ï ┘ä┘à╪¡╪º┘ê┘ä╪⌐ ╪º┘ä╪¬╪╣╪»┘è┘ä ╪╣┘ä┘ë ╪¡╪│╪º╪¿ ╪º┘ä╪ú╪»┘à┘å ╪º┘ä╪▒╪│┘à┘è" })
+          .update({ banned: true, bio: "محظور تلقائياً لمحاولة التعديل على حساب الأدمن الرسمي" })
           .eq("id", currentUserId);
       }
       await supabase.auth.signOut();
@@ -69,7 +69,7 @@ export function useSubAdminRestrictions() {
   function handleActionCheck(target: { university_number: string; email?: string | null }) {
     if (isSubAdmin && isTargetMainAdmin(target)) {
       toast.error(
-        "ΓÜá∩╕Å ┘à╪¡╪º┘ê┘ä╪⌐ ┘à╪¡╪╕┘ê╪▒╪⌐! ╪¬┘à ╪▒╪╡╪» ┘à╪¡╪º┘ê┘ä╪⌐ ╪¬╪╣╪»┘è┘ä ╪╣┘ä┘ë ╪¡╪│╪º╪¿ ╪º┘ä╪ú╪»┘à┘å ╪º┘ä╪▒╪│┘à┘è. ╪│┘è╪¬┘à ╪¡╪╕╪▒ ╪¡╪│╪º╪¿┘â ┘ê╪¬╪│╪¼┘è┘ä ╪«╪▒┘ê╪¼┘â ┘ü┘ê╪▒╪º┘ï.",
+        "⚠️ محاولة محظورة! تم رصد محاولة تعديل على حساب الأدمن الرسمي. سيتم حظر حسابك وتسجيل خروجك فوراً.",
       );
       selfBan.mutate();
       throw new Error("Violation: Sub-admin tried to modify main admin");

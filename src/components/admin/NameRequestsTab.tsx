@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatUnivNumber } from "@/lib/privacy";
@@ -36,13 +36,13 @@ export function NameRequestsTab() {
     try {
       await approveNameChangeRequest(req.id);
       toast.success(
-        `╪¬┘à╪¬ ╪º┘ä┘à┘ê╪º┘ü┘é╪⌐ ╪╣┘ä┘ë ╪¬╪║┘è┘è╪▒ ╪º╪│┘à "${req.current_name}" ╪Ñ┘ä┘ë "${req.requested_name}" ╪¿┘å╪¼╪º╪¡!`,
+        `تمت الموافقة على تغيير اسم "${req.current_name}" إلى "${req.requested_name}" بنجاح!`,
       );
       refetch();
       qc.invalidateQueries({ queryKey: ["profiles"] });
       qc.invalidateQueries({ queryKey: ["public-profiles"] });
     } catch (e) {
-      toast.error((e as Error).message || "╪¡╪»╪½ ╪«╪╖╪ú ╪ú╪½┘å╪º╪í ╪¬┘å┘ü┘è╪░ ╪º┘ä╪╖┘ä╪¿");
+      toast.error((e as Error).message || "حدث خطأ أثناء تنفيذ الطلب");
     } finally {
       setProcessingId(null);
     }
@@ -50,7 +50,7 @@ export function NameRequestsTab() {
 
   const handleReject = async (req: NameChangeRequest) => {
     await rejectNameChangeRequest(req.id);
-    toast.info(`╪¬┘à ╪▒┘ü╪╢ ╪╖┘ä╪¿ ╪¬╪║┘è┘è╪▒ ╪º┘ä╪º╪│┘à ┘ä┘ä┘à╪│╪¬╪«╪»┘à "${req.current_name}"`);
+    toast.info(`تم رفض طلب تغيير الاسم للمستخدم "${req.current_name}"`);
     refetch();
   };
 
@@ -68,16 +68,16 @@ export function NameRequestsTab() {
           <div>
             <h3 className="text-base font-bold flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-amber-500" />
-              ╪╖┘ä╪¿╪º╪¬ ╪¬╪║┘è┘è╪▒ ╪º┘ä╪ú╪│┘à╪º╪í
+              طلبات تغيير الأسماء
               {pendingCount > 0 && (
                 <Badge className="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 text-xs">
-                  {pendingCount} ┘é┘è╪» ╪º┘ä╪º┘å╪¬╪╕╪º╪▒
+                  {pendingCount} قيد الانتظار
                 </Badge>
               )}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              ┘à╪▒╪º╪¼╪╣╪⌐ ╪╖┘ä╪¿╪º╪¬ ╪¬╪║┘è┘è╪▒ ╪º┘ä╪ú╪│┘à╪º╪í ╪º┘ä┘à┘é╪»┘à╪⌐ ┘à┘å ╪º┘ä╪╖┘ä╪º╪¿ ┘ê╪º┘ä╪ú╪│╪º╪¬╪░╪⌐╪î ┘ê┘é╪¿┘ê┘ä┘ç╪º ╪ú┘ê ╪▒┘ü╪╢┘ç╪º ┘à╪╣ ╪Ñ╪╣╪º╪»╪⌐
-              ╪¬┘ü╪╣┘è┘ä ╪º┘ä╪¬╪║┘è┘è╪▒ ╪º┘ä┘à╪¿╪º╪┤╪▒
+              مراجعة طلبات تغيير الأسماء المقدمة من الطلاب والأساتذة، وقبولها أو رفضها مع إعادة
+              تفعيل التغيير المباشر
             </p>
           </div>
 
@@ -88,7 +88,7 @@ export function NameRequestsTab() {
               onClick={() => setFilter("pending")}
               className="h-7 text-xs"
             >
-              ┘é┘è╪» ╪º┘ä╪º┘å╪¬╪╕╪º╪▒ ({pendingCount})
+              قيد الانتظار ({pendingCount})
             </Button>
             <Button
               size="sm"
@@ -96,7 +96,7 @@ export function NameRequestsTab() {
               onClick={() => setFilter("approved")}
               className="h-7 text-xs"
             >
-              ╪º┘ä┘à┘é╪¿┘ê┘ä╪⌐
+              المقبولة
             </Button>
             <Button
               size="sm"
@@ -104,7 +104,7 @@ export function NameRequestsTab() {
               onClick={() => setFilter("rejected")}
               className="h-7 text-xs"
             >
-              ╪º┘ä┘à╪▒┘é┘ê╪╢╪⌐
+              المرقوضة
             </Button>
             <Button
               size="sm"
@@ -112,14 +112,14 @@ export function NameRequestsTab() {
               onClick={() => setFilter("all")}
               className="h-7 text-xs"
             >
-              ╪º┘ä┘â┘ä ({requests.length})
+              الكل ({requests.length})
             </Button>
           </div>
         </div>
 
         {filtered.length === 0 ? (
           <div className="text-center py-12 text-sm text-muted-foreground bg-muted/20 rounded-xl border border-dashed border-border/60">
-            ┘ä╪º ╪¬┘ê╪¼╪» ╪╖┘ä╪¿╪º╪¬ ╪¬╪║┘è┘è╪▒ ╪ú╪│┘à╪º╪í ┘ä┘ç╪░╪º ╪º┘ä┘ü┘ä╪¬╪▒ ╪¡╪º┘ä┘è╪º┘ï
+            لا توجد طلبات تغيير أسماء لهذا الفلتر حالياً
           </div>
         ) : (
           <div className="space-y-3">
@@ -131,10 +131,10 @@ export function NameRequestsTab() {
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-muted-foreground font-mono">╪º┘ä╪º╪│┘à ╪º┘ä╪¡╪º┘ä┘è:</span>
+                      <span className="text-xs text-muted-foreground font-mono">الاسم الحالي:</span>
                       <span className="font-bold text-sm text-foreground">{req.current_name}</span>
-                      <span className="text-amber-500 font-bold">ΓåÉ</span>
-                      <span className="text-xs text-muted-foreground font-mono">╪º┘ä┘à╪╖┘ä┘ê╪¿:</span>
+                      <span className="text-amber-500 font-bold">←</span>
+                      <span className="text-xs text-muted-foreground font-mono">المطلوب:</span>
                       <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold">
                         {req.requested_name}
                       </Badge>
@@ -142,7 +142,7 @@ export function NameRequestsTab() {
 
                     {req.university_number && (
                       <div className="text-xs font-mono text-muted-foreground">
-                        ╪º┘ä╪▒┘é┘à ╪º┘ä╪¼╪º┘à╪╣┘è: {formatUnivNumber(req.university_number, req.user_id, false, true)}
+                        الرقم الجامعي: {formatUnivNumber(req.university_number, req.user_id, false, true)}
                       </div>
                     )}
                   </div>
@@ -158,23 +158,23 @@ export function NameRequestsTab() {
                     className="text-xs"
                   >
                     {req.status === "approved"
-                      ? "╪¬┘à ╪º┘ä┘é╪¿┘ê┘ä ┘ê╪¬╪¡╪»┘è╪½ ╪º┘ä╪º╪│┘à"
+                      ? "تم القبول وتحديث الاسم"
                       : req.status === "rejected"
-                        ? "┘à╪▒┘ü┘ê╪╢"
-                        : "┘é┘è╪» ╪º┘ä┘à╪▒╪º╪¼╪╣╪⌐"}
+                        ? "مرفوض"
+                        : "قيد المراجعة"}
                   </Badge>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs bg-muted/30 p-2.5 rounded-lg border border-border/40">
                   <div>
                     <span className="font-semibold text-muted-foreground block mb-0.5">
-                      ╪│╪¿╪¿ ╪º┘ä╪╖┘ä╪¿:
+                      سبب الطلب:
                     </span>
                     <span className="text-foreground leading-relaxed">{req.reason}</span>
                   </div>
                   <div>
                     <span className="font-semibold text-muted-foreground block mb-0.5">
-                      ┘à╪╣┘ä┘ê┘à╪º╪¬ ╪º┘ä╪¬┘ê╪º╪╡┘ä:
+                      معلومات التواصل:
                     </span>
                     <span className="text-foreground font-mono font-medium">
                       {req.contact_info}
@@ -183,7 +183,7 @@ export function NameRequestsTab() {
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 flex-wrap gap-2">
-                  <span>╪¬╪º╪▒┘è╪« ╪º┘ä╪╖┘ä╪¿: {new Date(req.created_at).toLocaleString("ar-EG")}</span>
+                  <span>تاريخ الطلب: {new Date(req.created_at).toLocaleString("ar-EG")}</span>
 
                   {req.status === "pending" && (
                     <div className="flex items-center gap-2">
@@ -194,7 +194,7 @@ export function NameRequestsTab() {
                         disabled={processingId === req.id}
                         className="h-8 text-xs text-destructive hover:bg-destructive/10"
                       >
-                        ╪▒┘ü╪╢ ╪º┘ä╪╖┘ä╪¿
+                        رفض الطلب
                       </Button>
                       <Button
                         size="sm"
@@ -203,7 +203,7 @@ export function NameRequestsTab() {
                         className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 font-bold"
                       >
                         {processingId === req.id && <Loader2 className="w-3 h-3 animate-spin" />}
-                        ┘é╪¿┘ê┘ä ┘ê╪¬╪¡╪»┘è╪½ ╪º┘ä╪º╪│┘à
+                        قبول وتحديث الاسم
                       </Button>
                     </div>
                   )}

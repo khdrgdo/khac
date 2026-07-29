@@ -1,4 +1,4 @@
-﻿import { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -77,7 +77,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
 
         const maxLimit = isVideo ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
         if (f.size > maxLimit) {
-          toast.error(`${f.name}: ╪¡╪¼┘à ╪º┘ä┘à┘ä┘ü ┘è╪¬╪¼╪º┘ê╪▓ ╪º┘ä╪¡╪» ╪º┘ä┘à╪│┘à┘ê╪¡ (${isVideo ? "100MB" : "25MB"})`);
+          toast.error(`${f.name}: حجم الملف يتجاوز الحد المسموح (${isVideo ? "100MB" : "25MB"})`);
           continue;
         }
 
@@ -103,10 +103,10 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
           const { data: allProfiles } = await supabase.from("profiles").select("id");
           broadcastNotification({
             actorId: user.id,
-            actorName: user.user_metadata?.full_name || "╪º┘ä╪ú╪│╪¬╪º╪░",
+            actorName: user.user_metadata?.full_name || "الأستاذ",
             type: "material_added",
-            title: "╪¬╪¡╪»┘è╪½ ╪¼╪»┘è╪» ┘ü┘è ╪º┘ä┘à┘é╪▒╪▒ ≡ƒôä",
-            body: `╪¬┘à ╪Ñ╪╢╪º┘ü╪⌐ ┘à┘ä╪¡┘é/┘à┘ä╪«╪╡ ╪¼╪»┘è╪» (${baseTitle}) ┘ü┘è ╪º┘ä┘à┘é╪▒╪▒ ╪º┘ä╪»╪▒╪º╪│┘è.`,
+            title: "تحديث جديد في المقرر 📄",
+            body: `تم إضافة ملحق/ملخص جديد (${baseTitle}) في المقرر الدراسي.`,
             link: `/courses/${courseId}`,
             targetUserIds: (allProfiles ?? []).map((p) => p.id),
           });
@@ -114,7 +114,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       }
 
       qc.invalidateQueries({ queryKey: ["course_files", courseId] });
-      toast.success("╪¬┘à ╪▒┘ü╪╣ ╪º┘ä┘à┘ä┘ü ╪¿┘å╪¼╪º╪¡ ┘à╪╣ ╪º┘ä╪¬╪╣┘ä┘è┘é");
+      toast.success("تم رفع الملف بنجاح مع التعليق");
       setDialogOpen(false);
       setCustomFileName("");
       setSelectedFileNote("");
@@ -127,7 +127,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
   async function downloadOrPreview(f: CourseFile) {
     const url = await signedUrl("course-files", f.url, 600);
     if (!url) {
-      toast.error("╪¬╪╣╪░┘æ╪▒ ╪¬┘ê┘ä┘è╪» ╪▒╪º╪¿╪╖ ╪º┘ä╪¬┘å╪▓┘è┘ä");
+      toast.error("تعذّر توليد رابط التنزيل");
       return;
     }
 
@@ -145,7 +145,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       await supabase.from("course_links").delete().eq("id", f.id);
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¡╪░┘ü ╪º┘ä┘à┘ä┘ü ╪¿┘å╪¼╪º╪¡");
+      toast.success("تم حذف الملف بنجاح");
       qc.invalidateQueries({ queryKey: ["course_files", courseId] });
     },
   });
@@ -161,7 +161,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¬╪╣╪»┘è┘ä ╪º┘ä┘à┘ä┘ü ╪¿┘å╪¼╪º╪¡");
+      toast.success("تم تعديل الملف بنجاح");
       qc.invalidateQueries({ queryKey: ["course_files", courseId] });
       setEditingFile(null);
     },
@@ -186,34 +186,34 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       {canEdit && (
         <div className="flex justify-between items-center bg-muted/30 p-3 rounded-xl border">
           <span className="text-xs font-semibold text-muted-foreground">
-            ╪▒┘ü╪╣ ┘à┘ä┘ü╪º╪¬ PDF╪î ┘à╪░┘â╪▒╪º╪¬╪î ╪╣╪▒┘ê╪╢ ╪¬┘é╪»┘è┘à┘è╪⌐╪î ┘ê┘ü┘è╪»┘è┘ê┘ç╪º╪¬ ┘é╪╡┘è╪▒╪⌐ ┘ä┘ä┘à┘é╪▒╪▒
+            رفع ملفات PDF، مذكرات، عروض تقديمية، وفيديوهات قصيرة للمقرر
           </span>
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="rounded-xl gap-1">
-                <Upload className="w-4 h-4" /> ╪▒┘ü╪╣ ┘à┘ä┘ü ┘ä┘ä┘à┘é╪▒╪▒
+                <Upload className="w-4 h-4" /> رفع ملف للمقرر
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[450px]">
               <DialogHeader>
-                <DialogTitle>╪▒┘ü╪╣ ┘à┘ä┘ü ╪ú┘ê ┘ü┘è╪»┘è┘ê ╪»╪▒╪º╪│┘è</DialogTitle>
+                <DialogTitle>رفع ملف أو فيديو دراسي</DialogTitle>
               </DialogHeader>
 
               <div className="space-y-3 pt-2">
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">╪╣┘å┘ê╪º┘å ╪º┘ä┘à┘ä┘ü / ╪º┘ä╪¬╪│┘à┘è╪⌐ *</Label>
+                  <Label className="text-xs font-semibold">عنوان الملف / التسمية *</Label>
                   <Input
                     value={customFileName}
                     onChange={(e) => setCustomFileName(e.target.value)}
-                    placeholder="┘à╪½╪º┘ä: ┘à┘ä╪«╪╡ ╪º┘ä┘ü╪╡┘ä ╪º┘ä╪ú┘ê┘ä PDF╪î ╪┤╪▒╪¡ ┘ü┘è╪»┘è┘ê ┘ä┘ä┘à╪│╪ú┘ä╪⌐..."
+                    placeholder="مثال: ملخص الفصل الأول PDF، شرح فيديو للمسألة..."
                     className="rounded-xl"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">
-                    ╪º╪«╪¬╪▒ ╪º┘ä┘à┘ä┘ü (PDF, Word, PPT, Video) *
+                    اختر الملف (PDF, Word, PPT, Video) *
                   </Label>
                   <input
                     ref={fileRef}
@@ -222,16 +222,16 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                     className="block w-full text-xs text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer border rounded-xl p-1"
                   />
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    ┘è╪»╪╣┘à ╪¼┘à┘è╪╣ ╪º┘ä┘à╪│╪¬┘å╪»╪º╪¬ ╪¡╪¬┘ë 25MB╪î ┘ê╪º┘ä┘ü┘è╪»┘è┘ê┘ç╪º╪¬ ╪¡╪¬┘ë 100MB.
+                    يدعم جميع المستندات حتى 25MB، والفيديوهات حتى 100MB.
                   </p>
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">┘à┘ä╪º╪¡╪╕╪⌐ ╪ú┘ê ╪¬╪╣┘ä┘è┘é ┘ä┘ä╪╖┘ä╪º╪¿ (╪º╪«╪¬┘è╪º╪▒┘è)</Label>
+                  <Label className="text-xs font-semibold">ملاحظة أو تعليق للطلاب (اختياري)</Label>
                   <Textarea
                     value={selectedFileNote}
                     onChange={(e) => setSelectedFileNote(e.target.value)}
-                    placeholder="╪º┘â╪¬╪¿ ╪ú┘è╪⌐ ┘à┘ä╪º╪¡╪╕╪º╪¬ ┘ç╪º┘à┘æ╪⌐ ┘è╪¼╪¿ ╪╣┘ä┘ë ╪º┘ä╪╖┘ä╪º╪¿ ┘é╪▒╪º╪í╪¬┘ç╪º ╪╣┘å╪» ╪¬┘å╪▓┘è┘ä ┘ç╪░╪º ╪º┘ä┘à┘ä┘ü..."
+                    placeholder="اكتب أية ملاحظات هامّة يجب على الطلاب قراءتها عند تنزيل هذا الملف..."
                     rows={2}
                     className="resize-none rounded-xl"
                   />
@@ -244,7 +244,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                   disabled={uploading}
                   className="rounded-xl font-semibold w-full"
                 >
-                  {uploading && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />} ╪▒┘ü╪╣ ╪º┘ä┘à┘ä┘ü ╪º┘ä╪ó┘å
+                  {uploading && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />} رفع الملف الآن
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -259,7 +259,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       ) : !files || files.length === 0 ? (
         <div className="text-center py-8 border rounded-2xl border-dashed bg-muted/5">
           <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">┘ä╪º ╪¬┘ê╪¼╪» ┘à┘ä┘ü╪º╪¬ ┘à╪▒┘ü┘ê╪╣╪⌐ ┘ä┘ç╪░╪º ╪º┘ä┘à┘é╪▒╪▒ ╪¿╪╣╪»</p>
+          <p className="text-xs text-muted-foreground">لا توجد ملفات مرفوعة لهذا المقرر بعد</p>
         </div>
       ) : (
         <div className="grid gap-2.5">
@@ -308,7 +308,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                         <div className="bg-muted/40 border rounded-lg p-2 text-xs text-foreground/90 flex items-start gap-1.5 my-1">
                           <MessageSquare className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
                           <p className="leading-relaxed">
-                            <strong className="text-primary font-semibold">┘à┘ä╪º╪¡╪╕╪⌐ ╪º┘ä╪ú╪│╪¬╪º╪░:</strong>{" "}
+                            <strong className="text-primary font-semibold">ملاحظة الأستاذ:</strong>{" "}
                             {parsed.note}
                           </p>
                         </div>
@@ -316,7 +316,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
 
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> ╪¬┘à ╪º┘ä╪▒┘ü╪╣:{" "}
+                          <Clock className="w-3 h-3" /> تم الرفع:{" "}
                           {formatDistanceToNow(new Date(f.created_at), {
                             addSuffix: true,
                             locale: ar,
@@ -335,12 +335,12 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                     >
                       {fileInfo.isVideo ? (
                         <>
-                          ╪¬╪┤╪║┘è┘ä ╪º┘ä┘ü┘è╪»┘è┘ê{" "}
+                          تشغيل الفيديو{" "}
                           <Play className="w-3.5 h-3.5 text-purple-600 fill-purple-600" />
                         </>
                       ) : (
                         <>
-                          ╪¬╪¡┘à┘è┘ä/╪¬┘å╪▓┘è┘ä <Download className="w-3.5 h-3.5" />
+                          تحميل/تنزيل <Download className="w-3.5 h-3.5" />
                         </>
                       )}
                     </Button>
@@ -352,7 +352,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                           variant="ghost"
                           className="h-8 w-8 text-amber-500 hover:bg-amber-500/10"
                           onClick={() => togglePin.mutate(f)}
-                          title={f.is_important ? "╪Ñ┘ä╪║╪º╪í ╪º┘ä╪¬╪½╪¿┘è╪¬" : "╪¬╪½╪¿┘è╪¬ ╪º┘ä┘à┘ä┘ü"}
+                          title={f.is_important ? "إلغاء التثبيت" : "تثبيت الملف"}
                         >
                           <Pin className={`w-3.5 h-3.5 ${f.is_important ? "fill-amber-500" : ""}`} />
                         </Button>
@@ -365,7 +365,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
                             setEditTitle(parsed.title);
                             setEditNote(parsed.note ?? "");
                           }}
-                          title="╪¬╪╣╪»┘è┘ä ╪º┘ä┘à┘ä┘ü"
+                          title="تعديل الملف"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
@@ -391,11 +391,11 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       <Dialog open={!!editingFile} onOpenChange={() => setEditingFile(null)}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>╪¬╪╣╪»┘è┘ä ╪º┘ä┘à┘ä┘ü</DialogTitle>
+            <DialogTitle>تعديل الملف</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">╪╣┘å┘ê╪º┘å ╪º┘ä┘à┘ä┘ü *</Label>
+              <Label className="text-xs font-semibold">عنوان الملف *</Label>
               <Input
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
@@ -403,7 +403,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">┘à┘ä╪º╪¡╪╕╪⌐ ╪º┘ä╪ú╪│╪¬╪º╪░ (╪º╪«╪¬┘è╪º╪▒┘è)</Label>
+              <Label className="text-xs font-semibold">ملاحظة الأستاذ (اختياري)</Label>
               <Textarea
                 value={editNote}
                 onChange={(e) => setEditNote(e.target.value)}
@@ -414,7 +414,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
           </div>
           <DialogFooter className="pt-3">
             <Button variant="outline" onClick={() => setEditingFile(null)} className="rounded-xl">
-              ╪Ñ┘ä╪║╪º╪í
+              إلغاء
             </Button>
             <Button
               onClick={() => editFile.mutate()}
@@ -422,7 +422,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
               className="rounded-xl font-semibold"
             >
               {editFile.isPending && <Loader2 className="w-4 h-4 animate-spin ml-1.5" />}
-              ╪¡┘ü╪╕ ╪º┘ä╪¬╪╣╪»┘è┘ä╪º╪¬
+              حفظ التعديلات
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -432,13 +432,13 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
       <AlertDialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>╪¡╪░┘ü ╪º┘ä┘à┘ä┘ü</AlertDialogTitle>
+            <AlertDialogTitle>حذف الملف</AlertDialogTitle>
             <AlertDialogDescription>
-              ╪│┘è╪¬┘à ╪¡╪░┘ü ┘ç╪░╪º ╪º┘ä┘à┘ä┘ü ┘å┘ç╪º╪ª┘è╪º┘ï ┘à┘å ╪º┘ä╪¬╪«╪▓┘è┘å. ┘ä╪º ┘è┘à┘â┘å ╪º┘ä╪¬╪▒╪º╪¼╪╣ ╪╣┘å ┘ç╪░╪º ╪º┘ä╪Ñ╪¼╪▒╪º╪í.
+              سيتم حذف هذا الملف نهائياً من التخزين. لا يمكن التراجع عن هذا الإجراء.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>╪Ñ┘ä╪║╪º╪í</AlertDialogCancel>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (fileToDelete) del.mutate(fileToDelete);
@@ -446,7 +446,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
               }}
               className="bg-destructive hover:bg-destructive/90"
             >
-              ╪¡╪░┘ü
+              حذف
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -458,7 +458,7 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
           <DialogContent className="sm:max-w-[700px] p-4">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Video className="w-5 h-5 text-purple-600" /> ┘à╪┤╪║┘ä ╪º┘ä┘ü┘è╪»┘è┘ê ╪º┘ä╪┤╪º╪▒╪¡
+                <Video className="w-5 h-5 text-purple-600" /> مشغل الفيديو الشارح
               </DialogTitle>
             </DialogHeader>
             <div className="aspect-video w-full bg-black rounded-xl overflow-hidden mt-2">

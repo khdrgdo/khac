@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,10 +64,10 @@ export function QuestionCard({
   // Add comment
   const addComment = useMutation({
     mutationFn: async () => {
-      if (!user || !replyText.trim()) throw new Error("┘è╪▒╪¼┘ë ┘â╪¬╪º╪¿╪⌐ ╪º┘ä╪▒╪»");
+      if (!user || !replyText.trim()) throw new Error("يرجى كتابة الرد");
       if (isSubAdmin)
         throw new Error(
-          "╪¡╪│╪º╪¿ ╪º┘ä┘à╪┤╪▒┘ü ╪º┘ä┘à╪│╪º╪╣╪» (╪│╪¿ ╪ú╪»┘à┘å) ┘à╪«╪╡╪╡ ┘ä┘ä╪Ñ╪┤╪▒╪º┘ü ┘ê╪º┘ä┘à╪▒╪º┘é╪¿╪⌐ ┘ü┘é╪╖ ┘ê┘ä╪º ┘è┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪º┘ä┘à╪┤╪º╪▒┘â╪⌐ ╪ú┘ê ╪º┘ä╪¬╪╣┘ä┘è┘é.",
+          "حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط ولا يملك صلاحية المشاركة أو التعليق.",
         );
       const { error } = await supabase.from("comments").insert({
         post_id: q.id,
@@ -80,9 +80,9 @@ export function QuestionCard({
         createNotification({
           recipientId: q.author_id,
           actorId: user.id,
-          actorName: user.user_metadata?.full_name || "╪▓┘à┘è┘ä",
+          actorName: user.user_metadata?.full_name || "زميل",
           type: "post_comment",
-          title: "╪▒╪» ╪¼╪»┘è╪» ╪╣┘ä┘ë ╪│╪ñ╪º┘ä┘â ┘ü┘è ╪º┘ä┘à┘é╪▒╪▒ ≡ƒÆ¼",
+          title: "رد جديد على سؤالك في المقرر 💬",
           body: replyText.trim(),
           link: `/courses/${courseId}?tab=discussions`,
         });
@@ -90,7 +90,7 @@ export function QuestionCard({
     },
     onSuccess: () => {
       setReplyText("");
-      toast.success("╪¬┘à ╪Ñ╪╢╪º┘ü╪⌐ ╪Ñ╪¼╪º╪¿╪¬┘â/╪▒╪»┘â");
+      toast.success("تم إضافة إجابتك/ردك");
       qc.invalidateQueries({ queryKey: ["course_question_comments", q.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -103,12 +103,12 @@ export function QuestionCard({
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¡╪░┘ü ╪º┘ä╪▒╪»");
+      toast.success("تم حذف الرد");
       qc.invalidateQueries({ queryKey: ["course_question_comments", q.id] });
     },
   });
 
-  const authorName = q.author?.full_name ?? "┘à╪│╪¬╪«╪»┘à";
+  const authorName = q.author?.full_name ?? "مستخدم";
 
   return (
     <Card className="border-muted/80 shadow-sm">
@@ -129,7 +129,7 @@ export function QuestionCard({
                     variant="secondary"
                     className="bg-primary/10 text-primary text-[10px] px-1.5 py-0 font-medium"
                   >
-                    ╪ú╪│╪¬╪º╪░ ╪º┘ä┘à┘é╪▒╪▒
+                    أستاذ المقرر
                   </Badge>
                 )}
               </div>
@@ -163,7 +163,7 @@ export function QuestionCard({
             className="flex items-center gap-1 hover:text-primary font-medium"
           >
             <MessageSquare className="w-3.5 h-3.5" />
-            <span>╪º┘ä╪Ñ╪¼╪º╪¿╪º╪¬ ┘ê╪º┘ä╪▒╪»┘ê╪» ({comments?.length ?? 0})</span>
+            <span>الإجابات والردود ({comments?.length ?? 0})</span>
           </button>
         </div>
 
@@ -177,7 +177,7 @@ export function QuestionCard({
             ) : comments && comments.length > 0 ? (
               <div className="space-y-2 border-r-2 border-primary/20 pr-3 mr-1">
                 {comments.map((c) => {
-                  const cName = c.author?.full_name ?? "┘à╪│╪¬╪«╪»┘à";
+                  const cName = c.author?.full_name ?? "مستخدم";
                   const isCommentTeacher = c.author_id === teacherId;
                   const canDelComment = isAdmin || c.author_id === user?.id;
 
@@ -199,11 +199,11 @@ export function QuestionCard({
                               variant="secondary"
                               className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] px-1.5 py-0"
                             >
-                              ╪ú╪│╪¬╪º╪░ ╪º┘ä┘à┘é╪▒╪▒
+                              أستاذ المقرر
                             </Badge>
                           )}
                           <span className="text-[10px] text-muted-foreground">
-                            ΓÇó{" "}
+                            •{" "}
                             {formatDistanceToNow(new Date(c.created_at), {
                               addSuffix: true,
                               locale: ar,
@@ -233,15 +233,15 @@ export function QuestionCard({
             {/* Add Answer Input */}
             {isSubAdmin ? (
               <p className="text-xs text-muted-foreground font-semibold py-2">
-                ╪¡╪│╪º╪¿ ╪º┘ä┘à╪┤╪▒┘ü ╪º┘ä┘à╪│╪º╪╣╪» (╪│╪¿ ╪ú╪»┘à┘å) ┘à╪«╪╡╪╡ ┘ä┘ä╪Ñ╪┤╪▒╪º┘ü ┘ê╪º┘ä┘à╪▒╪º┘é╪¿╪⌐ ┘ü┘é╪╖ ┘ê┘ä╪º ┘è┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪º┘ä┘à╪┤╪º╪▒┘â╪⌐ ╪ú┘ê
-                ╪º┘ä╪¬╪╣┘ä┘è┘é.
+                حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط ولا يملك صلاحية المشاركة أو
+                التعليق.
               </p>
             ) : (
               <div className="flex gap-2 items-center pt-1">
                 <Input
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="╪º┘â╪¬╪¿ ╪Ñ╪¼╪º╪¿╪⌐ ╪ú┘ê ╪¬╪╣┘ä┘è┘é╪º┘ï ╪╣┘ä┘ë ┘ç╪░╪º ╪º┘ä╪│╪ñ╪º┘ä..."
+                  placeholder="اكتب إجابة أو تعليقاً على هذا السؤال..."
                   className="h-9 text-xs rounded-xl flex-1"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
@@ -261,7 +261,7 @@ export function QuestionCard({
                   ) : (
                     <>
                       <Send className="w-3.5 h-3.5" />
-                      <span>╪Ñ╪¼╪º╪¿╪⌐</span>
+                      <span>إجابة</span>
                     </>
                   )}
                 </Button>

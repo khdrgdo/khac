@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,10 +56,10 @@ export function DiscussionsTab({
   // Post question mutation
   const postQuestion = useMutation({
     mutationFn: async () => {
-      if (!user || !questionContent.trim()) throw new Error("┘è╪▒╪¼┘ë ┘â╪¬╪º╪¿╪⌐ ┘å╪╡ ╪º┘ä╪│╪ñ╪º┘ä");
+      if (!user || !questionContent.trim()) throw new Error("يرجى كتابة نص السؤال");
       if (isSubAdmin)
         throw new Error(
-          "╪¡╪│╪º╪¿ ╪º┘ä┘à╪┤╪▒┘ü ╪º┘ä┘à╪│╪º╪╣╪» (╪│╪¿ ╪ú╪»┘à┘å) ┘à╪«╪╡╪╡ ┘ä┘ä╪Ñ╪┤╪▒╪º┘ü ┘ê╪º┘ä┘à╪▒╪º┘é╪¿╪⌐ ┘ü┘é╪╖ ┘à┘å ┘ä┘ê╪¡╪⌐ ╪º┘ä╪¬╪¡┘â┘à╪î ┘ê┘ä╪º ┘è┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪╖╪▒╪¡ ╪ú╪│╪ª┘ä╪⌐.",
+          "حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط من لوحة التحكم، ولا يملك صلاحية طرح أسئلة.",
         );
       const fullText = `${coursePrefix} ${questionContent.trim()}`;
       const { error } = await supabase.from("posts").insert({
@@ -71,7 +71,7 @@ export function DiscussionsTab({
     },
     onSuccess: () => {
       setQuestionContent("");
-      toast.success("╪¬┘à ┘å╪┤╪▒ ╪│╪ñ╪º┘ä┘â ┘ü┘è ╪º┘ä┘à┘é╪▒╪▒ ╪¿┘å╪¼╪º╪¡");
+      toast.success("تم نشر سؤالك في المقرر بنجاح");
       qc.invalidateQueries({ queryKey: ["course_questions", courseId] });
     },
     onError: (err: Error) => toast.error(err.message),
@@ -84,7 +84,7 @@ export function DiscussionsTab({
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¡╪░┘ü ╪º┘ä╪│╪ñ╪º┘ä");
+      toast.success("تم حذف السؤال");
       qc.invalidateQueries({ queryKey: ["course_questions", courseId] });
     },
   });
@@ -95,8 +95,8 @@ export function DiscussionsTab({
       {isSubAdmin ? (
         <Card className="border-muted bg-card">
           <CardContent className="p-4 text-center text-xs text-muted-foreground font-semibold">
-            ╪¡╪│╪º╪¿ ╪º┘ä┘à╪┤╪▒┘ü ╪º┘ä┘à╪│╪º╪╣╪» (╪│╪¿ ╪ú╪»┘à┘å) ┘à╪«╪╡╪╡ ┘ä┘ä╪Ñ╪┤╪▒╪º┘ü ┘ê╪º┘ä┘à╪▒╪º┘é╪¿╪⌐ ┘ü┘é╪╖ ┘ê┘ä╪º ┘è┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪╖╪▒╪¡ ╪º┘ä╪ú╪│╪ª┘ä╪⌐ ╪ú┘ê
-            ╪º┘ä┘à╪┤╪º╪▒┘â╪⌐.
+            حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط ولا يملك صلاحية طرح الأسئلة أو
+            المشاركة.
           </CardContent>
         </Card>
       ) : (
@@ -104,12 +104,12 @@ export function DiscussionsTab({
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2 text-sm font-bold text-foreground">
               <HelpCircle className="w-5 h-5 text-primary" />
-              <span>╪╖╪▒╪¡ ╪│╪ñ╪º┘ä ╪ú┘ê ╪º╪│╪¬┘ü╪│╪º╪▒ ╪¡┘ê┘ä ╪º┘ä┘à┘é╪▒╪▒</span>
+              <span>طرح سؤال أو استفسار حول المقرر</span>
             </div>
             <RichTextEditor
               content={questionContent}
               onChange={setQuestionContent}
-              placeholder="╪º┘â╪¬╪¿ ╪│╪ñ╪º┘ä┘â ┘ç┘å╪º ┘ä┘è╪│╪¬╪╖┘è╪╣ ╪º┘ä╪╖┘ä╪º╪¿ ┘ê╪ú╪│╪¬╪º╪░ ╪º┘ä┘à┘é╪▒╪▒ ╪º┘ä╪Ñ╪¼╪º╪¿╪⌐ ╪╣┘ä┘è┘ç..."
+              placeholder="اكتب سؤالك هنا ليستطيع الطلاب وأستاذ المقرر الإجابة عليه..."
             />
             <div className="flex justify-end">
               <Button
@@ -118,8 +118,8 @@ export function DiscussionsTab({
                 disabled={!questionContent.trim() || postQuestion.isPending}
                 className="rounded-xl font-semibold text-xs gap-1.5"
               >
-                {postQuestion.isPending && <Loader2 className="w-4 h-4 animate-spin" />} ╪Ñ╪▒╪│╪º┘ä
-                ╪º┘ä╪│╪ñ╪º┘ä
+                {postQuestion.isPending && <Loader2 className="w-4 h-4 animate-spin" />} إرسال
+                السؤال
               </Button>
             </div>
           </CardContent>
@@ -135,10 +135,10 @@ export function DiscussionsTab({
         <div className="text-center py-10 border rounded-2xl border-dashed bg-muted/5">
           <HelpCircle className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
           <p className="text-sm font-semibold text-foreground">
-            ┘ä╪º ╪¬┘ê╪¼╪» ╪ú╪│╪ª┘ä╪⌐ ╪ú┘ê ┘å┘é╪º╪┤╪º╪¬ ┘ü┘è ┘ç╪░╪º ╪º┘ä┘à┘é╪▒╪▒ ╪¿╪╣╪»
+            لا توجد أسئلة أو نقاشات في هذا المقرر بعد
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            ┘â┘å ╪ú┘ê┘ä ┘à┘å ┘è╪╖╪▒╪¡ ╪│╪ñ╪º┘ä╪º┘ï ┘ä┘à┘å╪º┘é╪┤╪¬┘ç ┘à╪╣ ╪º┘ä╪▓┘à┘ä╪º╪í ┘ê╪º┘ä┘à╪»╪▒╪│!
+            كن أول من يطرح سؤالاً لمناقشته مع الزملاء والمدرس!
           </p>
         </div>
       ) : (

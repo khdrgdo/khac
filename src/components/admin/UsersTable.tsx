@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
@@ -172,7 +172,7 @@ export function UsersTable() {
       const targetUser = (data ?? []).find((u) => u.id === uid);
       if (targetUser) handleActionCheck(targetUser);
       if (isSubAdmin) {
-        toast.error("╪║┘è╪▒ ┘à╪│┘à┘ê╪¡ ┘ä┘ä╪│╪¿ ╪ú╪»┘à┘å ╪¿╪¬╪╣╪»┘è┘ä ╪▒╪¬╪¿ ╪º┘ä╪Ñ╪»╪º╪▒╪⌐");
+        toast.error("غير مسموح للسب أدمن بتعديل رتب الإدارة");
         throw new Error("Unauthorized");
       }
       if (isAdmin)
@@ -180,7 +180,7 @@ export function UsersTable() {
       else await supabase.from("user_roles").insert({ user_id: uid, role: "admin" });
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪º┘ä╪¬╪¡╪»┘è╪½");
+      toast.success("تم التحديث");
       invalidate();
     },
   });
@@ -190,7 +190,7 @@ export function UsersTable() {
       const targetUser = (data ?? []).find((u) => u.id === uid);
       if (targetUser) handleActionCheck(targetUser);
       if (isSubAdmin) {
-        toast.error("┘ä╪º ╪¬┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪¬╪╣╪»┘è┘ä ╪º┘ä┘å┘é╪º╪╖ ┘â╪│╪¿ ╪ú╪»┘à┘å");
+        toast.error("لا تملك صلاحية تعديل النقاط كسب أدمن");
         throw new Error("Unauthorized");
       }
       const { error } = await supabase.rpc("admin_adjust_points", { _user: uid, _delta: delta });
@@ -205,7 +205,7 @@ export function UsersTable() {
       const targetUser = (data ?? []).find((u) => u.id === uid);
       if (targetUser) handleActionCheck(targetUser);
       if (isSubAdmin && !permissions.can_suspend) {
-        toast.error("┘ä╪º ╪¬┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪Ñ┘è┘é╪º┘ü ╪º┘ä╪¡╪│╪º╪¿╪º╪¬");
+        toast.error("لا تملك صلاحية إيقاف الحسابات");
         throw new Error("Unauthorized");
       }
       const { error } = await supabase.rpc("admin_suspend", {
@@ -216,7 +216,7 @@ export function UsersTable() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪º┘ä╪Ñ┘è┘é╪º┘ü ╪º┘ä┘à╪ñ┘é╪¬");
+      toast.success("تم الإيقاف المؤقت");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -227,14 +227,14 @@ export function UsersTable() {
       const targetUser = (data ?? []).find((u) => u.id === uid);
       if (targetUser) handleActionCheck(targetUser);
       if (isSubAdmin && !permissions.can_suspend) {
-        toast.error("┘ä╪º ╪¬┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪¡╪╕╪▒ ╪º┘ä╪¡╪│╪º╪¿╪º╪¬");
+        toast.error("لا تملك صلاحية حظر الحسابات");
         throw new Error("Unauthorized");
       }
       const { error } = await supabase.rpc("admin_ban", { _user: uid, _reason: reason });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪º┘ä╪¡╪╕╪▒");
+      toast.success("تم الحظر");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -245,14 +245,14 @@ export function UsersTable() {
       const targetUser = (data ?? []).find((u) => u.id === uid);
       if (targetUser) handleActionCheck(targetUser);
       if (isSubAdmin && !permissions.can_suspend) {
-        toast.error("┘ä╪º ╪¬┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪Ñ┘ä╪║╪º╪í ╪º┘ä╪Ñ┘è┘é╪º┘ü");
+        toast.error("لا تملك صلاحية إلغاء الإيقاف");
         throw new Error("Unauthorized");
       }
       const { error } = await supabase.rpc("admin_unban", { _user: uid });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪Ñ┘ä╪║╪º╪í ╪º┘ä╪¡╪╕╪▒/╪º┘ä╪Ñ┘è┘é╪º┘ü");
+      toast.success("تم إلغاء الحظر/الإيقاف");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -266,7 +266,7 @@ export function UsersTable() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¬╪¡╪»┘è╪½ ╪º┘ä╪│┘å╪⌐ ╪º┘ä╪»╪▒╪º╪│┘è╪⌐");
+      toast.success("تم تحديث السنة الدراسية");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -277,7 +277,7 @@ export function UsersTable() {
       const targetUser = (data ?? []).find((u) => u.id === uid);
       if (targetUser) handleActionCheck(targetUser);
       if (isSubAdmin) {
-        toast.error("╪║┘è╪▒ ┘à╪│┘à┘ê╪¡ ┘ä┘ä╪│╪¿ ╪ú╪»┘à┘å ╪¿╪¬┘ê╪½┘è┘é ╪º┘ä╪¡╪│╪º╪¿╪º╪¬");
+        toast.error("غير مسموح للسب أدمن بتوثيق الحسابات");
         throw new Error("Unauthorized");
       }
       const { error } = await supabase.rpc("admin_set_verified", {
@@ -287,7 +287,7 @@ export function UsersTable() {
       if (error) throw error;
     },
     onSuccess: (_, v) => {
-      toast.success(v.verified ? "╪¬┘à ╪¬┘ê╪½┘è┘é ╪º┘ä╪¡╪│╪º╪¿" : "╪¬┘à ╪Ñ┘ä╪║╪º╪í ╪º┘ä╪¬┘ê╪½┘è┘é");
+      toast.success(v.verified ? "تم توثيق الحساب" : "تم إلغاء التوثيق");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -298,14 +298,14 @@ export function UsersTable() {
       const targetUser = (data ?? []).find((u) => u.id === uid);
       if (targetUser) handleActionCheck(targetUser);
       if (isSubAdmin) {
-        toast.error("┘ä╪º ╪¬┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪¡╪░┘ü ╪º┘ä╪¡╪│╪º╪¿╪º╪¬ ┘â╪│╪¿ ╪ú╪»┘à┘å");
+        toast.error("لا تملك صلاحية حذف الحسابات كسب أدمن");
         throw new Error("Unauthorized");
       }
       const { error } = await supabase.rpc("admin_delete_user", { _user: uid });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪¡╪░┘ü ╪º┘ä┘à╪│╪¬╪«╪»┘à");
+      toast.success("تم حذف المستخدم");
       invalidate();
       setDetailsFor(null);
     },
@@ -361,7 +361,7 @@ export function UsersTable() {
                 : "bg-card text-muted-foreground"
             }
           >
-            ╪º┘ä┘â┘ä{" "}
+            الكل{" "}
             <Badge variant="secondary" className="mr-2 bg-black/10 text-current">
               {counts.all}
             </Badge>
@@ -376,7 +376,7 @@ export function UsersTable() {
                 : "bg-card text-muted-foreground"
             }
           >
-            ╪º┘ä╪╖┘ä╪º╪¿{" "}
+            الطلاب{" "}
             <Badge variant="secondary" className="mr-2 bg-black/10 text-current">
               {counts.students}
             </Badge>
@@ -391,7 +391,7 @@ export function UsersTable() {
                 : "bg-card text-muted-foreground"
             }
           >
-            ╪º┘ä╪ú╪│╪º╪¬╪░╪⌐{" "}
+            الأساتذة{" "}
             <Badge variant="secondary" className="mr-2 bg-black/10 text-current">
               {counts.teachers}
             </Badge>
@@ -406,7 +406,7 @@ export function UsersTable() {
                 : "bg-card text-muted-foreground"
             }
           >
-            ╪º┘ä┘à╪┤╪▒┘ü┘ê┘å{" "}
+            المشرفون{" "}
             <Badge variant="secondary" className="mr-2 bg-black/10 text-current">
               {counts.admins}
             </Badge>
@@ -421,7 +421,7 @@ export function UsersTable() {
                 : "bg-card text-muted-foreground"
             }
           >
-            ┘à╪¡╪╕┘ê╪▒/┘à┘ê┘é┘ê┘ü{" "}
+            محظور/موقوف{" "}
             <Badge variant="secondary" className="mr-2 bg-black/10 text-current">
               {counts.banned}
             </Badge>
@@ -431,21 +431,21 @@ export function UsersTable() {
         <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
           <Select value={yearFilter} onValueChange={setYearFilter}>
             <SelectTrigger className="w-[100px] bg-muted/30 border-none shadow-sm rounded-full h-10 text-sm">
-              <SelectValue placeholder="╪º┘ä╪│┘å╪⌐" />
+              <SelectValue placeholder="السنة" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">┘â┘ä ╪º┘ä╪│┘å┘ê╪º╪¬</SelectItem>
-              <SelectItem value="1">╪º┘ä╪│┘å╪⌐ 1</SelectItem>
-              <SelectItem value="2">╪º┘ä╪│┘å╪⌐ 2</SelectItem>
-              <SelectItem value="3">╪º┘ä╪│┘å╪⌐ 3</SelectItem>
-              <SelectItem value="4">╪º┘ä╪│┘å╪⌐ 4</SelectItem>
-              <SelectItem value="5">╪º┘ä╪│┘å╪⌐ 5</SelectItem>
-              <SelectItem value="6">╪º┘ä╪│┘å╪⌐ 6</SelectItem>
+              <SelectItem value="all">كل السنوات</SelectItem>
+              <SelectItem value="1">السنة 1</SelectItem>
+              <SelectItem value="2">السنة 2</SelectItem>
+              <SelectItem value="3">السنة 3</SelectItem>
+              <SelectItem value="4">السنة 4</SelectItem>
+              <SelectItem value="5">السنة 5</SelectItem>
+              <SelectItem value="6">السنة 6</SelectItem>
             </SelectContent>
           </Select>
           <div className="relative w-full sm:w-[250px]">
             <Input
-              placeholder="╪¿╪¡╪½ ╪¿╪º┘ä╪º╪│┘à ╪ú┘ê ╪º┘ä╪▒┘é┘à ╪º┘ä╪¼╪º┘à╪╣┘è..."
+              placeholder="بحث بالاسم أو الرقم الجامعي..."
               className="pr-10 bg-muted/30 border-none shadow-sm rounded-full h-10 focus-visible:ring-1 focus-visible:ring-indigo-500 text-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -463,16 +463,16 @@ export function UsersTable() {
         <Card className="border border-border/40 shadow-sm rounded-xl overflow-hidden bg-card">
           {filtered.length > 0 && (
             <div className="hidden sm:grid grid-cols-12 items-center p-4 bg-transparent border-b border-border/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-              <div className="col-span-5">╪º╪│┘à ╪º┘ä┘à╪│╪¬╪«╪»┘à (Client Name)</div>
-              <div className="col-span-3">╪¬╪º╪▒┘è╪« ╪º┘ä╪º┘å╪╢┘à╪º┘à (Date)</div>
-              <div className="col-span-2">╪º┘ä╪¬╪«╪╡╪╡ (Category)</div>
-              <div className="col-span-2 text-left pr-4">╪º┘ä╪¡╪º┘ä╪⌐ (Status)</div>
+              <div className="col-span-5">اسم المستخدم (Client Name)</div>
+              <div className="col-span-3">تاريخ الانضمام (Date)</div>
+              <div className="col-span-2">التخصص (Category)</div>
+              <div className="col-span-2 text-left pr-4">الحالة (Status)</div>
             </div>
           )}
           <div className="divide-y divide-border/40">
             {filtered.length === 0 && (
               <div className="p-8 text-center text-sm text-muted-foreground">
-                ┘ä╪º ╪¬┘ê╪¼╪» ┘å╪¬╪º╪ª╪¼ ┘ä┘ä╪¿╪¡╪½
+                لا توجد نتائج للبحث
               </div>
             )}
             {filtered.map((u) => {
@@ -499,7 +499,7 @@ export function UsersTable() {
                             variant="secondary"
                             className="h-5 px-1.5 text-[10px] bg-blue-500/10 text-blue-600 border-none hover:bg-blue-500/20"
                           >
-                            ┘à╪┤╪▒┘ü
+                            مشرف
                           </Badge>
                         )}
                         {u.roles.includes("teacher") && (
@@ -507,7 +507,7 @@ export function UsersTable() {
                             variant="outline"
                             className="h-5 px-1.5 text-[10px] bg-purple-500/10 text-purple-600 border-none hover:bg-purple-500/20"
                           >
-                            ╪ú╪│╪¬╪º╪░
+                            أستاذ
                           </Badge>
                         )}
                       </div>
@@ -526,17 +526,17 @@ export function UsersTable() {
                             <GraduationCap className="w-3 h-3" /> {majorLabel(u.major)}
                           </span>
                         )}
-                        {u.year && <span>╪º┘ä╪│┘å╪⌐ {u.year}</span>}
+                        {u.year && <span>السنة {u.year}</span>}
                       </div>
                       <div className="flex gap-3 opacity-60">
                         <span>
-                          ╪º┘å╪╢┘à: {u.created_at ? format(new Date(u.created_at), "yyyy/MM/dd") : "ΓÇö"}
+                          انضم: {u.created_at ? format(new Date(u.created_at), "yyyy/MM/dd") : "—"}
                         </span>
                         <span>
-                          ┘å╪┤╪º╪╖:{" "}
+                          نشاط:{" "}
                           {u.lastActivity
                             ? format(new Date(u.lastActivity), "yyyy/MM/dd HH:mm")
-                            : "ΓÇö"}
+                            : "—"}
                         </span>
                       </div>
                     </div>
@@ -550,7 +550,7 @@ export function UsersTable() {
                           variant="destructive"
                           className="h-6 px-2 bg-red-500/10 text-red-600 border-none hover:bg-red-500/20 shadow-none hidden sm:inline-flex"
                         >
-                          {u.warning_count} ╪Ñ┘å╪░╪º╪▒
+                          {u.warning_count} إنذار
                         </Badge>
                       )}
 
@@ -566,29 +566,29 @@ export function UsersTable() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
                           <DropdownMenuItem onClick={() => setDetailsFor(u)}>
-                            <Eye className="w-4 h-4" /> ╪º┘ä╪¬┘ü╪º╪╡┘è┘ä ╪º┘ä┘â╪º┘à┘ä╪⌐
+                            <Eye className="w-4 h-4" /> التفاصيل الكاملة
                           </DropdownMenuItem>
 
                           <DropdownMenuSeparator />
                           <DropdownMenuLabel className="text-xs text-muted-foreground">
-                            ╪º┘ä┘å┘é╪º╪╖ ┘ê╪º┘ä╪╡┘ä╪º╪¡┘è╪º╪¬
+                            النقاط والصلاحيات
                           </DropdownMenuLabel>
                           {!isSubAdmin && (
                             <>
                               <DropdownMenuItem
                                 onClick={() => adjust.mutate({ uid: u.id, delta: 10 })}
                               >
-                                <Plus className="w-4 h-4" /> +10 ┘å┘é╪º╪╖
+                                <Plus className="w-4 h-4" /> +10 نقاط
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => adjust.mutate({ uid: u.id, delta: -10 })}
                               >
-                                <Minus className="w-4 h-4" /> -10 ┘å┘é╪º╪╖
+                                <Minus className="w-4 h-4" /> -10 نقاط
                               </DropdownMenuItem>
                             </>
                           )}
                           <DropdownMenuItem onClick={() => setYearDialogFor(u)}>
-                            <Calendar className="w-4 h-4" /> ╪¬╪║┘è┘è╪▒ ╪º┘ä╪│┘å╪⌐ ╪º┘ä╪»╪▒╪º╪│┘è╪⌐
+                            <Calendar className="w-4 h-4" /> تغيير السنة الدراسية
                           </DropdownMenuItem>
                           {!isSubAdmin && (
                             <>
@@ -601,7 +601,7 @@ export function UsersTable() {
                                 }
                               >
                                 <Shield className="w-4 h-4" />
-                                {u.roles.includes("admin") ? "╪Ñ╪▓╪º┘ä╪⌐ ╪º┘ä╪Ñ╪┤╪▒╪º┘ü" : "╪¼╪╣┘ä ┘à╪┤╪▒┘ü┘ï╪º"}
+                                {u.roles.includes("admin") ? "إزالة الإشراف" : "جعل مشرفًا"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() =>
@@ -609,21 +609,21 @@ export function UsersTable() {
                                 }
                               >
                                 <BadgeCheck className="w-4 h-4" />
-                                {u.verified ? "╪Ñ┘ä╪║╪º╪í ╪º┘ä╪¬┘ê╪½┘è┘é" : "╪¬┘ê╪½┘è┘é ╪º┘ä╪¡╪│╪º╪¿"}
+                                {u.verified ? "إلغاء التوثيق" : "توثيق الحساب"}
                               </DropdownMenuItem>
                             </>
                           )}
 
                           <DropdownMenuSeparator />
                           <DropdownMenuLabel className="text-xs text-muted-foreground">
-                            ╪Ñ╪¼╪▒╪º╪í╪º╪¬ ╪º┘ä╪Ñ╪┤╪▒╪º┘ü
+                            إجراءات الإشراف
                           </DropdownMenuLabel>
                           {status === "active" && (!isSubAdmin || permissions.can_suspend) && (
                             <DropdownMenuItem
                               onClick={() => setActionFor({ user: u, type: "suspend" })}
                               className="text-amber-600 focus:text-amber-600 focus:bg-amber-50"
                             >
-                              <Clock className="w-4 h-4" /> ╪Ñ┘è┘é╪º┘ü ┘à╪ñ┘é╪¬
+                              <Clock className="w-4 h-4" /> إيقاف مؤقت
                             </DropdownMenuItem>
                           )}
                           {status !== "banned" && (!isSubAdmin || permissions.can_suspend) && (
@@ -631,7 +631,7 @@ export function UsersTable() {
                               onClick={() => setActionFor({ user: u, type: "ban" })}
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
                             >
-                              <Ban className="w-4 h-4" /> ╪¡╪╕╪▒ ┘å┘ç╪º╪ª┘è
+                              <Ban className="w-4 h-4" /> حظر نهائي
                             </DropdownMenuItem>
                           )}
                           {status !== "active" && (!isSubAdmin || permissions.can_suspend) && (
@@ -639,7 +639,7 @@ export function UsersTable() {
                               onClick={() => unban.mutate(u.id)}
                               className="text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50"
                             >
-                              <ShieldOff className="w-4 h-4" /> ╪Ñ┘ä╪║╪º╪í ╪º┘ä╪Ñ┘è┘é╪º┘ü/╪º┘ä╪¡╪╕╪▒
+                              <ShieldOff className="w-4 h-4" /> إلغاء الإيقاف/الحظر
                             </DropdownMenuItem>
                           )}
 
@@ -650,7 +650,7 @@ export function UsersTable() {
                                 onClick={() => setActionFor({ user: u, type: "delete" })}
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                               >
-                                <Trash2 className="w-4 h-4" /> ╪¡╪░┘ü ╪º┘ä╪¡╪│╪º╪¿ ┘å┘ç╪º╪ª┘è┘ï╪º
+                                <Trash2 className="w-4 h-4" /> حذف الحساب نهائيًا
                               </DropdownMenuItem>
                             </>
                           )}
@@ -670,7 +670,7 @@ export function UsersTable() {
       <Dialog open={!!yearDialogFor} onOpenChange={(o) => !o && setYearDialogFor(null)}>
         <DialogContent className="max-w-xs">
           <DialogHeader>
-            <DialogTitle>╪¬╪║┘è┘è╪▒ ╪º┘ä╪│┘å╪⌐ ╪º┘ä╪»╪▒╪º╪│┘è╪⌐ ΓÇö {yearDialogFor?.full_name}</DialogTitle>
+            <DialogTitle>تغيير السنة الدراسية — {yearDialogFor?.full_name}</DialogTitle>
           </DialogHeader>
           <Select
             value={yearDialogFor?.year ? String(yearDialogFor.year) : undefined}
@@ -680,11 +680,11 @@ export function UsersTable() {
             }}
           >
             <SelectTrigger>
-              <SelectValue placeholder="╪º╪«╪¬╪▒ ╪º┘ä╪│┘å╪⌐" />
+              <SelectValue placeholder="اختر السنة" />
             </SelectTrigger>
             <SelectContent>
               {[1, 2, 3, 4].map((y) => (
-                <SelectItem key={y} value={String(y)}>{`╪º┘ä╪│┘å╪⌐ ${y}`}</SelectItem>
+                <SelectItem key={y} value={String(y)}>{`السنة ${y}`}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -697,20 +697,20 @@ export function UsersTable() {
             <>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {actionFor.type === "suspend" && `╪Ñ┘è┘é╪º┘ü ${actionFor.user.full_name} ┘à╪ñ┘é╪¬┘ï╪º╪ƒ`}
-                  {actionFor.type === "ban" && `╪¡╪╕╪▒ ${actionFor.user.full_name} ┘å┘ç╪º╪ª┘è┘ï╪º╪ƒ`}
-                  {actionFor.type === "delete" && `╪¡╪░┘ü ╪¡╪│╪º╪¿ ${actionFor.user.full_name} ┘å┘ç╪º╪ª┘è┘ï╪º╪ƒ`}
+                  {actionFor.type === "suspend" && `إيقاف ${actionFor.user.full_name} مؤقتًا؟`}
+                  {actionFor.type === "ban" && `حظر ${actionFor.user.full_name} نهائيًا؟`}
+                  {actionFor.type === "delete" && `حذف حساب ${actionFor.user.full_name} نهائيًا؟`}
                 </AlertDialogTitle>
                 {actionFor.type === "delete" && (
                   <AlertDialogDescription>
-                    ┘ç╪░╪º ╪º┘ä╪Ñ╪¼╪▒╪º╪í ┘ä╪º ┘è┘à┘â┘å ╪º┘ä╪¬╪▒╪º╪¼╪╣ ╪╣┘å┘ç ΓÇö ╪│┘è┘Å╪¡╪░┘ü ╪º┘ä╪¡╪│╪º╪¿ ╪¿╪º┘ä┘â╪º┘à┘ä.
+                    هذا الإجراء لا يمكن التراجع عنه — سيُحذف الحساب بالكامل.
                   </AlertDialogDescription>
                 )}
               </AlertDialogHeader>
               {(actionFor.type === "suspend" || actionFor.type === "ban") && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label>╪º┘ä╪│╪¿╪¿</Label>
+                    <Label>السبب</Label>
                     <Textarea
                       value={actionReason}
                       onChange={(e) => setActionReason(e.target.value)}
@@ -719,7 +719,7 @@ export function UsersTable() {
                   </div>
                   {actionFor.type === "suspend" && (
                     <div className="space-y-1.5">
-                      <Label>╪╣╪»╪» ╪º┘ä╪ú┘è╪º┘à</Label>
+                      <Label>عدد الأيام</Label>
                       <Input
                         type="number"
                         min={1}
@@ -732,7 +732,7 @@ export function UsersTable() {
                 </div>
               )}
               <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setActionFor(null)}>╪Ñ┘ä╪║╪º╪í</AlertDialogCancel>
+                <AlertDialogCancel onClick={() => setActionFor(null)}>إلغاء</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={
                     (actionFor.type === "suspend" || actionFor.type === "ban") &&
@@ -755,7 +755,7 @@ export function UsersTable() {
                     setActionDays("3");
                   }}
                 >
-                  ╪¬╪ú┘â┘è╪»
+                  تأكيد
                 </AlertDialogAction>
               </AlertDialogFooter>
             </>
@@ -818,7 +818,7 @@ function UserDetailsDialog({
     mutationFn: async (delta: number) => {
       if (!user) return;
       if (isSubAdmin) {
-        toast.error("┘ä╪º ╪¬┘à┘ä┘â ╪╡┘ä╪º╪¡┘è╪⌐ ╪¬╪╣╪»┘è┘ä ╪º┘ä┘å┘é╪º╪╖ ┘â╪│╪¿ ╪ú╪»┘à┘å");
+        toast.error("لا تملك صلاحية تعديل النقاط كسب أدمن");
         throw new Error("Unauthorized");
       }
       handleActionCheck(user);
@@ -829,7 +829,7 @@ function UserDetailsDialog({
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("╪¬┘à ╪º┘ä╪¬╪¡╪»┘è╪½");
+      toast.success("تم التحديث");
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       qc.invalidateQueries({ queryKey: ["user-details"] });
       setCustomDelta("");
@@ -853,29 +853,29 @@ function UserDetailsDialog({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="bg-muted/50 rounded p-2">
-                  <div className="text-xs text-muted-foreground">╪º┘ä╪▒┘é┘à ╪º┘ä╪¼╪º┘à╪╣┘è</div>
+                  <div className="text-xs text-muted-foreground">الرقم الجامعي</div>
                   <div className="font-medium" dir="ltr">
                     {formatUnivNumber(user.university_number, user.id, false, true)}
                   </div>
                 </div>
                 <div className="bg-muted/50 rounded p-2">
-                  <div className="text-xs text-muted-foreground">╪º┘ä╪¿╪▒┘è╪»</div>
+                  <div className="text-xs text-muted-foreground">البريد</div>
                   <div className="font-medium truncate" dir="ltr">
-                    {user.email ?? "ΓÇö"}
+                    {user.email ?? "—"}
                   </div>
                 </div>
                 <div className="bg-muted/50 rounded p-2">
-                  <div className="text-xs text-muted-foreground">╪º┘ä╪¬╪«╪╡╪╡ / ╪º┘ä╪│┘å╪⌐</div>
+                  <div className="text-xs text-muted-foreground">التخصص / السنة</div>
                   <div className="font-medium">
-                    {majorLabel(user.major)} ┬╖ {user.year ?? "ΓÇö"}
+                    {majorLabel(user.major)} · {user.year ?? "—"}
                   </div>
                 </div>
                 <div className="bg-muted/50 rounded p-2 flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-muted-foreground" />
                   <div>
-                    <div className="text-xs text-muted-foreground">╪º┘å╪╢┘à ┘ü┘è</div>
+                    <div className="text-xs text-muted-foreground">انضم في</div>
                     <div className="font-medium">
-                      {user.created_at ? format(new Date(user.created_at), "yyyy/MM/dd") : "ΓÇö"}
+                      {user.created_at ? format(new Date(user.created_at), "yyyy/MM/dd") : "—"}
                     </div>
                   </div>
                 </div>
@@ -883,36 +883,36 @@ function UserDetailsDialog({
 
               {user.suspended_until && userStatus(user) === "suspended" && (
                 <div className="text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded p-2">
-                  ┘à┘ê┘é┘ê┘ü ╪¡╪¬┘ë {format(new Date(user.suspended_until), "yyyy/MM/dd HH:mm")}
+                  موقوف حتى {format(new Date(user.suspended_until), "yyyy/MM/dd HH:mm")}
                 </div>
               )}
 
               <div className="grid grid-cols-4 gap-2">
                 <div className="border rounded p-2 text-center">
-                  <div className="text-xs text-muted-foreground">╪º┘ä┘å┘é╪º╪╖</div>
+                  <div className="text-xs text-muted-foreground">النقاط</div>
                   <div className="font-bold text-lg">{user.points ?? 0}</div>
                 </div>
                 <div className="border rounded p-2 text-center">
-                  <div className="text-xs text-muted-foreground">┘à┘å╪┤┘ê╪▒╪º╪¬</div>
+                  <div className="text-xs text-muted-foreground">منشورات</div>
                   <div className="font-bold text-lg">{data?.posts ?? 0}</div>
                 </div>
                 <div className="border rounded p-2 text-center">
-                  <div className="text-xs text-muted-foreground">╪¬╪╣┘ä┘è┘é╪º╪¬</div>
+                  <div className="text-xs text-muted-foreground">تعليقات</div>
                   <div className="font-bold text-lg">{data?.comments ?? 0}</div>
                 </div>
                 <div className="border rounded p-2 text-center">
-                  <div className="text-xs text-muted-foreground">╪Ñ┘å╪░╪º╪▒╪º╪¬</div>
+                  <div className="text-xs text-muted-foreground">إنذارات</div>
                   <div className="font-bold text-lg">{user.warning_count ?? 0}</div>
                 </div>
               </div>
 
               {!isSubAdmin && (
                 <div className="border rounded p-2 space-y-2">
-                  <div className="text-xs font-semibold">╪¬╪╣╪»┘è┘ä ╪º┘ä┘å┘é╪º╪╖ ╪¿┘é┘è┘à╪⌐ ┘à╪«╪╡╪╡╪⌐</div>
+                  <div className="text-xs font-semibold">تعديل النقاط بقيمة مخصصة</div>
                   <div className="flex gap-2">
                     <Input
                       type="number"
-                      placeholder="┘à╪½╪º┘ä: 25 ╪ú┘ê -30"
+                      placeholder="مثال: 25 أو -30"
                       value={customDelta}
                       onChange={(e) => setCustomDelta(e.target.value)}
                       dir="ltr"
@@ -925,7 +925,7 @@ function UserDetailsDialog({
                         if (Number.isFinite(n) && n !== 0) adjust.mutate(n);
                       }}
                     >
-                      ╪¬╪╖╪¿┘è┘é
+                      تطبيق
                     </Button>
                   </div>
                 </div>
@@ -933,7 +933,7 @@ function UserDetailsDialog({
 
               {(data?.warnings ?? []).length > 0 && (
                 <div className="space-y-1.5">
-                  <div className="text-xs font-semibold">╪│╪¼┘ä ╪º┘ä╪Ñ┘å╪░╪º╪▒╪º╪¬</div>
+                  <div className="text-xs font-semibold">سجل الإنذارات</div>
                   <div className="space-y-1 max-h-32 overflow-auto">
                     {(data?.warnings ?? []).map((w) => (
                       <div
@@ -952,7 +952,7 @@ function UserDetailsDialog({
 
               {(data?.recentPosts ?? []).length > 0 && (
                 <div className="space-y-1.5">
-                  <div className="text-xs font-semibold">╪ó╪«╪▒ ╪º┘ä┘à┘å╪┤┘ê╪▒╪º╪¬</div>
+                  <div className="text-xs font-semibold">آخر المنشورات</div>
                   <div className="space-y-1 max-h-40 overflow-auto">
                     {(data?.recentPosts ?? []).map((p) => (
                       <div key={p.id} className="text-xs bg-muted/40 rounded p-2">
