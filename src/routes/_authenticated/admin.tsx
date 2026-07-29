@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Loader2, Sparkles, UserCheck, Bell, Calendar, Download } from "lucide-react";
+import { Loader2, Sparkles, UserCheck, Bell } from "lucide-react";
 import { BroadcastNotificationTab } from "@/components/BroadcastNotificationTab";
 import { PinnedCardAdminTab } from "@/components/PinnedCardAdminTab";
 import { DashboardCharts } from "@/components/admin/DashboardCharts";
@@ -15,6 +15,10 @@ import { AddTeacherCard } from "@/components/admin/AddTeacherCard";
 import { BannedWordsTab } from "@/components/admin/BannedWordsTab";
 import { SubAdminsTab } from "@/components/admin/SubAdminsTab";
 import { NameRequestsTab } from "@/components/admin/NameRequestsTab";
+import { AdminSearch } from "@/components/admin/AdminSearch";
+import { QuickActions } from "@/components/admin/QuickActions";
+import { RecentActivity } from "@/components/admin/RecentActivity";
+import { CoursesManagementTab } from "@/components/admin/CoursesManagementTab";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
@@ -75,33 +79,19 @@ function AdminPage() {
         <div className="absolute left-0 bottom-0 -ml-16 -mb-16 h-48 w-48 rounded-full bg-white/10 blur-2xl"></div>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-bold tracking-tight">نظرة عامة</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="bg-card text-xs text-muted-foreground h-8 border-border/40">
-            <Calendar className="w-3.5 h-3.5 ml-2" /> آخر 30 يوماً
-          </Button>
-          <Button variant="outline" size="sm" className="bg-card text-xs text-muted-foreground h-8 border-border/40">
-            <Download className="w-3.5 h-3.5 ml-2" /> تصدير
-          </Button>
-        </div>
-      </div>
+      <AdminSearch />
+
+      <QuickActions />
+
+      <h2 className="text-xl font-bold tracking-tight">نظرة عامة</h2>
 
       <StatsCards />
       <DashboardCharts />
 
+      <RecentActivity />
+
       <div className="pt-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight">إدارة النظام</h2>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="bg-card text-xs text-muted-foreground h-8 border-border/40">
-              <Calendar className="w-3.5 h-3.5 ml-2" /> آخر 30 يوماً
-            </Button>
-            <Button variant="outline" size="sm" className="bg-card text-xs text-muted-foreground h-8 border-border/40">
-              <Download className="w-3.5 h-3.5 ml-2" /> تصدير
-            </Button>
-          </div>
-        </div>
+        <h2 className="text-xl font-bold tracking-tight">إدارة النظام</h2>
 
         <Tabs defaultValue={defaultTab} className="flex flex-col gap-4 w-full items-start">
           <div className="w-full border-b border-border/40">
@@ -132,6 +122,11 @@ function AdminPage() {
               {showSubAdmins && (
                 <TabsTrigger value="subadmins" className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors">
                   حسابات المساعدين
+                </TabsTrigger>
+              )}
+              {!isSubAdmin && (
+                <TabsTrigger value="courses" className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors">
+                  المقررات الدراسية
                 </TabsTrigger>
               )}
               <TabsTrigger value="pinned_card" className="relative rounded-none border-b-2 border-transparent bg-transparent px-1 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:shadow-none transition-colors flex items-center gap-1.5">
@@ -187,6 +182,11 @@ function AdminPage() {
             <TabsContent value="name_requests" className="mt-0 focus-visible:outline-none">
               <NameRequestsTab />
             </TabsContent>
+            {!isSubAdmin && (
+              <TabsContent value="courses" className="mt-0 focus-visible:outline-none">
+                <CoursesManagementTab />
+              </TabsContent>
+            )}
           </div>
         </Tabs>
       </div>

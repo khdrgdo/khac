@@ -90,8 +90,9 @@ export function UsersTable() {
   } | null>(null);
   const [actionReason, setActionReason] = useState("");
   const [actionDays, setActionDays] = useState("3");
-  const [userFilter, setUserFilter] = useState("all"); // 'all', 'students', 'teachers', 'admins', 'banned'
+  const [userFilter, setUserFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
+  const [majorFilter, setMajorFilter] = useState("all");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -334,6 +335,9 @@ export function UsersTable() {
     if (userFilter === "banned")
       return u.banned || (u.suspended_until && new Date(u.suspended_until) > new Date());
     return true;
+  }).filter((u) => {
+    if (majorFilter === "all") return true;
+    return u.major === majorFilter;
   });
 
   const counts = {
@@ -452,6 +456,17 @@ export function UsersTable() {
             />
             <Search className="w-4 h-4 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2" />
           </div>
+          <Select value={majorFilter} onValueChange={setMajorFilter}>
+            <SelectTrigger className="w-[130px] bg-muted/30 border-none shadow-sm rounded-full h-10 text-sm">
+              <SelectValue placeholder="التخصص" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل التخصصات</SelectItem>
+              <SelectItem value="it">تقنية معلومات</SelectItem>
+              <SelectItem value="is">نظم معلومات</SelectItem>
+              <SelectItem value="se">هندسة برمجيات</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
