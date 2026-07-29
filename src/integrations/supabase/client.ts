@@ -5,43 +5,50 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
-let refreshBackoffUntil = 0;
+// Deduplicate in-flight refresh token requests so multiple parallel
+// getSession() calls don't each fire their own refresh and get 429'd.
+let pendingRefresh: Promise<Response> | null = null;
 
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return async (input, init) => {
     const url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
 
-    if (url.includes("grant_type=refresh_token") && Date.now() < refreshBackoffUntil) {
-      return new Response(JSON.stringify({ error: "rate_limited", message: "Backoff active" }), {
-        status: 429,
-        headers: { "Content-Type": "application/json" },
+    // Deduplicate refresh_token requests — if one is in-flight, reuse it
+    if (url.includes("grant_type=refresh_token")) {
+      if (pendingRefresh) return pendingRefresh;
+      const p = doFetch(input, init, supabaseKey).finally(() => {
+        if (pendingRefresh === p) pendingRefresh = null;
       });
+      pendingRefresh = p;
+      return p;
     }
 
-    const headers = new Headers(
-      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
-    );
-    if (init?.headers) {
-      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-    }
-    if (
-      isNewSupabaseApiKey(supabaseKey) &&
-      headers.get("Authorization") === "Bearer " + supabaseKey
-    ) {
-      headers.delete("Authorization");
-    }
-    headers.set("apikey", supabaseKey);
-
-    const res = await fetch(input, { ...init, headers });
-
-    if (res.status === 429) {
-      const retryAfter = parseInt(res.headers.get("Retry-After") || "30", 10);
-      const backoffMs = Math.min(retryAfter * 1000, 60000);
-      refreshBackoffUntil = Date.now() + backoffMs;
-    }
-
-    return res;
+    return doFetch(input, init, supabaseKey);
   };
+}
+
+async function doFetch(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  supabaseKey: string,
+): Promise<Response> {
+  const headers = new Headers(
+    typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
+  );
+  if (init?.headers) {
+    new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+  }
+  if (
+    isNewSupabaseApiKey(supabaseKey) &&
+    headers.get("Authorization") === "Bearer " + supabaseKey
+  ) {
+    headers.delete("Authorization");
+  }
+  headers.set("apikey", supabaseKey);
+
+  const res = await fetch(input, { ...init, headers });
+
+  return res;
 }
 
 function createSupabaseClient() {
