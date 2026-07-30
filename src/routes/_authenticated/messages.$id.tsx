@@ -240,17 +240,26 @@ function ChatPage() {
     onError: () => toast.error("حدث خطأ أثناء المغادرة"),
   });
 
-  const handleReportSubmit = () => {
+  const handleReportSubmit = async () => {
     if (!otherUser) return;
     setSubmittingReport(true);
-    setTimeout(() => {
-      setSubmittingReport(false);
-      setReportOpen(false);
-      setReportNote("");
-      toast.success(
-        `تم إرسال البلاغ ضد ${otherUser.full_name} بنجاح. سنقوم بمراجعة المحتوى واتخاذ الإجراء اللازم خلال 24 ساعة.`,
-      );
-    }, 1000);
+    const { error } = await supabase.from("message_reports").insert({
+      reporter_id: user?.id,
+      reported_user_id: otherUser.id,
+      conversation_id: conversationId,
+      reason: reportReason,
+      note: reportNote || null,
+    });
+    setSubmittingReport(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setReportOpen(false);
+    setReportNote("");
+    toast.success(
+      `تم إرسال البلاغ ضد ${otherUser.full_name} بنجاح. سنقوم بمراجعة المحتوى واتخاذ الإجراء اللازم خلال 24 ساعة.`,
+    );
   };
 
   const [text, setText] = useState("");
