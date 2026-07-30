@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationItem, NotificationType, NotificationPriority } from "@/types/notification";
@@ -48,6 +48,8 @@ export function NotificationsPopover() {
   const [open, setOpen] = useState(false);
   const [filterTab, setFilterTab] = useState<"all" | "unread">("all");
   const [permState, setPermState] = useState<string>("default");
+  const knownIdsRef = useRef<Set<string>>(new Set());
+  const toastShownIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setPermState(getNotificationPermissionState());
@@ -66,7 +68,26 @@ export function NotificationsPopover() {
   const loadNotifications = useCallback(async () => {
     if (!userId) return;
     const items = await fetchRealtimeNotifications(userId);
-    setNotifications(items);
+    setNotifications((prev) => {
+      const prevIds = new Set(prev.map((n) => n.id));
+      // Show toast for new items not yet toasted
+      items.forEach((item) => {
+        if (
+          !prevIds.has(item.id) &&
+          !toastShownIdsRef.current.has(item.id) &&
+          !item.read
+        ) {
+          toastShownIdsRef.current.add(item.id);
+          toast.info(`🔔 ${item.title}`, { description: item.body });
+          sendNativeNotification(item.title, {
+            body: item.body,
+            url: item.link || "/",
+          });
+        }
+      });
+      return items;
+    });
+    knownIdsRef.current = new Set(items.map((n) => n.id));
   }, [userId]);
 
   useEffect(() => {
@@ -81,14 +102,18 @@ export function NotificationsPopover() {
         (payload) => {
           const newNotif = payload.new as Record<string, unknown>;
           if (newNotif.recipient_id === userId) {
+            const notifId = newNotif.id as string;
             loadNotifications();
-            toast.info(`🔔 ${newNotif.title || "إشعار جديد"}`, {
-              description: (newNotif.body as string) || "",
-            });
-            sendNativeNotification((newNotif.title as string) || "إشعار جديد", {
-              body: (newNotif.body as string) || "",
-              url: (newNotif.link as string) || "/",
-            });
+            if (!toastShownIdsRef.current.has(notifId)) {
+              toastShownIdsRef.current.add(notifId);
+              toast.info(`🔔 ${newNotif.title || "إشعار جديد"}`, {
+                description: (newNotif.body as string) || "",
+              });
+              sendNativeNotification((newNotif.title as string) || "إشعار جديد", {
+                body: (newNotif.body as string) || "",
+                url: (newNotif.link as string) || "/",
+              });
+            }
           }
         },
       )
