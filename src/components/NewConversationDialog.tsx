@@ -148,7 +148,7 @@ export function NewConversationDialog({ trigger }: { trigger?: ReactElement }) {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{p.full_name}</div>
                     <div className="text-xs text-muted-foreground" dir="ltr">
-                      {formatUnivNumber(p.university_number, p.id, false, !!isAdmin)}
+                      {formatUnivNumber(p.university_number, false, !!isAdmin)}
                     </div>
                   </div>
                 </button>

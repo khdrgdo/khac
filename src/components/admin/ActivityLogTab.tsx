@@ -311,7 +311,7 @@ export function ActivityLogTab() {
                           <span>
                             الرقم الجامعي:{" "}
                             <strong className="font-mono text-foreground/90">
-                              {formatUnivNumber(u.university_number, u.id, false, true) ||
+                              {formatUnivNumber(u.university_number, false, true) ||
                                 "غير محدد"}
                             </strong>
                           </span>

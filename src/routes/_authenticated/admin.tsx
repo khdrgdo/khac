@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useEffect } from "react";
 import { useAuth, getSubAdminPermissions } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ function AdminPage() {
           <Button
             variant="secondary"
             className="whitespace-nowrap bg-white text-indigo-600 hover:bg-white/90"
+            onClick={() => toast.info("قريباً")}
           >
             ترقية للنظام الاحترافي
           </Button>

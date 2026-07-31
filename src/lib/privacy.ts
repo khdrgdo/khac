@@ -52,7 +52,6 @@ export async function setUnivNumberHidden(userId: string, hidden: boolean): Prom
 
 export function formatUnivNumber(
   universityNumber: string | null | undefined,
-  userId?: string | null | undefined,
   forceHidden: boolean = false,
   isAdmin: boolean = false,
 ): string {

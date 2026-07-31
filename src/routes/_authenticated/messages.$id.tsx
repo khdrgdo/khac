@@ -84,15 +84,48 @@ function ChatPage() {
   const qc = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
-    // TODO: Move blocked users to Supabase table "blocked_users" with RLS
-    try {
-      const stored = localStorage.getItem("blocked_users");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
+  const { data: blockedUsers = [], refetch: refetchBlocked } = useQuery({
+    queryKey: ["blocked_users", user?.id],
+    queryFn: async (): Promise<string[]> => {
+      if (!user?.id) return [];
+      const { data } = await supabase
+        .from("blocked_users")
+        .select("blocked_id")
+        .eq("blocker_id", user.id);
+      return (data ?? []).map((b: { blocked_id: string }) => b.blocked_id);
+    },
+    enabled: !!user?.id,
   });
+
+  const toggleBlockMut = useMutation({
+    mutationFn: async (doBlock: boolean) => {
+      if (!otherUser || !user) return;
+      if (doBlock) {
+        const { error } = await supabase.from("blocked_users").insert({
+          blocker_id: user.id,
+          blocked_id: otherUser.id,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("blocked_users")
+          .delete()
+          .eq("blocker_id", user.id)
+          .eq("blocked_id", otherUser.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["blocked_users", user?.id] });
+      toast.success(isOtherBlocked ? `تم إلغاء حظر ${otherUser?.full_name}` : `تم حظر ${otherUser?.full_name}`);
+    },
+    onError: () => toast.error("حدث خطأ أثناء تعديل الحظر"),
+  });
+
+  const toggleBlock = () => {
+    if (!otherUser) return;
+    toggleBlockMut.mutate(!isOtherBlocked);
+  };
 
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("محتوى غير لائق أو مسيء");
@@ -103,17 +136,6 @@ function ChatPage() {
   const [memberSearch, setMemberSearch] = useState("");
   const [msgToDelete, setMsgToDelete] = useState<Message | null>(null);
   const [convToLeave, setConvToLeave] = useState(false);
-
-  useEffect(() => {
-    const handleStorage = () => {
-      try {
-        const stored = localStorage.getItem("blocked_users");
-        setBlockedUsers(stored ? JSON.parse(stored) : []);
-      } catch (e) { /* ignore */ }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
 
   const { data: conv, isLoading: loadingConv } = useQuery({
     queryKey: ["conversation", id],
@@ -157,7 +179,7 @@ function ChatPage() {
 
   useEffect(() => {
     const ch = supabase
-      .channel(`conv-${id}_${Math.random().toString(36).substring(7)}`)
+      .channel(`conv-${id}`)
       .on(
         "postgres_changes",
         {
@@ -182,25 +204,6 @@ function ChatPage() {
   const otherUser = (conv?.profiles ?? []).find((p: Prof) => p.id !== user?.id);
   const isOtherBlocked = otherUser ? blockedUsers.includes(otherUser.id) : false;
   const title = conv?.is_group ? (conv?.name ?? "مجموعة") : (otherUser?.full_name ?? "محادثة");
-
-  const toggleBlock = () => {
-    if (!otherUser) return;
-    try {
-      let nextList = [...blockedUsers];
-      if (isOtherBlocked) {
-        nextList = nextList.filter((uid) => uid !== otherUser.id);
-        toast.success(`تم إلغاء حظر ${otherUser.full_name}`);
-      } else {
-        nextList.push(otherUser.id);
-        toast.success(`تم حظر ${otherUser.full_name}`);
-      }
-      localStorage.setItem("blocked_users", JSON.stringify(nextList));
-      setBlockedUsers(nextList);
-      window.dispatchEvent(new Event("storage"));
-    } catch {
-      toast.error("حدث خطأ أثناء تعديل الحظر");
-    }
-  };
 
   // Mark conversation as read when opening
   useEffect(() => {
@@ -246,7 +249,7 @@ function ChatPage() {
     const { error } = await supabase.from("message_reports").insert({
       reporter_id: user?.id,
       reported_user_id: otherUser.id,
-      conversation_id: conversationId,
+      conversation_id: id,
       reason: reportReason,
       note: reportNote || null,
     });
@@ -362,13 +365,6 @@ function ChatPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={() => setMembersOpen(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Users className="w-4 h-4" />
-                  <span>أعضاء المجموعة</span>
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setConvToLeave(true)}
                   className="flex items-center gap-2 text-amber-600 focus:text-amber-600"

@@ -121,14 +121,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile((p as Profile | null) ?? null);
         setRoles(parsedRoles);
 
-        // Fetch sub-admin permissions if they are a sub-admin
-        const isUserSubAdmin =
-          parsedRoles.includes("sub_admin") ||
-          p?.university_number?.startsWith("sub_") ||
-          p?.email?.endsWith("@subadmin.edu");
-
-        if (isUserSubAdmin && uid) {
-          setSubAdminPermissions(getSubAdminPermissions(p as Profile));
+        // Fetch sub-admin permissions from DB table
+        if ((parsedRoles.includes("sub_admin") || parsedRoles.includes("admin")) && uid) {
+          const { data: permRow } = await supabase
+            .from("subadmin_permissions")
+            .select("*")
+            .eq("user_id", uid)
+            .maybeSingle();
+          if (permRow) {
+            setSubAdminPermissions({
+              can_warn: permRow.can_warn !== false,
+              can_suspend: permRow.can_suspend !== false,
+              can_courses: permRow.can_courses !== false,
+              can_reports: permRow.can_reports !== false,
+              can_words: permRow.can_words !== false,
+              can_teachers: permRow.can_teachers !== false,
+            });
+          } else {
+            setSubAdminPermissions(getSubAdminPermissions(p as Profile));
+          }
         }
 
         if (uid && sessionRef.current?.user?.email) {
@@ -191,13 +202,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: p } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
       if (p) {
         setProfile(p as Profile);
-        // Refresh subadmin permissions as well if applicable
-        if (
-          roles.includes("sub_admin") ||
-          p.university_number?.startsWith("sub_") ||
-          p.email?.endsWith("@subadmin.edu")
-        ) {
-          setSubAdminPermissions(getSubAdminPermissions(p as Profile));
+        // Refresh subadmin permissions from DB table
+        if (roles.includes("sub_admin") || roles.includes("admin")) {
+          const { data: permRow } = await supabase
+            .from("subadmin_permissions")
+            .select("*")
+            .eq("user_id", uid)
+            .maybeSingle();
+          if (permRow) {
+            setSubAdminPermissions({
+              can_warn: permRow.can_warn !== false,
+              can_suspend: permRow.can_suspend !== false,
+              can_courses: permRow.can_courses !== false,
+              can_reports: permRow.can_reports !== false,
+              can_words: permRow.can_words !== false,
+              can_teachers: permRow.can_teachers !== false,
+            });
+          } else {
+            setSubAdminPermissions(getSubAdminPermissions(p as Profile));
+          }
         }
       }
     } catch (err) { /* ignore */ }
@@ -209,18 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sub-admin is determined ONLY by role in user_roles table
   const isSubAdmin = roles.includes("sub_admin" as AppRole);
 
-  const isKnownAdminUser =
-    isMainAdmin ||
-    isSubAdmin ||
-    roles.includes("admin") ||
-    (profile?.email ? profile.email.toLowerCase().includes("admin") : false) ||
-    (user?.email ? user.email.toLowerCase().includes("admin") : false) ||
-    (profile?.full_name
-      ? profile.full_name.toLowerCase().includes("أدمن") ||
-        profile.full_name.toLowerCase().includes("ادمن") ||
-        profile.full_name.toLowerCase().includes("admin") ||
-        profile.full_name.toLowerCase().includes("مدير")
-      : false);
+  const isKnownAdminUser = isMainAdmin || isSubAdmin;
 
   const isAdmin = isKnownAdminUser;
   const isTeacher = roles.includes("teacher");

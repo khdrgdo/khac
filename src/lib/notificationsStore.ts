@@ -1,6 +1,7 @@
 import { NotificationItem, NotificationType } from "@/types/notification";
 import { supabase } from "@/integrations/supabase/client";
 import { sendNativeNotification } from "@/lib/pushNotifications";
+import { REACTIONS } from "@/lib/college";
 
 export type NotificationPriority = "urgent" | "important" | "normal";
 
@@ -184,14 +185,9 @@ export async function fetchRealtimeNotifications(userId: string): Promise<Notifi
         });
       });
 
-      const reactionEmojiMap: Record<string, string> = {
-        like: "👍 إعجاب",
-        love: "❤️ حب",
-        laugh: "😂 ضحك",
-        sad: "😢 حزن",
-        angry: "😡 غضب",
-        fire: "🔥 إبداع",
-      };
+      const reactionEmojiMap: Record<string, string> = Object.fromEntries(
+        REACTIONS.map((r) => [r.type, `${r.emoji} ${r.label}`]),
+      );
 
       (reactions ?? []).forEach((r) => {
         const notifId = `react_${r.post_id}_${r.user_id}_${r.reaction}`;

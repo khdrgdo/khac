@@ -527,7 +527,7 @@ export function UsersTable() {
                         )}
                       </div>
                       <span className="text-xs text-muted-foreground" dir="ltr">
-                        {formatUnivNumber(u.university_number, u.id, false, true)}
+                        {formatUnivNumber(u.university_number, false, true)}
                       </span>
                     </div>
                   </div>
@@ -870,7 +870,7 @@ function UserDetailsDialog({
                 <div className="bg-muted/50 rounded p-2">
                   <div className="text-xs text-muted-foreground">الرقم الجامعي</div>
                   <div className="font-medium" dir="ltr">
-                    {formatUnivNumber(user.university_number, user.id, false, true)}
+                    {formatUnivNumber(user.university_number, false, true)}
                   </div>
                 </div>
                 <div className="bg-muted/50 rounded p-2">

@@ -95,7 +95,7 @@ export function NotificationsPopover() {
 
     // Realtime: listen for new notifications in the DB
     const channel = supabase
-      .channel(`live_notifications_feed_${Math.random().toString(36).substring(7)}`)
+      .channel(`live_notifications_feed`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications" },

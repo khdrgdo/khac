@@ -142,7 +142,7 @@ export function NameRequestsTab() {
 
                     {req.university_number && (
                       <div className="text-xs font-mono text-muted-foreground">
-                        الرقم الجامعي: {formatUnivNumber(req.university_number, req.user_id, false, true)}
+                        الرقم الجامعي: {formatUnivNumber(req.university_number, false, true)}
                       </div>
                     )}
                   </div>

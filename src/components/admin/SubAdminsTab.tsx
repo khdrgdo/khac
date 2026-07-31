@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { serializeSubAdminPermissions, type SubAdminPermissions } from "@/hooks/useAuth";
 import { createIsolatedSupabaseClient } from "@/lib/isolatedSupabaseClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -97,8 +96,19 @@ export function SubAdminsTab() {
         }
       }
 
-      // Permissions are already in bio, so we just return the profiles
-      return filteredProfiles;
+      // Fetch permissions from subadmin_permissions table
+      const ids = filteredProfiles.map((p) => p.id);
+      const { data: permRows } = await supabase
+        .from("subadmin_permissions")
+        .select("*")
+        .in("user_id", ids);
+
+      const permMap = new Map((permRows ?? []).map((r) => [r.user_id, r]));
+
+      return filteredProfiles.map((p) => ({
+        ...p,
+        subadmin_perms: permMap.get(p.id) ?? null,
+      }));
     },
   });
 
@@ -181,13 +191,25 @@ export function SubAdminsTab() {
       // 5. Update user profile details
       const { error: updateProfileError } = await supabase
         .from("profiles")
-        .update({
-          bio: serializeSubAdminPermissions(permissionsObj),
-          verified: true,
-        })
+        .update({ verified: true })
         .eq("id", data.user.id);
 
       if (updateProfileError) throw updateProfileError;
+
+      // Store permissions in subadmin_permissions table
+      const { error: permError } = await supabase.from("subadmin_permissions").upsert(
+        {
+          user_id: data.user.id,
+          can_warn: permissionsObj.can_warn ?? true,
+          can_suspend: permissionsObj.can_suspend ?? true,
+          can_courses: permissionsObj.can_courses ?? true,
+          can_reports: permissionsObj.can_reports ?? true,
+          can_words: permissionsObj.can_words ?? true,
+          can_teachers: permissionsObj.can_teachers ?? true,
+        },
+        { onConflict: "user_id" },
+      );
+      if (permError) throw permError;
 
       // 6. Set user role to 'sub_admin' securely using the RPC, falling back to direct table write if RPC fails
       let roleError;
@@ -216,7 +238,7 @@ export function SubAdminsTab() {
         if (insertError) throw insertError;
       }
 
-      // 7. (Removed: store actual permissions in the subadmin_permissions table, rely only on bio)
+      // 7. Permissions stored in subadmin_permissions table above
     },
     onSuccess: () => {
       toast.success("تم إنشاء حساب المشرف المساعد (سب أدمن) بنجاح!");
@@ -265,9 +287,19 @@ export function SubAdminsTab() {
         [key]: !currentPerms[key],
       };
       const { error } = await supabase
-        .from("profiles")
-        .update({ bio: serializeSubAdminPermissions(updatedPerms as SubAdminPermissions) })
-        .eq("id", uid);
+        .from("subadmin_permissions")
+        .upsert(
+          {
+            user_id: uid,
+            can_warn: updatedPerms.can_warn ?? true,
+            can_suspend: updatedPerms.can_suspend ?? true,
+            can_courses: updatedPerms.can_courses ?? true,
+            can_reports: updatedPerms.can_reports ?? true,
+            can_words: updatedPerms.can_words ?? true,
+            can_teachers: updatedPerms.can_teachers ?? true,
+          },
+          { onConflict: "user_id" },
+        );
       if (error) throw error;
     },
     onSuccess: () => {
@@ -427,7 +459,7 @@ export function SubAdminsTab() {
       ) : (
         <div className="grid gap-3">
           {subAdmins?.map((sub) => {
-            const perms = getSubAdminPermissions(sub);
+            const perms = sub.subadmin_perms ?? getSubAdminPermissions(sub);
             const userCode =
               sub.university_number?.replace("sub_", "") || sub.email?.split("@")[0] || "";
 

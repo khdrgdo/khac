@@ -248,7 +248,7 @@ export function GlobalSearchDialog() {
       });
 
       return mapped.filter((p) => {
-        const uniNum = formatUnivNumber(p.university_number, p.id, false, !!isAdmin);
+        const uniNum = formatUnivNumber(p.university_number, false, !!isAdmin);
         if (uniNum.startsWith("sub_")) return false;
         const nameLower = (p.full_name || "").toLowerCase();
         if (
@@ -464,7 +464,7 @@ export function GlobalSearchDialog() {
                                 className="text-[11px] font-mono text-muted-foreground"
                                 dir="ltr"
                               >
-                                {formatUnivNumber(p.university_number, p.id, false, !!isAdmin)}
+                                {formatUnivNumber(p.university_number, false, !!isAdmin)}
                               </div>
 
                               <div className="flex items-center gap-1 mt-0.5 flex-wrap">
@@ -532,11 +532,7 @@ export function GlobalSearchDialog() {
                                     className="text-[10px] text-muted-foreground block font-mono"
                                     dir="ltr"
                                   >
-                                    {formatUnivNumber(
-                                      post.author.university_number,
-                                      post.author.id,
-                                      false,
-                                      !!isAdmin,
+                                    {formatUnivNumber(post.author.university_number, false, !!isAdmin,
                                     )}
                                   </span>
                                 </div>
@@ -630,11 +626,7 @@ export function GlobalSearchDialog() {
                                       className="text-[10px] text-muted-foreground block font-mono"
                                       dir="ltr"
                                     >
-                                      {formatUnivNumber(
-                                        c.author.university_number,
-                                        c.author.id,
-                                        false,
-                                        !!isAdmin,
+                  {formatUnivNumber(c.author.university_number, false, !!isAdmin,
                                       )}
                                     </span>
                                   </div>

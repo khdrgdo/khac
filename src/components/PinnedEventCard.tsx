@@ -96,7 +96,7 @@ function AdminVoterList({
                 <div className="flex flex-col">
                   <span className="font-bold text-slate-100">{p?.full_name || "مستخدم مسجل"}</span>
                   <span className="text-[10px] text-slate-400 font-mono" dir="ltr">
-                    {p?.university_number ? formatUnivNumber(p.university_number, uid, false, true) : uid.slice(0, 8)}
+                    {p?.university_number ? formatUnivNumber(p.university_number, false, true) : uid.slice(0, 8)}
                   </span>
                 </div>
               </div>
@@ -173,7 +173,7 @@ function AdminParticipantList({
                 <div className="flex flex-col">
                   <span className="font-bold text-slate-100">{p?.full_name || "مستخدم مسجل"}</span>
                   <span className="text-[10px] text-slate-400 font-mono" dir="ltr">
-                    {p?.university_number ? formatUnivNumber(p.university_number, uid, false, true) : uid.slice(0, 8)}
+                    {p?.university_number ? formatUnivNumber(p.university_number, false, true) : uid.slice(0, 8)}
                   </span>
                 </div>
               </div>

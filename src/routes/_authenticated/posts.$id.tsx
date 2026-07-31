@@ -9,6 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { UserAvatar } from "@/components/UserAvatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ArrowRight, Loader2, Send, Trash2, CheckCircle2, Pencil } from "lucide-react";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { cn } from "@/lib/utils";
@@ -42,6 +52,7 @@ function PostDetailPage() {
   const suspended = isSuspended(profile);
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const deletePost = useMutation({
     mutationFn: async () => {
@@ -105,7 +116,7 @@ function PostDetailPage() {
 
   useEffect(() => {
     const ch = supabase
-      .channel(`post-${id}-comments_${Math.random().toString(36).substring(7)}`)
+      .channel(`post-${id}-comments`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "comments", filter: `post_id=eq.${id}` },
@@ -259,11 +270,7 @@ function PostDetailPage() {
                 variant="ghost"
                 size="icon"
                 className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8"
-                onClick={() => {
-                  if (window.confirm("هل أنت متأكد من رغبتك في حذف هذا المنشور؟")) {
-                    deletePost.mutate();
-                  }
-                }}
+                onClick={() => setDeleteConfirmOpen(true)}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -287,6 +294,23 @@ function PostDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من رغبتك في حذف هذا المنشور؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletePost.mutate()}>
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {isSubAdmin ? (
         <Card>

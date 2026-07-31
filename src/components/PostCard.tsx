@@ -15,6 +15,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
@@ -82,6 +92,7 @@ export function PostCard({ post }: { post: PostWithMeta }) {
   const navigate = useNavigate();
   const [openReact, setOpenReact] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const deletePostMut = useMutation({
     mutationFn: async () => {
@@ -276,11 +287,7 @@ export function PostCard({ post }: { post: PostWithMeta }) {
               )}
               {user && (user.id === post.author_id || isAdmin) && (
                 <DropdownMenuItem
-                  onClick={() => {
-                    if (window.confirm("هل أنت متأكد من رغبتك في حذف هذا المنشور؟")) {
-                      deletePostMut.mutate();
-                    }
-                  }}
+                  onClick={() => setDeleteConfirmOpen(true)}
                   className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                 >
                   <Trash2 className="w-4 h-4 ml-2 text-destructive" /> حذف المنشور
@@ -386,6 +393,23 @@ export function PostCard({ post }: { post: PostWithMeta }) {
       </CardContent>
 
       <ReportDialog open={reportOpen} onOpenChange={setReportOpen} postId={post.id} />
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من رغبتك في حذف هذا المنشور؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletePostMut.mutate()}>
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

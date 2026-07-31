@@ -31,7 +31,7 @@ function ResetPasswordPage() {
             supabase.auth
               .getSession()
               .then(({ data: d2 }) => setReady(!!d2?.session))
-              .catch((err) => console.error("Session check 2 error:", err));
+              .catch(() => {});
           }, 300);
         }
       })

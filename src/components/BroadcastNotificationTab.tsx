@@ -506,7 +506,7 @@ export function BroadcastNotificationTab() {
                       <SelectContent className="max-h-60">
                         {filteredProfiles.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
-                            {p.full_name} ({formatUnivNumber(p.university_number, p.id, false, true)}) — {majorLabel(p.major)}
+                            {p.full_name} ({formatUnivNumber(p.university_number, false, true)}) — {majorLabel(p.major)}
                           </SelectItem>
                         ))}
                       </SelectContent>

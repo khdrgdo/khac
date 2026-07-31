@@ -39,7 +39,7 @@ import { InstallPWAButton } from "@/components/InstallPWAButton";
 import { motion, AnimatePresence } from "motion/react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { profile, isAdmin, isSubAdmin, loading } = useAuth();
+  const { profile, isAdmin, isSubAdmin, isTeacher, loading } = useAuth();
   const isPWAInstalled = useIsPWAInstalled();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -90,6 +90,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { to: "/feed", label: "الرئيسية", icon: Home },
     { to: "/courses", label: "الكورسات", icon: BookOpen },
+    ...(isTeacher || isAdmin ? [{ to: "/courses/mine" as const, label: "مقرراتي", icon: BookOpen }] : []),
     { to: "/leaderboard", label: "لوحة الصدارة", icon: Trophy },
     { to: "/messages", label: "المراسلة", icon: MessageCircle },
     { to: "/saved", label: "المحفوظات", icon: Bookmark },
@@ -202,7 +203,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         {profile?.full_name}
                       </div>
                       <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">
-                        {formatUnivNumber(profile?.university_number, profile?.id, false, isAdmin)}
+                        {formatUnivNumber(profile?.university_number, false, isAdmin)}
                       </div>
                     </div>
                   </div>

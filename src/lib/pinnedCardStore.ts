@@ -180,7 +180,7 @@ export function usePinnedCard() {
     window.addEventListener("storage", handleStorageUpdate);
 
     const channel = supabase
-      .channel(`pinned_cards_changes_${Math.random().toString(36).substring(7)}`)
+      .channel(`pinned_cards_changes`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "pinned_cards" },

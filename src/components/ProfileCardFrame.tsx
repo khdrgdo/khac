@@ -416,7 +416,7 @@ export function ProfileCardFrame({
               <span className="font-semibold text-white tracking-widest">
                 {isUnivHidden
                   ? "••••••••••"
-                  : formatUnivNumber(profile.university_number, profile.id, false, isAdmin)}
+                  : formatUnivNumber(profile.university_number, false, isAdmin)}
               </span>
               {isMe && (
                 <button

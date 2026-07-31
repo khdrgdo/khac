@@ -104,7 +104,7 @@ export function CoursesPage() {
   // Real-time synchronization for courses and material updates
   useEffect(() => {
     const channel = supabase
-      .channel(`courses-live-sync_${Math.random().toString(36).substring(7)}`)
+      .channel(`courses-live-sync`)
       .on("postgres_changes", { event: "*", schema: "public", table: "course_links" }, () => {
         qc.invalidateQueries({ queryKey: ["courses"] });
         qc.invalidateQueries({ queryKey: ["latest_materials_feed"] });
@@ -529,7 +529,7 @@ export function CoursesPage() {
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     {isAdmin
                       ? "يمكنك إضافة مقررات جديدة، تعيين الأستاذ المسؤول عن كل مقرر، أو تعديل وحذف أية محتويات داخل المقررات."
-                      : "المقررات التي تقوم ب تدريسها. يمكنك رفع المحاضرات، الروابط، الفيديوهات، الإعلانات وتحديث الجدول."}
+                      : "المقررات التي تقوم بتدريسها. يمكنك رفع المحاضرات، الروابط، الفيديوهات، الإعلانات وتحديث الجدول."}
                   </p>
                 </div>
 
@@ -897,7 +897,7 @@ export function NewCourseDialog({
             <Label className="font-semibold text-xs text-foreground/80 flex items-center justify-between">
               <span>الأستاذ المشرف / مبرمج المادة</span>
               <span className="text-[11px] text-muted-foreground font-normal">
-                (يتم ختياره من أساتذة الكلية)
+                (يتم اختياره من أساتذة الكلية)
               </span>
             </Label>
 
