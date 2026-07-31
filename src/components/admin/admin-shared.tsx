@@ -66,12 +66,12 @@ export function useSubAdminRestrictions() {
     return u.university_number === "2011099840" || u.university_number === "HIDDEN_2011099840" || u.email?.toLowerCase() === "khdrmamon@gmail.com";
   }
 
-  function handleActionCheck(target: { university_number: string; email?: string | null }) {
+  async function handleActionCheck(target: { university_number: string; email?: string | null }) {
     if (isSubAdmin && isTargetMainAdmin(target)) {
       toast.error(
         "⚠️ محاولة محظورة! تم رصد محاولة تعديل على حساب الأدمن الرسمي. سيتم حظر حسابك وتسجيل خروجك فوراً.",
       );
-      selfBan.mutate();
+      await selfBan.mutateAsync();
       throw new Error("Violation: Sub-admin tried to modify main admin");
     }
   }

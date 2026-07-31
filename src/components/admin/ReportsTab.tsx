@@ -120,7 +120,7 @@ function PostReports() {
           .maybeSingle();
 
         if (targetProfile) {
-          handleActionCheck(targetProfile);
+          await handleActionCheck(targetProfile);
         }
       }
 
@@ -156,7 +156,7 @@ function PostReports() {
         .maybeSingle();
 
       if (targetProfile) {
-        handleActionCheck(targetProfile);
+        await handleActionCheck(targetProfile);
       }
 
       if (action === "warn") {

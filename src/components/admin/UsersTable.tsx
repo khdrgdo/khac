@@ -171,7 +171,7 @@ export function UsersTable() {
   const toggleAdmin = useMutation({
     mutationFn: async ({ uid, isAdmin }: { uid: string; isAdmin: boolean }) => {
       const targetUser = (data ?? []).find((u) => u.id === uid);
-      if (targetUser) handleActionCheck(targetUser);
+      if (targetUser) await handleActionCheck(targetUser);
       if (isSubAdmin) {
         toast.error("غير مسموح للسب أدمن بتعديل رتب الإدارة");
         throw new Error("Unauthorized");
@@ -189,7 +189,7 @@ export function UsersTable() {
   const adjust = useMutation({
     mutationFn: async ({ uid, delta }: { uid: string; delta: number }) => {
       const targetUser = (data ?? []).find((u) => u.id === uid);
-      if (targetUser) handleActionCheck(targetUser);
+      if (targetUser) await handleActionCheck(targetUser);
       if (isSubAdmin) {
         toast.error("لا تملك صلاحية تعديل النقاط كسب أدمن");
         throw new Error("Unauthorized");
@@ -204,7 +204,7 @@ export function UsersTable() {
   const suspend = useMutation({
     mutationFn: async ({ uid, days, reason }: { uid: string; days: number; reason: string }) => {
       const targetUser = (data ?? []).find((u) => u.id === uid);
-      if (targetUser) handleActionCheck(targetUser);
+      if (targetUser) await handleActionCheck(targetUser);
       if (isSubAdmin && !permissions.can_suspend) {
         toast.error("لا تملك صلاحية إيقاف الحسابات");
         throw new Error("Unauthorized");
@@ -226,7 +226,7 @@ export function UsersTable() {
   const ban = useMutation({
     mutationFn: async ({ uid, reason }: { uid: string; reason: string }) => {
       const targetUser = (data ?? []).find((u) => u.id === uid);
-      if (targetUser) handleActionCheck(targetUser);
+      if (targetUser) await handleActionCheck(targetUser);
       if (isSubAdmin && !permissions.can_suspend) {
         toast.error("لا تملك صلاحية حظر الحسابات");
         throw new Error("Unauthorized");
@@ -244,7 +244,7 @@ export function UsersTable() {
   const unban = useMutation({
     mutationFn: async (uid: string) => {
       const targetUser = (data ?? []).find((u) => u.id === uid);
-      if (targetUser) handleActionCheck(targetUser);
+      if (targetUser) await handleActionCheck(targetUser);
       if (isSubAdmin && !permissions.can_suspend) {
         toast.error("لا تملك صلاحية إلغاء الإيقاف");
         throw new Error("Unauthorized");
@@ -262,7 +262,7 @@ export function UsersTable() {
   const setYear = useMutation({
     mutationFn: async ({ uid, year }: { uid: string; year: number }) => {
       const targetUser = (data ?? []).find((u) => u.id === uid);
-      if (targetUser) handleActionCheck(targetUser);
+      if (targetUser) await handleActionCheck(targetUser);
       const { error } = await supabase.rpc("admin_set_year", { _user: uid, _year: year });
       if (error) throw error;
     },
@@ -276,7 +276,7 @@ export function UsersTable() {
   const setVerified = useMutation({
     mutationFn: async ({ uid, verified }: { uid: string; verified: boolean }) => {
       const targetUser = (data ?? []).find((u) => u.id === uid);
-      if (targetUser) handleActionCheck(targetUser);
+      if (targetUser) await handleActionCheck(targetUser);
       if (isSubAdmin) {
         toast.error("غير مسموح للسب أدمن بتوثيق الحسابات");
         throw new Error("Unauthorized");
@@ -297,7 +297,7 @@ export function UsersTable() {
   const deleteUser = useMutation({
     mutationFn: async (uid: string) => {
       const targetUser = (data ?? []).find((u) => u.id === uid);
-      if (targetUser) handleActionCheck(targetUser);
+      if (targetUser) await handleActionCheck(targetUser);
       if (isSubAdmin) {
         toast.error("لا تملك صلاحية حذف الحسابات كسب أدمن");
         throw new Error("Unauthorized");
@@ -836,7 +836,7 @@ function UserDetailsDialog({
         toast.error("لا تملك صلاحية تعديل النقاط كسب أدمن");
         throw new Error("Unauthorized");
       }
-      handleActionCheck(user);
+      await handleActionCheck(user);
       const { error } = await supabase.rpc("admin_adjust_points", {
         _user: user.id,
         _delta: delta,
