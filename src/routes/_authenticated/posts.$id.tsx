@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ArrowRight, Loader2, Send, Trash2, CheckCircle2, Pencil } from "lucide-react";
+import { ANON_NAME } from "@/lib/anonymous";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -233,7 +234,7 @@ function PostDetailPage() {
 
   const roots = (comments ?? []).filter((c) => !c.parent_id);
   const childrenOf = (pid: string) => (comments ?? []).filter((c) => c.parent_id === pid);
-  const authorName = post.author?.full_name ?? "مستخدم";
+  const authorName = post.author_id ? (post.author?.full_name ?? "مستخدم") : ANON_NAME;
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -495,7 +496,8 @@ function CommentItem({
 }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
-  const name = c.author?.full_name ?? "مستخدم";
+  const anon = !c.author_id;
+  const name = anon ? ANON_NAME : (c.author?.full_name ?? "مستخدم");
   const isAccepted = isQuestion && acceptedAnswerId === c.id;
   const canAccept = isQuestion && isPostAuthor && !isAccepted && !acceptedAnswerId;
   const canEdit = !!user && (user.id === c.author_id || isAdmin);
@@ -534,19 +536,27 @@ function CommentItem({
             </div>
           )}
           <div className="flex items-start gap-2">
-            <Link to="/profile/$id" params={{ id: c.author_id }}>
-              <UserAvatar avatarUrl={c.author?.avatar_url} fullName={name} className="w-8 h-8" />
-            </Link>
+            {c.author_id ? (
+              <Link to="/profile/$id" params={{ id: c.author_id }}>
+                <UserAvatar avatarUrl={c.author?.avatar_url} fullName={name} className="w-8 h-8" />
+              </Link>
+            ) : (
+              <UserAvatar avatarUrl={null} fullName="؟" className="w-8 h-8" />
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-2">
-                <Link
-                  to="/profile/$id"
-                  params={{ id: c.author_id }}
-                  className="font-medium text-sm inline-flex items-center gap-1 hover:underline"
-                >
-                  {name}
-                  {c.author?.verified && <VerifiedBadge />}
-                </Link>
+                {c.author_id ? (
+                  <Link
+                    to="/profile/$id"
+                    params={{ id: c.author_id }}
+                    className="font-medium text-sm inline-flex items-center gap-1 hover:underline"
+                  >
+                    {name}
+                    {c.author?.verified && <VerifiedBadge />}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-sm">{name}</span>
+                )}
                 <span className="text-[10px] text-muted-foreground">
                   {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: ar })}
                 </span>
@@ -640,7 +650,7 @@ function CommentItem({
       {children.length > 0 && (
         <div className="ms-8 mt-2 space-y-2">
           {children.map((ch) => {
-            const cn = ch.author?.full_name ?? "مستخدم";
+            const cn = ch.author_id ? (ch.author?.full_name ?? "مستخدم") : ANON_NAME;
             const canEditChild = !!user && (user.id === ch.author_id || isAdmin);
             return (
               <ChildCommentItem
@@ -707,19 +717,27 @@ function ChildCommentItem({
     <Card>
       <CardContent className="p-3">
         <div className="flex items-start gap-2">
-          <Link to="/profile/$id" params={{ id: ch.author_id }}>
-            <UserAvatar avatarUrl={ch.author?.avatar_url} fullName={cn} className="w-7 h-7" />
-          </Link>
+          {ch.author_id ? (
+            <Link to="/profile/$id" params={{ id: ch.author_id }}>
+              <UserAvatar avatarUrl={ch.author?.avatar_url} fullName={cn} className="w-7 h-7" />
+            </Link>
+          ) : (
+            <UserAvatar avatarUrl={null} fullName="؟" className="w-7 h-7" />
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2">
-              <Link
-                to="/profile/$id"
-                params={{ id: ch.author_id }}
-                className="font-medium text-xs inline-flex items-center gap-1 hover:underline"
-              >
-                {cn}
-                {ch.author?.verified && <VerifiedBadge />}
-              </Link>
+              {ch.author_id ? (
+                <Link
+                  to="/profile/$id"
+                  params={{ id: ch.author_id }}
+                  className="font-medium text-xs inline-flex items-center gap-1 hover:underline"
+                >
+                  {cn}
+                  {ch.author?.verified && <VerifiedBadge />}
+                </Link>
+              ) : (
+                <span className="font-medium text-xs">{cn}</span>
+              )}
               <span className="text-[10px] text-muted-foreground">
                 {formatDistanceToNow(new Date(ch.created_at), {
                   addSuffix: true,
