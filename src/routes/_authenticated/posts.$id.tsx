@@ -132,6 +132,7 @@ function PostDetailPage() {
 
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [text, setText] = useState("");
+  const [anonComment, setAnonComment] = useState(false);
 
   const commentMut = useMutation({
     mutationFn: async () => {
@@ -142,13 +143,14 @@ function PostDetailPage() {
         );
       if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن التعليق");
       const commentContent = text.trim();
-      const { error } = await supabase.from("comments").insert({
-        post_id: id,
-        author_id: user.id,
-        content: commentContent,
-        parent_id: replyTo,
+      const { error } = await supabase.rpc("create_comment_as", {
+        _post_id: id,
+        _content: commentContent,
+        _parent_id: replyTo ?? undefined,
+        _anonymous: anonComment,
       });
       if (error) throw error;
+      if (anonComment) return;
 
       // Trigger notifications
       if (replyTo) {
@@ -331,6 +333,20 @@ function PostDetailPage() {
                 </button>
               </div>
             )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAnonComment((v) => !v)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition ${
+                  anonComment
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "text-muted-foreground border-border hover:bg-muted"
+                }`}
+                title="التعليق بهوية مجهولة"
+              >
+                تعليق كمجهول
+              </button>
+            </div>
             <div className="flex gap-2">
               <RichTextEditor
                 content={text}
