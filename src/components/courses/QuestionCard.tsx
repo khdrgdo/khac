@@ -76,7 +76,7 @@ export function QuestionCard({
       });
       if (error) throw error;
 
-      if (q.author_id !== user.id) {
+      if (q.author_id && q.author_id !== user.id) {
         createNotification({
           recipientId: q.author_id,
           actorId: user.id,

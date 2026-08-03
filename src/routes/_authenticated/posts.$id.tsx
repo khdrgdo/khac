@@ -41,7 +41,7 @@ interface Comment {
   id: string;
   post_id: string;
   parent_id: string | null;
-  author_id: string;
+  author_id: string | null;
   content: string;
   created_at: string;
 }
@@ -165,7 +165,7 @@ function PostDetailPage() {
             link: `/posts/${id}`,
           });
         }
-      } else if (post && post.author_id !== user.id) {
+      } else if (post && post.author_id && post.author_id !== user.id) {
         createNotification({
           recipientId: post.author_id,
           actorId: user.id,

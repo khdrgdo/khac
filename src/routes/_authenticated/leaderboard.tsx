@@ -152,7 +152,7 @@ function LeaderboardPage() {
       const { data: rpcProfiles, error: rpcError } = await supabase.rpc(
         "get_leaderboard_profiles",
         {
-          _major: effectiveMajor ?? undefined,
+          _major: (effectiveMajor ?? undefined) as "it" | "is" | "se" | undefined,
           _year: effectiveYear ?? undefined,
         },
       );
