@@ -152,8 +152,8 @@ function LeaderboardPage() {
       const { data: rpcProfiles, error: rpcError } = await supabase.rpc(
         "get_leaderboard_profiles",
         {
-          _major: effectiveMajor,
-          _year: effectiveYear,
+          _major: (effectiveMajor ?? undefined) as "it" | "is" | "se" | undefined,
+          _year: effectiveYear ?? undefined,
         },
       );
 
@@ -303,11 +303,13 @@ function LeaderboardPage() {
 
       // Count posts (worth 5 points on leaderboard)
       (posts ?? []).forEach((p) => {
+        if (!p.author_id) return;
         contributionMap.set(p.author_id, (contributionMap.get(p.author_id) ?? 0) + 5);
       });
 
       // Count comments (worth 2 points on leaderboard)
       (comments ?? []).forEach((c) => {
+        if (!c.author_id) return;
         contributionMap.set(c.author_id, (contributionMap.get(c.author_id) ?? 0) + 2);
       });
 

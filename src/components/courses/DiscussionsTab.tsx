@@ -23,6 +23,7 @@ export function DiscussionsTab({
   const { user, isAdmin, isSubAdmin } = useAuth();
   const qc = useQueryClient();
   const [questionContent, setQuestionContent] = useState("");
+  const [askAnonymously, setAskAnonymously] = useState(false);
 
   const coursePrefix = `[course:${courseId}]`;
 
@@ -39,7 +40,7 @@ export function DiscussionsTab({
       if (error) throw error;
 
       const postsData = data ?? [];
-      const authorIds = Array.from(new Set(postsData.map((p) => p.author_id)));
+      const authorIds = Array.from(new Set(postsData.map((p) => p.author_id).filter((x): x is string => !!x)));
       if (!authorIds.length) return [];
 
       const { data: profiles } = await supabase.rpc("get_public_profiles", { _ids: authorIds });
@@ -47,7 +48,7 @@ export function DiscussionsTab({
 
       return postsData.map((p) => ({
         ...p,
-        author: profileMap.get(p.author_id) ?? null,
+        author: (p.author_id ? profileMap.get(p.author_id) : null) ?? null,
         cleanContent: p.content.replace(coursePrefix, "").trim(),
       }));
     },
@@ -62,15 +63,16 @@ export function DiscussionsTab({
           "حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط من لوحة التحكم، ولا يملك صلاحية طرح أسئلة.",
         );
       const fullText = `${coursePrefix} ${questionContent.trim()}`;
-      const { error } = await supabase.from("posts").insert({
-        author_id: user.id,
-        content: fullText,
-        post_type: "question",
+      const { error } = await supabase.rpc("create_post_as", {
+        _content: fullText,
+        _post_type: "question",
+        _anonymous: askAnonymously,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       setQuestionContent("");
+      setAskAnonymously(false);
       toast.success("تم نشر سؤالك في المقرر بنجاح");
       qc.invalidateQueries({ queryKey: ["course_questions", courseId] });
     },
@@ -111,7 +113,18 @@ export function DiscussionsTab({
               onChange={setQuestionContent}
               placeholder="اكتب سؤالك هنا ليستطيع الطلاب وأستاذ المقرر الإجابة عليه..."
             />
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAskAnonymously((v) => !v)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition ${
+                  askAnonymously
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "text-muted-foreground border-border hover:bg-muted"
+                }`}
+              >
+                سؤال كمجهول
+              </button>
               <Button
                 size="sm"
                 onClick={() => postQuestion.mutate()}

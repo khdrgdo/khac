@@ -153,7 +153,7 @@ export async function fetchRealtimeNotifications(userId: string): Promise<Notifi
         .limit(50);
 
       const profileIds = new Set<string>();
-      (comments ?? []).forEach((c) => profileIds.add(c.author_id));
+      (comments ?? []).forEach((c) => c.author_id && profileIds.add(c.author_id));
       (reactions ?? []).forEach((r) => profileIds.add(r.user_id));
 
       const { data: profs } = profileIds.size
@@ -168,12 +168,12 @@ export async function fetchRealtimeNotifications(userId: string): Promise<Notifi
       (comments ?? []).forEach((c) => {
         const notifId = `comment_${c.id}`;
         if (items.some((i) => i.id === notifId)) return;
-        const prof = profileMap.get(c.author_id);
+        const prof = c.author_id ? profileMap.get(c.author_id) : undefined;
         const name = prof?.full_name || "زميل أكاديمي";
         items.push({
           id: notifId,
           userId,
-          actorId: c.author_id,
+          actorId: c.author_id ?? undefined,
           actorName: name,
           actorAvatar: prof?.avatar_url,
           type: "post_comment",

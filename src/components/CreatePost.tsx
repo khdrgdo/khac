@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import { toast } from "sonner";
-import { Loader2, Send, ShieldAlert, ImagePlus, X } from "lucide-react";
+import { Loader2, Send, ShieldAlert, ImagePlus, X, VenetianMask } from "lucide-react";
 import { uploadFile } from "@/lib/storage";
 import { StorageImage } from "@/components/StorageImage";
 import { format } from "date-fns";
@@ -31,6 +31,7 @@ export function CreatePost() {
   const { user, profile, refreshProfile, isSubAdmin } = useAuth();
   const [content, setContent] = useState("");
   const [isQuestion, setIsQuestion] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [imagePaths, setImagePaths] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -103,11 +104,11 @@ export function CreatePost() {
       if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن النشر");
       if (hits.length > 0) throw new Error(`المنشور يحتوي على كلمات محظورة: ${hits.join("، ")}`);
       if (!content.trim() && imagePaths.length === 0) throw new Error("أضف نصًا أو صورة");
-      const { error } = await supabase.from("posts").insert({
-        author_id: user.id,
-        content: content.trim(),
-        images: imagePaths,
-        post_type: isQuestion ? "question" : "general",
+      const { error } = await supabase.rpc("create_post_as", {
+        _content: content.trim(),
+        _images: imagePaths,
+        _post_type: isQuestion ? "question" : "general",
+        _anonymous: isAnonymous,
       });
       if (error) throw error;
     },
@@ -116,6 +117,7 @@ export function CreatePost() {
       setContent("");
       setImagePaths([]);
       setIsQuestion(false);
+      setIsAnonymous(false);
       toast.success("تم النشر (+5 نقاط)");
       qc.invalidateQueries({ queryKey: ["posts"] });
       refreshProfile();
@@ -278,6 +280,17 @@ export function CreatePost() {
                           <ImagePlus className="w-3.5 h-3.5" />
                         )}
                         إرفاق صور
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isAnonymous ? "default" : "ghost"}
+                        onClick={() => setIsAnonymous((v) => !v)}
+                        className="rounded-full gap-1.5 h-8 text-xs"
+                        title="النشر بهوية مجهولة — الإدارة فقط يمكنها معرفة صاحب المنشور"
+                      >
+                        <VenetianMask className="w-3.5 h-3.5" />
+                        {isAnonymous ? "مجهول" : "نشر كمجهول"}
                       </Button>
                       {content.length > 0 && (
                         <span className="text-[10px] text-muted-foreground bg-muted/65 px-2.5 py-1 rounded-full font-mono">

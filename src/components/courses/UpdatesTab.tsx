@@ -49,14 +49,14 @@ export function UpdatesTab({ courseId, canEdit }: { courseId: string; canEdit: b
         .order("created_at", { ascending: false });
 
       const rows = (data ?? []) as CourseUpdate[];
-      const authorIds = Array.from(new Set(rows.map((r) => r.author_id)));
+      const authorIds = Array.from(new Set(rows.map((r) => r.author_id).filter((x): x is string => !!x)));
       if (!authorIds.length) return rows.map((r) => ({ ...r, author_name: "الأستاذ" }));
 
       const { data: authors } = await supabase.rpc("get_public_profiles", { _ids: authorIds });
       const m = new Map(
         (authors ?? []).map((a: { id: string; full_name: string }) => [a.id, a.full_name]),
       );
-      return rows.map((r) => ({ ...r, author_name: m.get(r.author_id) ?? "الأستاذ" }));
+      return rows.map((r) => ({ ...r, author_name: (r.author_id ? m.get(r.author_id) : null) ?? "الأستاذ" }));
     },
   });
 

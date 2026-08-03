@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ArrowRight, Loader2, Send, Trash2, CheckCircle2, Pencil } from "lucide-react";
+import { ANON_NAME } from "@/lib/anonymous";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -41,7 +42,7 @@ interface Comment {
   id: string;
   post_id: string;
   parent_id: string | null;
-  author_id: string;
+  author_id: string | null;
   content: string;
   created_at: string;
 }
@@ -73,7 +74,7 @@ function PostDetailPage() {
       const { data: p } = await supabase.from("posts").select("*").eq("id", id).maybeSingle();
       if (!p) return null;
       const { data: authorRows } = await supabase.rpc("get_public_profiles", {
-        _ids: [p.author_id],
+        _ids: p.author_id ? [p.author_id] : [],
       });
       const author = (authorRows && authorRows[0]) ?? null;
       return { ...p, author };
@@ -90,12 +91,14 @@ function PostDetailPage() {
         .order("created_at");
       const list = rows ?? [];
       if (list.length === 0) return [];
-      const ids = Array.from(new Set(list.map((r: Comment) => r.author_id)));
+      const ids = Array.from(
+        new Set(list.map((r) => r.author_id).filter((x): x is string => !!x)),
+      );
       const { data: authors } = await supabase.rpc("get_public_profiles", { _ids: ids });
       const map = new Map((authors ?? []).map((a) => [a.id, a]));
-      return list.map((c: Comment) => ({
+      return list.map((c) => ({
         ...c,
-        author: (map.get(c.author_id) as CommentAuthor) ?? null,
+        author: ((c.author_id ? map.get(c.author_id) : null) as CommentAuthor) ?? null,
       }));
     },
   });
@@ -130,6 +133,7 @@ function PostDetailPage() {
 
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [text, setText] = useState("");
+  const [anonComment, setAnonComment] = useState(false);
 
   const commentMut = useMutation({
     mutationFn: async () => {
@@ -140,18 +144,19 @@ function PostDetailPage() {
         );
       if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن التعليق");
       const commentContent = text.trim();
-      const { error } = await supabase.from("comments").insert({
-        post_id: id,
-        author_id: user.id,
-        content: commentContent,
-        parent_id: replyTo,
+      const { error } = await supabase.rpc("create_comment_as", {
+        _post_id: id,
+        _content: commentContent,
+        _parent_id: replyTo ?? undefined,
+        _anonymous: anonComment,
       });
       if (error) throw error;
+      if (anonComment) return;
 
       // Trigger notifications
       if (replyTo) {
         const parentComment = comments?.find((c) => c.id === replyTo);
-        if (parentComment && parentComment.author_id !== user.id) {
+        if (parentComment?.author_id && parentComment.author_id !== user.id) {
           createNotification({
             recipientId: parentComment.author_id,
             actorId: user.id,
@@ -163,7 +168,7 @@ function PostDetailPage() {
             link: `/posts/${id}`,
           });
         }
-      } else if (post && post.author_id !== user.id) {
+      } else if (post && post.author_id && post.author_id !== user.id) {
         createNotification({
           recipientId: post.author_id,
           actorId: user.id,
@@ -202,7 +207,7 @@ function PostDetailPage() {
 
       if (commentId && user) {
         const targetComment = comments?.find((c) => c.id === commentId);
-        if (targetComment && targetComment.author_id !== user.id) {
+        if (targetComment?.author_id && targetComment.author_id !== user.id) {
           createNotification({
             recipientId: targetComment.author_id,
             actorId: user.id,
@@ -229,7 +234,7 @@ function PostDetailPage() {
 
   const roots = (comments ?? []).filter((c) => !c.parent_id);
   const childrenOf = (pid: string) => (comments ?? []).filter((c) => c.parent_id === pid);
-  const authorName = post.author?.full_name ?? "مستخدم";
+  const authorName = post.author_id ? (post.author?.full_name ?? "مستخدم") : ANON_NAME;
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -244,22 +249,30 @@ function PostDetailPage() {
         <CardContent className="p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Link to="/profile/$id" params={{ id: post.author_id }}>
-                <UserAvatar
-                  avatarUrl={post.author?.avatar_url}
-                  fullName={authorName}
-                  className="w-10 h-10"
-                />
-              </Link>
-              <div>
-                <Link
-                  to="/profile/$id"
-                  params={{ id: post.author_id }}
-                  className="font-semibold flex items-center gap-1 hover:underline"
-                >
-                  {authorName}
-                  {post.author?.verified && <VerifiedBadge />}
+              {post.author_id ? (
+                <Link to="/profile/$id" params={{ id: post.author_id }}>
+                  <UserAvatar
+                    avatarUrl={post.author?.avatar_url}
+                    fullName={authorName}
+                    className="w-10 h-10"
+                  />
                 </Link>
+              ) : (
+                <UserAvatar avatarUrl={null} fullName="؟" className="w-10 h-10" />
+              )}
+              <div>
+                {post.author_id ? (
+                  <Link
+                    to="/profile/$id"
+                    params={{ id: post.author_id }}
+                    className="font-semibold flex items-center gap-1 hover:underline"
+                  >
+                    {authorName}
+                    {post.author?.verified && <VerifiedBadge />}
+                  </Link>
+                ) : (
+                  <span className="font-semibold">{authorName}</span>
+                )}
                 <div className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ar })}
                 </div>
@@ -329,6 +342,20 @@ function PostDetailPage() {
                 </button>
               </div>
             )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAnonComment((v) => !v)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition ${
+                  anonComment
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "text-muted-foreground border-border hover:bg-muted"
+                }`}
+                title="التعليق بهوية مجهولة"
+              >
+                تعليق كمجهول
+              </button>
+            </div>
             <div className="flex gap-2">
               <RichTextEditor
                 content={text}
@@ -454,21 +481,21 @@ function CommentItem({
 }: {
   c: {
     id: string;
-    author_id: string;
+    author_id: string | null;
     content: string;
     created_at: string;
     author: CommentAuthor | null;
   };
   children: {
     id: string;
-    author_id: string;
+    author_id: string | null;
     content: string;
     created_at: string;
     author: CommentAuthor | null;
   }[];
   onReply: (cid: string) => void;
   onDelete: (cid: string) => void;
-  canDelete: (authorId: string) => boolean;
+  canDelete: (authorId: string | null) => boolean;
   isQuestion?: boolean;
   isPostAuthor?: boolean;
   acceptedAnswerId?: string | null;
@@ -477,7 +504,8 @@ function CommentItem({
 }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
-  const name = c.author?.full_name ?? "مستخدم";
+  const anon = !c.author_id;
+  const name = anon ? ANON_NAME : (c.author?.full_name ?? "مستخدم");
   const isAccepted = isQuestion && acceptedAnswerId === c.id;
   const canAccept = isQuestion && isPostAuthor && !isAccepted && !acceptedAnswerId;
   const canEdit = !!user && (user.id === c.author_id || isAdmin);
@@ -516,19 +544,27 @@ function CommentItem({
             </div>
           )}
           <div className="flex items-start gap-2">
-            <Link to="/profile/$id" params={{ id: c.author_id }}>
-              <UserAvatar avatarUrl={c.author?.avatar_url} fullName={name} className="w-8 h-8" />
-            </Link>
+            {c.author_id ? (
+              <Link to="/profile/$id" params={{ id: c.author_id }}>
+                <UserAvatar avatarUrl={c.author?.avatar_url} fullName={name} className="w-8 h-8" />
+              </Link>
+            ) : (
+              <UserAvatar avatarUrl={null} fullName="؟" className="w-8 h-8" />
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-2">
-                <Link
-                  to="/profile/$id"
-                  params={{ id: c.author_id }}
-                  className="font-medium text-sm inline-flex items-center gap-1 hover:underline"
-                >
-                  {name}
-                  {c.author?.verified && <VerifiedBadge />}
-                </Link>
+                {c.author_id ? (
+                  <Link
+                    to="/profile/$id"
+                    params={{ id: c.author_id }}
+                    className="font-medium text-sm inline-flex items-center gap-1 hover:underline"
+                  >
+                    {name}
+                    {c.author?.verified && <VerifiedBadge />}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-sm">{name}</span>
+                )}
                 <span className="text-[10px] text-muted-foreground">
                   {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: ar })}
                 </span>
@@ -622,7 +658,7 @@ function CommentItem({
       {children.length > 0 && (
         <div className="ms-8 mt-2 space-y-2">
           {children.map((ch) => {
-            const cn = ch.author?.full_name ?? "مستخدم";
+            const cn = ch.author_id ? (ch.author?.full_name ?? "مستخدم") : ANON_NAME;
             const canEditChild = !!user && (user.id === ch.author_id || isAdmin);
             return (
               <ChildCommentItem
@@ -650,7 +686,7 @@ function ChildCommentItem({
 }: {
   ch: {
     id: string;
-    author_id: string;
+    author_id: string | null;
     content: string;
     created_at: string;
     author: CommentAuthor | null;
@@ -689,19 +725,27 @@ function ChildCommentItem({
     <Card>
       <CardContent className="p-3">
         <div className="flex items-start gap-2">
-          <Link to="/profile/$id" params={{ id: ch.author_id }}>
-            <UserAvatar avatarUrl={ch.author?.avatar_url} fullName={cn} className="w-7 h-7" />
-          </Link>
+          {ch.author_id ? (
+            <Link to="/profile/$id" params={{ id: ch.author_id }}>
+              <UserAvatar avatarUrl={ch.author?.avatar_url} fullName={cn} className="w-7 h-7" />
+            </Link>
+          ) : (
+            <UserAvatar avatarUrl={null} fullName="؟" className="w-7 h-7" />
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2">
-              <Link
-                to="/profile/$id"
-                params={{ id: ch.author_id }}
-                className="font-medium text-xs inline-flex items-center gap-1 hover:underline"
-              >
-                {cn}
-                {ch.author?.verified && <VerifiedBadge />}
-              </Link>
+              {ch.author_id ? (
+                <Link
+                  to="/profile/$id"
+                  params={{ id: ch.author_id }}
+                  className="font-medium text-xs inline-flex items-center gap-1 hover:underline"
+                >
+                  {cn}
+                  {ch.author?.verified && <VerifiedBadge />}
+                </Link>
+              ) : (
+                <span className="font-medium text-xs">{cn}</span>
+              )}
               <span className="text-[10px] text-muted-foreground">
                 {formatDistanceToNow(new Date(ch.created_at), {
                   addSuffix: true,

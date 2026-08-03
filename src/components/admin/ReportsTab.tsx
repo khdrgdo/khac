@@ -284,7 +284,7 @@ function PostReports() {
                           onClick={() =>
                             setReasonFor({
                               postId: r.post_id,
-                              authorId: post.author_id,
+                              authorId: post.author_id ?? "",
                               action: "warn",
                             })
                           }
@@ -300,7 +300,7 @@ function PostReports() {
                           onClick={() =>
                             setReasonFor({
                               postId: r.post_id,
-                              authorId: post.author_id,
+                              authorId: post.author_id ?? "",
                               action: "suspend",
                             })
                           }
@@ -316,7 +316,7 @@ function PostReports() {
                           onClick={() =>
                             setReasonFor({
                               postId: r.post_id,
-                              authorId: post.author_id,
+                              authorId: post.author_id ?? "",
                               action: "ban",
                             })
                           }

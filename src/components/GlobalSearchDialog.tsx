@@ -44,7 +44,7 @@ interface PostResult {
   content: string;
   created_at: string;
   post_type: string;
-  author_id: string;
+  author_id: string | null;
   images?: string[] | null;
   author?: {
     id: string;
@@ -62,7 +62,7 @@ interface CommentResult {
   content: string;
   created_at: string;
   post_id: string;
-  author_id: string;
+  author_id: string | null;
   author?: {
     id: string;
     full_name: string;
@@ -125,7 +125,7 @@ export function GlobalSearchDialog() {
       if (list.length === 0) return [];
 
       const ids = list.map((r) => r.id);
-      const authorIds = Array.from(new Set(list.map((r) => r.author_id)));
+      const authorIds = Array.from(new Set(list.map((r) => r.author_id).filter((x): x is string => !!x)));
 
       const [{ data: authors }, { data: reactions }, { data: comments }] = await Promise.all([
         supabase.rpc("get_public_profiles", { _ids: authorIds }),
@@ -145,7 +145,7 @@ export function GlobalSearchDialog() {
           (x: { post_id: string }) => x.post_id === r.id,
         ).length;
 
-        const author = authorMap.get(r.author_id);
+        const author = r.author_id ? authorMap.get(r.author_id) : undefined;
 
         return {
           ...r,
@@ -181,7 +181,7 @@ export function GlobalSearchDialog() {
       const list = rows ?? [];
       if (list.length === 0) return [];
 
-      const authorIds = Array.from(new Set(list.map((c) => c.author_id)));
+      const authorIds = Array.from(new Set(list.map((c) => c.author_id).filter((x): x is string => !!x)));
       const postIds = Array.from(new Set(list.map((c) => c.post_id)));
 
       const [{ data: authors }, { data: posts }] = await Promise.all([
@@ -195,7 +195,7 @@ export function GlobalSearchDialog() {
       const postMap = new Map((posts ?? []).map((p: { id: string; content: string }) => [p.id, p]));
 
       return list.map((c) => {
-        const author = authorMap.get(c.author_id);
+        const author = c.author_id ? authorMap.get(c.author_id) : undefined;
         const parentPost = postMap.get(c.post_id);
         return {
           ...c,

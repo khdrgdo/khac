@@ -61,8 +61,8 @@ export function ActivityLogTab() {
         .limit(30);
 
       const profIds = new Set<string>();
-      (posts || []).forEach((p) => profIds.add(p.author_id));
-      (comments || []).forEach((c) => profIds.add(c.author_id));
+      (posts || []).forEach((p) => p.author_id && profIds.add(p.author_id));
+      (comments || []).forEach((c) => c.author_id && profIds.add(c.author_id));
       (reactions || []).forEach((r) => profIds.add(r.user_id));
 
       const { data: profs } = profIds.size
@@ -87,10 +87,10 @@ export function ActivityLogTab() {
       }> = [];
 
       (posts || []).forEach((p) => {
-        const u = nameMap.get(p.author_id);
+        const u = p.author_id ? nameMap.get(p.author_id) : undefined;
         timeline.push({
           id: `post_${p.id}`,
-          userId: p.author_id,
+          userId: p.author_id ?? "",
           userName: u?.full_name || "مستخدم",
           userAvatar: u?.avatar_url,
           year: u?.year,
@@ -102,10 +102,10 @@ export function ActivityLogTab() {
       });
 
       (comments || []).forEach((c) => {
-        const u = nameMap.get(c.author_id);
+        const u = c.author_id ? nameMap.get(c.author_id) : undefined;
         timeline.push({
           id: `comment_${c.id}`,
-          userId: c.author_id,
+          userId: c.author_id ?? "",
           userName: u?.full_name || "مستخدم",
           userAvatar: u?.avatar_url,
           year: u?.year,

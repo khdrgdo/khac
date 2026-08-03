@@ -26,7 +26,9 @@ export function PostList({ authorId, savedByUserId, filter = "all" }: Props) {
 
       let q = supabase
         .from("posts")
-        .select("id, content, images, author_id, created_at, post_type, accepted_answer_id")
+        .select(
+          "id, content, images, author_id, is_anonymous, created_at, post_type, accepted_answer_id",
+        )
         .not("content", "ilike", "[course:%")
         .order("created_at", { ascending: false })
         .limit(50);
@@ -44,10 +46,13 @@ export function PostList({ authorId, savedByUserId, filter = "all" }: Props) {
       if (list.length === 0) return [];
 
       const ids = list.map((r) => r.id);
-      const authorIds = Array.from(new Set(list.map((r) => r.author_id)));
+      const authorIds = Array.from(
+        new Set(list.map((r) => r.author_id).filter((x): x is string => !!x)),
+      );
 
       const [{ data: authors }, { data: reactions }, { data: comments }] = await Promise.all([
         supabase.rpc("get_public_profiles", { _ids: authorIds }),
+
         supabase.from("post_reactions").select("post_id, user_id, reaction").in("post_id", ids),
         supabase.from("comments").select("post_id").in("post_id", ids),
       ]);
@@ -81,7 +86,7 @@ export function PostList({ authorId, savedByUserId, filter = "all" }: Props) {
           : null;
         return {
           ...r,
-          author: authorMap.get(r.author_id) as PostWithMeta["author"],
+          author: (r.author_id ? authorMap.get(r.author_id) : undefined) as PostWithMeta["author"],
           reactions: postReactions as PostWithMeta["reactions"],
           commentCount,
           myReaction: (myReaction ?? null) as PostWithMeta["myReaction"],
