@@ -153,7 +153,7 @@ function PostDetailPage() {
       // Trigger notifications
       if (replyTo) {
         const parentComment = comments?.find((c) => c.id === replyTo);
-        if (parentComment && parentComment.author_id !== user.id) {
+        if (parentComment?.author_id && parentComment.author_id !== user.id) {
           createNotification({
             recipientId: parentComment.author_id,
             actorId: user.id,
@@ -204,7 +204,7 @@ function PostDetailPage() {
 
       if (commentId && user) {
         const targetComment = comments?.find((c) => c.id === commentId);
-        if (targetComment && targetComment.author_id !== user.id) {
+        if (targetComment?.author_id && targetComment.author_id !== user.id) {
           createNotification({
             recipientId: targetComment.author_id,
             actorId: user.id,
@@ -456,14 +456,14 @@ function CommentItem({
 }: {
   c: {
     id: string;
-    author_id: string;
+    author_id: string | null;
     content: string;
     created_at: string;
     author: CommentAuthor | null;
   };
   children: {
     id: string;
-    author_id: string;
+    author_id: string | null;
     content: string;
     created_at: string;
     author: CommentAuthor | null;
@@ -652,7 +652,7 @@ function ChildCommentItem({
 }: {
   ch: {
     id: string;
-    author_id: string;
+    author_id: string | null;
     content: string;
     created_at: string;
     author: CommentAuthor | null;
