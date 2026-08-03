@@ -281,6 +281,17 @@ export function CreatePost() {
                         )}
                         إرفاق صور
                       </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isAnonymous ? "default" : "ghost"}
+                        onClick={() => setIsAnonymous((v) => !v)}
+                        className="rounded-full gap-1.5 h-8 text-xs"
+                        title="النشر بهوية مجهولة — الإدارة فقط يمكنها معرفة صاحب المنشور"
+                      >
+                        <VenetianMask className="w-3.5 h-3.5" />
+                        {isAnonymous ? "مجهول" : "نشر كمجهول"}
+                      </Button>
                       {content.length > 0 && (
                         <span className="text-[10px] text-muted-foreground bg-muted/65 px-2.5 py-1 rounded-full font-mono">
                           {content.length}/4000
