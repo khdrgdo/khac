@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ANON_NAME } from "@/lib/anonymous";
 import { useAuth } from "@/hooks/useAuth";
 import { type CourseQuestionPost, type CoursePublicProfile } from "@/components/courses/course-types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -108,7 +109,7 @@ export function QuestionCard({
     },
   });
 
-  const authorName = q.author?.full_name ?? "مستخدم";
+  const authorName = q.author_id ? (q.author?.full_name ?? "مستخدم") : ANON_NAME;
 
   return (
     <Card className="border-muted/80 shadow-sm">
@@ -177,7 +178,7 @@ export function QuestionCard({
             ) : comments && comments.length > 0 ? (
               <div className="space-y-2 border-r-2 border-primary/20 pr-3 mr-1">
                 {comments.map((c) => {
-                  const cName = c.author?.full_name ?? "مستخدم";
+                  const cName = c.author_id ? (c.author?.full_name ?? "مستخدم") : ANON_NAME;
                   const isCommentTeacher = c.author_id === teacherId;
                   const canDelComment = isAdmin || c.author_id === user?.id;
 
