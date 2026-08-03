@@ -1,4 +1,9 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as typedSupabase } from "@/integrations/supabase/client";
+
+// `name_change_requests` and `profiles.has_used_direct_name_change` are not in
+// the generated types yet, so this module talks to an untyped view of the client.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const supabase = typedSupabase as any;
 
 export interface NameChangeRequest {
   id: string;
