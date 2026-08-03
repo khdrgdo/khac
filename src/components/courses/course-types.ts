@@ -11,7 +11,7 @@ export interface CourseFile {
 export interface CourseUpdate {
   id: string;
   course_id: string;
-  author_id: string;
+  author_id: string | null;
   content: string;
   created_at: string;
 }
@@ -45,7 +45,7 @@ export interface CoursePublicProfile {
 
 export interface CourseQuestionPost {
   id: string;
-  author_id: string;
+  author_id: string | null;
   content: string;
   created_at: string;
   author: CoursePublicProfile | null;

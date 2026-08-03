@@ -48,7 +48,7 @@ export function QuestionCard({
 
       if (error) throw error;
       const cList = data ?? [];
-      const authorIds = Array.from(new Set(cList.map((c) => c.author_id)));
+      const authorIds = Array.from(new Set(cList.map((c) => c.author_id).filter((x): x is string => !!x)));
       if (!authorIds.length) return [];
 
       const { data: profiles } = await supabase.rpc("get_public_profiles", { _ids: authorIds });
@@ -56,7 +56,7 @@ export function QuestionCard({
 
       return cList.map((c) => ({
         ...c,
-        author: pMap.get(c.author_id) ?? null,
+        author: (c.author_id ? pMap.get(c.author_id) : null) ?? null,
       }));
     },
   });

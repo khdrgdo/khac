@@ -195,7 +195,7 @@ export function GlobalSearchDialog() {
       const postMap = new Map((posts ?? []).map((p: { id: string; content: string }) => [p.id, p]));
 
       return list.map((c) => {
-        const author = authorMap.get(c.author_id);
+        const author = c.author_id ? authorMap.get(c.author_id) : undefined;
         const parentPost = postMap.get(c.post_id);
         return {
           ...c,

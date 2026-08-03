@@ -73,7 +73,7 @@ function PostDetailPage() {
       const { data: p } = await supabase.from("posts").select("*").eq("id", id).maybeSingle();
       if (!p) return null;
       const { data: authorRows } = await supabase.rpc("get_public_profiles", {
-        _ids: [p.author_id],
+        _ids: p.author_id ? [p.author_id] : [],
       });
       const author = (authorRows && authorRows[0]) ?? null;
       return { ...p, author };
@@ -90,12 +90,14 @@ function PostDetailPage() {
         .order("created_at");
       const list = rows ?? [];
       if (list.length === 0) return [];
-      const ids = Array.from(new Set(list.map((r: Comment) => r.author_id)));
+      const ids = Array.from(
+        new Set(list.map((r) => r.author_id).filter((x): x is string => !!x)),
+      );
       const { data: authors } = await supabase.rpc("get_public_profiles", { _ids: ids });
       const map = new Map((authors ?? []).map((a) => [a.id, a]));
-      return list.map((c: Comment) => ({
+      return list.map((c) => ({
         ...c,
-        author: (map.get(c.author_id) as CommentAuthor) ?? null,
+        author: ((c.author_id ? map.get(c.author_id) : null) as CommentAuthor) ?? null,
       }));
     },
   });

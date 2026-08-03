@@ -247,7 +247,7 @@ function ChatPage() {
     if (!otherUser) return;
     setSubmittingReport(true);
     const { error } = await supabase.from("message_reports").insert({
-      reporter_id: user?.id,
+      reporter_id: user!.id,
       reported_user_id: otherUser.id,
       conversation_id: id,
       reason: reportReason,

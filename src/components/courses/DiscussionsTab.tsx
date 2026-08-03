@@ -39,7 +39,7 @@ export function DiscussionsTab({
       if (error) throw error;
 
       const postsData = data ?? [];
-      const authorIds = Array.from(new Set(postsData.map((p) => p.author_id)));
+      const authorIds = Array.from(new Set(postsData.map((p) => p.author_id).filter((x): x is string => !!x)));
       if (!authorIds.length) return [];
 
       const { data: profiles } = await supabase.rpc("get_public_profiles", { _ids: authorIds });
@@ -47,7 +47,7 @@ export function DiscussionsTab({
 
       return postsData.map((p) => ({
         ...p,
-        author: profileMap.get(p.author_id) ?? null,
+        author: (p.author_id ? profileMap.get(p.author_id) : null) ?? null,
         cleanContent: p.content.replace(coursePrefix, "").trim(),
       }));
     },
