@@ -23,6 +23,7 @@ export function DiscussionsTab({
   const { user, isAdmin, isSubAdmin } = useAuth();
   const qc = useQueryClient();
   const [questionContent, setQuestionContent] = useState("");
+  const [askAnonymously, setAskAnonymously] = useState(false);
 
   const coursePrefix = `[course:${courseId}]`;
 
@@ -62,15 +63,16 @@ export function DiscussionsTab({
           "حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط من لوحة التحكم، ولا يملك صلاحية طرح أسئلة.",
         );
       const fullText = `${coursePrefix} ${questionContent.trim()}`;
-      const { error } = await supabase.from("posts").insert({
-        author_id: user.id,
-        content: fullText,
-        post_type: "question",
+      const { error } = await supabase.rpc("create_post_as", {
+        _content: fullText,
+        _post_type: "question",
+        _anonymous: askAnonymously,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       setQuestionContent("");
+      setAskAnonymously(false);
       toast.success("تم نشر سؤالك في المقرر بنجاح");
       qc.invalidateQueries({ queryKey: ["course_questions", courseId] });
     },
@@ -111,7 +113,18 @@ export function DiscussionsTab({
               onChange={setQuestionContent}
               placeholder="اكتب سؤالك هنا ليستطيع الطلاب وأستاذ المقرر الإجابة عليه..."
             />
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAskAnonymously((v) => !v)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition ${
+                  askAnonymously
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "text-muted-foreground border-border hover:bg-muted"
+                }`}
+              >
+                سؤال كمجهول
+              </button>
               <Button
                 size="sm"
                 onClick={() => postQuestion.mutate()}

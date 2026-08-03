@@ -249,22 +249,30 @@ function PostDetailPage() {
         <CardContent className="p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Link to="/profile/$id" params={{ id: post.author_id }}>
-                <UserAvatar
-                  avatarUrl={post.author?.avatar_url}
-                  fullName={authorName}
-                  className="w-10 h-10"
-                />
-              </Link>
-              <div>
-                <Link
-                  to="/profile/$id"
-                  params={{ id: post.author_id }}
-                  className="font-semibold flex items-center gap-1 hover:underline"
-                >
-                  {authorName}
-                  {post.author?.verified && <VerifiedBadge />}
+              {post.author_id ? (
+                <Link to="/profile/$id" params={{ id: post.author_id }}>
+                  <UserAvatar
+                    avatarUrl={post.author?.avatar_url}
+                    fullName={authorName}
+                    className="w-10 h-10"
+                  />
                 </Link>
+              ) : (
+                <UserAvatar avatarUrl={null} fullName="؟" className="w-10 h-10" />
+              )}
+              <div>
+                {post.author_id ? (
+                  <Link
+                    to="/profile/$id"
+                    params={{ id: post.author_id }}
+                    className="font-semibold flex items-center gap-1 hover:underline"
+                  >
+                    {authorName}
+                    {post.author?.verified && <VerifiedBadge />}
+                  </Link>
+                ) : (
+                  <span className="font-semibold">{authorName}</span>
+                )}
                 <div className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ar })}
                 </div>
