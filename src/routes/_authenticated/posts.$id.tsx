@@ -470,7 +470,7 @@ function CommentItem({
   }[];
   onReply: (cid: string) => void;
   onDelete: (cid: string) => void;
-  canDelete: (authorId: string) => boolean;
+  canDelete: (authorId: string | null) => boolean;
   isQuestion?: boolean;
   isPostAuthor?: boolean;
   acceptedAnswerId?: string | null;
