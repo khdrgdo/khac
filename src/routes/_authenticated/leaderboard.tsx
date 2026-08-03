@@ -303,11 +303,13 @@ function LeaderboardPage() {
 
       // Count posts (worth 5 points on leaderboard)
       (posts ?? []).forEach((p) => {
+        if (!p.author_id) return;
         contributionMap.set(p.author_id, (contributionMap.get(p.author_id) ?? 0) + 5);
       });
 
       // Count comments (worth 2 points on leaderboard)
       (comments ?? []).forEach((c) => {
+        if (!c.author_id) return;
         contributionMap.set(c.author_id, (contributionMap.get(c.author_id) ?? 0) + 2);
       });
 

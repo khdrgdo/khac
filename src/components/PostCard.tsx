@@ -43,8 +43,10 @@ import {
   HelpCircle,
   CheckCircle2,
   Trash2,
+  VenetianMask,
 } from "lucide-react";
 import { RankBadge } from "@/components/RankBadge";
+import { ANON_NAME, useAnonymousReveal, useMyAnonymousIds } from "@/lib/anonymous";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { StorageImage } from "@/components/StorageImage";
 import { ExpandableText } from "@/components/ExpandableText";
@@ -57,7 +59,8 @@ export interface PostWithMeta {
   id: string;
   content: string;
   images: string[] | null;
-  author_id: string;
+  author_id: string | null;
+  is_anonymous?: boolean;
   created_at: string;
   post_type: "general" | "question";
   accepted_answer_id: string | null;
@@ -93,6 +96,10 @@ export function PostCard({ post }: { post: PostWithMeta }) {
   const [openReact, setOpenReact] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const anonymous = !!post.is_anonymous || !post.author_id;
+  const { canReveal, reveal } = useAnonymousReveal("post", anonymous ? [post.id] : []);
+  const isMyAnon = useMyAnonymousIds("post");
+
 
   const deletePostMut = useMutation({
     mutationFn: async () => {
@@ -128,7 +135,7 @@ export function PostCard({ post }: { post: PostWithMeta }) {
           );
         if (error) throw error;
 
-        if (post.author_id !== user.id) {
+        if (post.author_id && post.author_id !== user.id) {
           const matchedReaction = REACTIONS.find((r) => r.type === type);
           createNotification({
             recipientId: post.author_id,
@@ -229,31 +236,55 @@ export function PostCard({ post }: { post: PostWithMeta }) {
     }
   }
 
-  const authorName = post.author?.full_name ?? "مستخدم";
+  const isAnon = !!post.is_anonymous || !post.author_id;
+  const revealed = isAnon ? reveal(post.id) : null;
+  const authorName = isAnon ? ANON_NAME : (post.author?.full_name ?? "مستخدم");
+  const profileLinkId = isAnon ? null : post.author_id;
+  const isMine = !!user && (user.id === post.author_id || (isAnon && isMyAnon(post.id)));
+
+  const avatarEl = (
+    <UserAvatar
+      avatarUrl={isAnon ? null : post.author?.avatar_url}
+      fullName={isAnon ? "؟" : authorName}
+      className="w-10 h-10"
+    />
+  );
 
   return (
     <Card>
       <CardContent className="p-3 sm:p-4">
         <div className="flex items-start gap-3">
-          <Link to="/profile/$id" params={{ id: post.author_id }}>
-            <UserAvatar
-              avatarUrl={post.author?.avatar_url}
-              fullName={authorName}
-              className="w-10 h-10"
-            />
-          </Link>
+          {profileLinkId ? (
+            <Link to="/profile/$id" params={{ id: profileLinkId }}>{avatarEl}</Link>
+          ) : (
+            avatarEl
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <Link
-                to="/profile/$id"
-                params={{ id: post.author_id }}
-                className="font-semibold hover:underline flex items-center gap-1"
-              >
-                {authorName}
-                {post.author?.verified && <VerifiedBadge />}
-              </Link>
-              <RankBadge points={post.author?.points ?? 0} size="xs" />
-              {post.author?.major && (
+              {profileLinkId ? (
+                <Link
+                  to="/profile/$id"
+                  params={{ id: profileLinkId }}
+                  className="font-semibold hover:underline flex items-center gap-1"
+                >
+                  {authorName}
+                  {post.author?.verified && <VerifiedBadge />}
+                </Link>
+              ) : (
+                <span className="font-semibold flex items-center gap-1">
+                  <VenetianMask className="w-4 h-4 text-muted-foreground" />
+                  {authorName}
+                </span>
+              )}
+              {!isAnon && <RankBadge points={post.author?.points ?? 0} size="xs" />}
+              {isAnon && canReveal && (
+                <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive">
+                  {revealed
+                    ? `الهوية (للإدارة فقط): ${revealed.full_name}`
+                    : "منشور مجهول"}
+                </span>
+              )}
+              {!isAnon && post.author?.major && (
                 <span className="text-xs text-muted-foreground">
                   • {majorLabel(post.author.major)}
                 </span>
@@ -280,12 +311,12 @@ export function PostCard({ post }: { post: PostWithMeta }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {user && user.id !== post.author_id && (
+              {user && !isMine && (
                 <DropdownMenuItem onClick={() => setReportOpen(true)} className="text-destructive">
                   <Flag className="w-4 h-4 ml-2" /> بلاغ
                 </DropdownMenuItem>
               )}
-              {user && (user.id === post.author_id || isAdmin) && (
+              {user && (isMine || isAdmin) && (
                 <DropdownMenuItem
                   onClick={() => setDeleteConfirmOpen(true)}
                   className="text-destructive focus:bg-destructive/10 focus:text-destructive"
@@ -296,6 +327,7 @@ export function PostCard({ post }: { post: PostWithMeta }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
 
         <Link to="/posts/$id" params={{ id: post.id }}>
           {post.content && <ExpandableText text={post.content} className="mt-3" />}

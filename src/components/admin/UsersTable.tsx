@@ -136,8 +136,8 @@ export function UsersTable() {
           if (!lastActivity[uid] || new Date(ts) > new Date(lastActivity[uid]))
             lastActivity[uid] = ts;
         };
-        (lastPosts ?? []).forEach((p) => consider(p.author_id, p.created_at));
-        (lastComments ?? []).forEach((c) => consider(c.author_id, c.created_at));
+        (lastPosts ?? []).forEach((p) => p.author_id && consider(p.author_id, p.created_at));
+        (lastComments ?? []).forEach((c) => c.author_id && consider(c.author_id, c.created_at));
         (lastMsgs ?? []).forEach((m) => consider(m.sender_id, m.created_at));
       }
 

@@ -23,7 +23,7 @@ export function RecentActivity() {
 
       const [reportsRes, nameReqsRes, adminActionsRes] = await Promise.all([
         supabase.from("post_reports").select("id, reason, created_at").order("created_at", { ascending: false }).limit(limit),
-        supabase.from("name_change_requests").select("id, requested_name, status, created_at").order("created_at", { ascending: false }).limit(limit),
+        (supabase as unknown as { from: (t: string) => any }).from("name_change_requests").select("id, requested_name, status, created_at").order("created_at", { ascending: false }).limit(limit) as Promise<{ data: { id: string; requested_name: string; status: string; created_at: string }[] | null }>,
         supabase.from("admin_actions").select("id, action, created_at").order("created_at", { ascending: false }).limit(limit),
       ]);
 

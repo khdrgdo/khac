@@ -459,7 +459,7 @@ export function SubAdminsTab() {
       ) : (
         <div className="grid gap-3">
           {subAdmins?.map((sub) => {
-            const perms = sub.subadmin_perms ?? getSubAdminPermissions(sub);
+            const perms = (sub.subadmin_perms ?? getSubAdminPermissions(sub)) as unknown as Record<string, boolean>;
             const userCode =
               sub.university_number?.replace("sub_", "") || sub.email?.split("@")[0] || "";
 
