@@ -75,35 +75,37 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/10 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center p-5 sm:p-8">
+      <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
+      <div className="absolute top-0 end-0 h-full w-px bg-border/60" />
+      <div className="w-full max-w-md relative z-10">
         {/* Header */}
-        <div className="text-center mb-6 flex flex-col items-center justify-center">
+        <div className="text-center mb-8 flex flex-col items-center justify-center">
           <NexusLogo
             size="lg"
             showTagline={true}
             taglineText="NEXUS الأكاديمية الذكية"
-            className="mb-2"
+            className="mb-3"
           />
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-2">
             البوابة الأكاديمية والتواصل الاجتماعي للطلاب والأساتذة
           </p>
         </div>
 
-        <Card className="shadow-xl border-border/70">
-          <CardHeader className="pb-3 text-right">
-            <CardTitle className="text-lg">مرحبًا بك</CardTitle>
+        <Card className="border-t-4 border-t-accent shadow-xl shadow-primary/10">
+          <CardHeader className="pb-4 text-right p-7 sm:p-9">
+            <CardTitle className="text-2xl" data-display>مرحبًا بك</CardTitle>
             <CardDescription className="text-xs">
               اختر طريقة المتابعة المباشرة عبر غوغل أو التسجيل اليدوي
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4 text-right">
+          <CardContent className="space-y-5 text-right px-7 pb-8 sm:px-9 sm:pb-9">
             {/* Quick Google Login */}
             <div className="space-y-1.5">
               <Button
                 variant="outline"
-                className="w-full gap-2.5 h-11 border-primary/30 hover:bg-primary/5 text-foreground font-medium text-xs sm:text-sm shadow-xs transition-all"
+                className="w-full gap-2.5 h-11 text-foreground font-medium text-xs sm:text-sm"
                 onClick={googleSignIn}
                 disabled={loadingGoogle}
               >
@@ -125,7 +127,7 @@ function AuthPage() {
             </div>
 
             <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="grid grid-cols-2 w-full mb-4">
+              <TabsList className="grid grid-cols-2 w-full mb-5">
                 <TabsTrigger value="login" className="text-xs sm:text-sm">
                   تسجيل الدخول
                 </TabsTrigger>
