@@ -20,28 +20,17 @@ export function NexusIcon({ className = "w-6 h-6" }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       className={cn("shrink-0 select-none", className)}
     >
-      <defs>
-        <linearGradient id="nexus-n-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#1E1B4B" />
-          <stop offset="100%" stopColor="#0F172A" />
-        </linearGradient>
-        <linearGradient id="nexus-n-letter" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#C084FC" />
-          <stop offset="100%" stopColor="#8B5CF6" />
-        </linearGradient>
-      </defs>
       <rect
         width="32"
         height="32"
-        rx="8"
-        fill="url(#nexus-n-bg)"
-        stroke="rgba(139, 92, 246, 0.35)"
+        rx="16"
+        className="fill-primary stroke-accent"
         strokeWidth="1"
       />
       {/* Precision geometric capital letter 'N' */}
       <path
         d="M8.5 8.5H12L19.5 20.2V8.5H23.5V23.5H20L12.5 11.8V23.5H8.5V8.5Z"
-        fill="url(#nexus-n-letter)"
+        className="fill-accent"
       />
     </svg>
   );
@@ -79,7 +68,7 @@ export function NexusWordmark({
     >
       <span className="text-foreground font-black">N</span>
       <span className="text-foreground font-black">E</span>
-      <span className="text-[#8B5CF6] font-black transition-colors duration-200">X</span>
+      <span className="text-accent font-black transition-colors duration-200">X</span>
       <span className="text-foreground font-black">U</span>
       <span className="text-foreground font-black">S</span>
     </span>
@@ -126,7 +115,7 @@ export function NexusLogo({
             className="text-[10px] font-semibold text-muted-foreground/80 leading-none mt-1 flex items-center gap-1.5 [direction:rtl]"
             style={{ direction: "rtl" }}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
             <span>{taglineText}</span>
           </span>
         )}

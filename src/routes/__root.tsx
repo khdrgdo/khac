@@ -107,7 +107,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "twitter:image",
         content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/59866c9e-faf5-491b-b8ff-2a422ce6c7cf",
       },
-      { name: "theme-color", content: "#8b5cf6" },
+      { name: "theme-color", content: "#13202A" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "mobile-web-app-capable", content: "yes" },
@@ -121,7 +121,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Instrument+Serif&family=Work+Sans:wght@400;500;600;700&display=swap",
       },
     ],
   }),
