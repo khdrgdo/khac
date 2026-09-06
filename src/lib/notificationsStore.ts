@@ -93,12 +93,45 @@ export async function broadcastNotification(params: {
 }
 
 /**
+ * Local (non-DB) notifications come from live activity (comments, reactions,
+ * messages, warnings). They have no row in the notifications table, so their
+ * read/dismissed state is kept per-user in localStorage.
+ */
+function isDbNotification(id: string) {
+  return !/^(comment_|react_|msg_|warn_)/.test(id);
+}
+
+function localKey(userId: string, kind: "read" | "hidden") {
+  return `nexus_notif_${kind}_${userId}`;
+}
+
+function readLocalSet(userId: string, kind: "read" | "hidden"): Set<string> {
+  try {
+    const raw = localStorage.getItem(localKey(userId, kind));
+    return new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeLocalSet(userId: string, kind: "read" | "hidden", set: Set<string>) {
+  try {
+    // keep the list bounded
+    const arr = Array.from(set).slice(-500);
+    localStorage.setItem(localKey(userId, kind), JSON.stringify(arr));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * Fetch all notifications for a user from DB + real-time activity
  */
 export async function fetchRealtimeNotifications(userId: string): Promise<NotificationItem[]> {
   if (!userId) return [];
 
   const items: NotificationItem[] = [];
+
 
   try {
     // 1. Fetch persisted notifications from DB
