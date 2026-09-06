@@ -321,19 +321,32 @@ export async function fetchRealtimeNotifications(userId: string): Promise<Notifi
       }
     });
 
-    return Array.from(uniqueMap.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    // Apply locally stored read / dismissed state for activity notifications
+    const localRead = readLocalSet(userId, "read");
+    const localHidden = readLocalSet(userId, "hidden");
+
+    return Array.from(uniqueMap.values())
+      .filter((item) => isDbNotification(item.id) || !localHidden.has(item.id))
+      .map((item) =>
+        !isDbNotification(item.id) && localRead.has(item.id) ? { ...item, read: true } : item,
+      )
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch (err) {
     return [];
   }
 }
 
 /**
- * Mark a single notification as read in DB
+ * Mark a single notification as read (DB row or local activity item)
  */
 export async function markNotificationAsRead(userId: string, notifId: string): Promise<void> {
   if (!userId || !notifId) return;
+  if (!isDbNotification(notifId)) {
+    const set = readLocalSet(userId, "read");
+    set.add(notifId);
+    writeLocalSet(userId, "read", set);
+    return;
+  }
   await supabase
     .from("notifications")
     .update({ read: true })
@@ -342,10 +355,18 @@ export async function markNotificationAsRead(userId: string, notifId: string): P
 }
 
 /**
- * Mark all notifications as read in DB
+ * Mark all notifications as read (DB + local activity items)
  */
-export async function markAllNotificationsAsRead(userId: string): Promise<void> {
+export async function markAllNotificationsAsRead(
+  userId: string,
+  localIds: string[] = [],
+): Promise<void> {
   if (!userId) return;
+  if (localIds.length) {
+    const set = readLocalSet(userId, "read");
+    localIds.forEach((id) => set.add(id));
+    writeLocalSet(userId, "read", set);
+  }
   await supabase
     .from("notifications")
     .update({ read: true })
@@ -354,10 +375,16 @@ export async function markAllNotificationsAsRead(userId: string): Promise<void> 
 }
 
 /**
- * Delete a single notification from DB
+ * Delete a single notification (DB row) or hide a local activity item
  */
 export async function deleteNotification(userId: string, notifId: string): Promise<void> {
   if (!userId || !notifId) return;
+  if (!isDbNotification(notifId)) {
+    const set = readLocalSet(userId, "hidden");
+    set.add(notifId);
+    writeLocalSet(userId, "hidden", set);
+    return;
+  }
   await supabase
     .from("notifications")
     .delete()
@@ -366,15 +393,24 @@ export async function deleteNotification(userId: string, notifId: string): Promi
 }
 
 /**
- * Clear all DB notifications for user
+ * Clear all notifications for user (DB rows + currently listed local items)
  */
-export async function clearAllNotifications(userId: string): Promise<void> {
+export async function clearAllNotifications(
+  userId: string,
+  localIds: string[] = [],
+): Promise<void> {
   if (!userId) return;
+  if (localIds.length) {
+    const set = readLocalSet(userId, "hidden");
+    localIds.forEach((id) => set.add(id));
+    writeLocalSet(userId, "hidden", set);
+  }
   await supabase
     .from("notifications")
     .delete()
     .eq("recipient_id", userId);
 }
+
 
 /**
  * Fetch sent broadcast notifications grouped or listed for admin
