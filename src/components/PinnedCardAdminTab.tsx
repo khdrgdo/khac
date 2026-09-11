@@ -181,10 +181,11 @@ export function PinnedCardAdminTab() {
         <div className="flex items-center gap-2 shrink-0">
           <Button
             onClick={handleSave}
+            disabled={saving}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-2 rounded-xl shadow-lg shadow-primary/20"
           >
             <Save className="w-4 h-4" />
-            <span>حفظ التعديلات</span>
+            <span>{saving ? "جاري الحفظ..." : "حفظ التعديلات"}</span>
           </Button>
 
           <Button
@@ -216,9 +217,14 @@ export function PinnedCardAdminTab() {
             <div className="flex items-center gap-2 bg-muted/60 px-3 py-1.5 rounded-xl border border-border/40">
               <Switch
                 checked={form.enabled}
-                onCheckedChange={(val) => {
+                onCheckedChange={async (val) => {
                   setForm({ ...form, enabled: val });
-                  updateConfig({ enabled: val });
+                  try {
+                    await updateConfig({ enabled: val });
+                  } catch (e) {
+                    setForm({ ...form, enabled: !val });
+                    toast.error(errMsg(e));
+                  }
                 }}
               />
               <span
