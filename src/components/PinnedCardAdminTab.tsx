@@ -40,23 +40,38 @@ export function PinnedCardAdminTab() {
 
   const [form, setForm] = useState<PinnedCardConfig>(config);
   const [newOptionText, setNewOptionText] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setForm(config);
   }, [config]);
 
-  const handleSave = () => {
+  const errMsg = (e: unknown) =>
+    e instanceof Error && e.message ? e.message : "تعذر الحفظ، تأكد من صلاحياتك ثم أعد المحاولة";
+
+  const handleSave = async () => {
     const { votes, participants, ...settingsToSave } = form;
-    updateConfig(settingsToSave);
-    toast.success("تم حفظ إعدادات الكارد المثبت بنجاح! 🚀");
+    setSaving(true);
+    try {
+      await updateConfig(settingsToSave);
+      toast.success("تم حفظ إعدادات الكارد المثبت بنجاح! 🚀");
+    } catch (e) {
+      toast.error(errMsg(e));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleResetDefault = () => {
+  const handleResetDefault = async () => {
     const defaultDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
     const resetData: PinnedCardConfig = { ...config, endDate: defaultDate };
     setForm(resetData);
-    updateConfig(resetData);
-    toast.info("تمت استعادة الإعدادات الافتراضية");
+    try {
+      await updateConfig(resetData);
+      toast.info("تمت استعادة الإعدادات الافتراضية");
+    } catch (e) {
+      toast.error(errMsg(e));
+    }
   };
 
   const handleAddPollOption = () => {
@@ -75,16 +90,24 @@ export function PinnedCardAdminTab() {
     setForm({ ...form, pollOptions: updatedOptions });
   };
 
-  const handleClearVotes = () => {
+  const handleClearVotes = async () => {
     setForm({ ...form, votes: {} });
-    updateConfig({ votes: {} });
-    toast.success("تم مسح نتائج التصويت بنجاح!");
+    try {
+      await updateConfig({ votes: {} });
+      toast.success("تم مسح نتائج التصويت بنجاح!");
+    } catch (e) {
+      toast.error(errMsg(e));
+    }
   };
 
-  const handleClearParticipants = () => {
+  const handleClearParticipants = async () => {
     setForm({ ...form, participants: [] });
-    updateConfig({ participants: [] });
-    toast.success("تم إفرغ قائمة المشاركين بنجاح!");
+    try {
+      await updateConfig({ participants: [] });
+      toast.success("تم إفرغ قائمة المشاركين بنجاح!");
+    } catch (e) {
+      toast.error(errMsg(e));
+    }
   };
 
   const themeOptions: { id: PinnedCardTheme; label: string; colorBg: string; text: string }[] = [
@@ -158,10 +181,11 @@ export function PinnedCardAdminTab() {
         <div className="flex items-center gap-2 shrink-0">
           <Button
             onClick={handleSave}
+            disabled={saving}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-2 rounded-xl shadow-lg shadow-primary/20"
           >
             <Save className="w-4 h-4" />
-            <span>حفظ التعديلات</span>
+            <span>{saving ? "جاري الحفظ..." : "حفظ التعديلات"}</span>
           </Button>
 
           <Button
@@ -193,9 +217,14 @@ export function PinnedCardAdminTab() {
             <div className="flex items-center gap-2 bg-muted/60 px-3 py-1.5 rounded-xl border border-border/40">
               <Switch
                 checked={form.enabled}
-                onCheckedChange={(val) => {
+                onCheckedChange={async (val) => {
                   setForm({ ...form, enabled: val });
-                  updateConfig({ enabled: val });
+                  try {
+                    await updateConfig({ enabled: val });
+                  } catch (e) {
+                    setForm({ ...form, enabled: !val });
+                    toast.error(errMsg(e));
+                  }
                 }}
               />
               <span

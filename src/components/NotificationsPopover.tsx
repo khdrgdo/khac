@@ -148,14 +148,18 @@ export function NotificationsPopover() {
 
   const handleMarkAllRead = async () => {
     if (!userId) return;
-    await markAllNotificationsAsRead(userId);
+    const localIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    await markAllNotificationsAsRead(userId, localIds);
     loadNotifications();
     toast.success("تم تحديد جميع الإشعارات كمقروءة ✔️");
   };
 
   const handleClearAll = async () => {
     if (!userId) return;
-    await clearAllNotifications(userId);
+    const localIds = notifications.map((n) => n.id);
+    setNotifications([]);
+    await clearAllNotifications(userId, localIds);
     loadNotifications();
     toast.info("تم مسح جميع الإشعارات");
   };
@@ -175,6 +179,7 @@ export function NotificationsPopover() {
   const handleDeleteItem = async (e: React.MouseEvent, item: NotificationItem) => {
     e.stopPropagation();
     if (!userId) return;
+    setNotifications((prev) => prev.filter((n) => n.id !== item.id));
     await deleteNotification(userId, item.id);
     loadNotifications();
   };

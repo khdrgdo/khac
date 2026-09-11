@@ -130,6 +130,7 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
       participants: config.participants as unknown as Json,
     } as never);
     if (upsertError) {
+      throw new Error(upsertError.message || error.message || "تعذر حفظ الكارد المثبت");
     }
   }
 }
