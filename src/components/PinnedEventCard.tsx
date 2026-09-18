@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { usePinnedCard, PinnedCardTheme, PinnedCardType } from "@/lib/pinnedCardStore";
+import {
+  usePinnedCard,
+  PinnedCardTheme,
+  PinnedCardType,
+  type PinnedCardConfig,
+} from "@/lib/pinnedCardStore";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -27,6 +32,7 @@ import { toast } from "sonner";
 
 interface PinnedEventCardProps {
   isAdminPreview?: boolean;
+  previewConfig?: PinnedCardConfig;
 }
 
 import { useQuery } from "@tanstack/react-query";
@@ -191,8 +197,10 @@ function AdminParticipantList({
   );
 }
 
-export function PinnedEventCard({ isAdminPreview = false }: PinnedEventCardProps) {
-  const { config, castVote, toggleParticipation, toggleEnabled } = usePinnedCard();
+export function PinnedEventCard({ isAdminPreview = false, previewConfig }: PinnedEventCardProps) {
+  const pinnedCard = usePinnedCard({ initialConfig: previewConfig, sync: !previewConfig });
+  const config = previewConfig ?? pinnedCard.config;
+  const { castVote, toggleParticipation } = pinnedCard;
   const { profile, isAdmin, isSubAdmin } = useAuth();
   const canManage = isAdmin || isSubAdmin;
 
@@ -366,25 +374,6 @@ export function PinnedEventCard({ isAdminPreview = false }: PinnedEventCardProps
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={toggleEnabled}
-              className="h-7 text-xs px-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg gap-1.5 transition-all"
-            >
-              {config.enabled ? (
-                <>
-                  <EyeOff className="w-3.5 h-3.5 text-rose-300" />
-                  <span>إخفاء الآن</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>تفعيل وإظهار</span>
-                </>
-              )}
-            </Button>
-
             {!isAdminPreview && (
               <button
                 onClick={() => {

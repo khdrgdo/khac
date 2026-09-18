@@ -28,9 +28,27 @@ import {
   Sparkles,
   HelpCircle,
   KeyRound,
+  ExternalLink,
 } from "lucide-react";
+import type { Session } from "@supabase/supabase-js";
+import {
+  buildMobileSessionLink,
+  clearMobileRedirect,
+  getMobileRedirect,
+  rememberMobileRedirect,
+} from "@/lib/mobileAuthBridge";
 
 export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "تسجيل الدخول | NEXUS" },
+      { name: "description", content: "تسجيل الدخول أو إنشاء حساب في منصة NEXUS الأكاديمية." },
+      { property: "og:title", content: "تسجيل الدخول | NEXUS" },
+      { property: "og:description", content: "تسجيل الدخول أو إنشاء حساب في منصة NEXUS الأكاديمية." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AuthPage,
 });
 
@@ -39,39 +57,92 @@ function AuthPage() {
   const [tab, setTab] = useState("login");
   const [prefilledEmail, setPrefilledEmail] = useState("");
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [mobileLink, setMobileLink] = useState<string | null>(null);
+
+  async function finishAuthentication(session: Session) {
+    const redirect = getMobileRedirect();
+    if (!redirect) {
+      navigate({ to: "/feed", replace: true });
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("major, year, university_number")
+      .eq("id", session.user.id)
+      .maybeSingle();
+    const incomplete =
+      !profile?.major || !profile.year || (profile.university_number?.startsWith("U") ?? true);
+    if (incomplete) {
+      navigate({ to: "/complete-profile", replace: true });
+      return;
+    }
+
+    const link = buildMobileSessionLink(session, redirect);
+    if (!link) return;
+    setMobileLink(link);
+    clearMobileRedirect();
+    window.location.href = link;
+  }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    rememberMobileRedirect(params.get("redirect_to"));
     supabase.auth
       .getSession()
       .then(({ data }) => {
-        if (data?.session) navigate({ to: "/feed", replace: true });
+        if (data?.session) void finishAuthentication(data.session);
       })
       .catch((err) => {
       });
-  }, [navigate]);
+  }, []);
 
   async function googleSignIn() {
     setLoadingGoogle(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: `${window.location.origin}/auth`,
       });
       if (result && "error" in result && result.error) {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: { redirectTo: window.location.origin },
+          options: { redirectTo: `${window.location.origin}/auth` },
         });
         if (error) toast.error("تعذّر تسجيل الدخول بغوغل: " + error.message);
       }
     } catch {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: window.location.origin },
+        options: { redirectTo: `${window.location.origin}/auth` },
       });
       if (error) toast.error("تعذّر تسجيل الدخول بغوغل");
     } finally {
       setLoadingGoogle(false);
     }
+  }
+
+  if (mobileLink) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-5">
+        <Card className="w-full max-w-md border-t-4 border-t-accent text-center shadow-xl">
+          <CardHeader className="items-center gap-3">
+            <CheckCircle2 className="h-12 w-12 text-accent" />
+            <CardTitle>تم تسجيل الدخول بنجاح!</CardTitle>
+            <CardDescription className="leading-7">
+              جاري تحويلك لتطبيق نيكسوس على الهاتف...
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full gap-2" asChild>
+              <a href={mobileLink}>
+                <ExternalLink className="h-4 w-4" />
+                فتح تطبيق نيكسوس الآن
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -137,7 +208,7 @@ function AuthPage() {
               </TabsList>
 
               <TabsContent value="login">
-                <LoginForm initialId={prefilledEmail} />
+                <LoginForm initialId={prefilledEmail} onAuthenticated={finishAuthentication} />
               </TabsContent>
 
               <TabsContent value="signup">
@@ -146,6 +217,7 @@ function AuthPage() {
                     setPrefilledEmail(email);
                   }}
                   onGoToLogin={() => setTab("login")}
+                  onAuthenticated={finishAuthentication}
                 />
               </TabsContent>
             </Tabs>
@@ -179,8 +251,13 @@ function GoogleIcon() {
   );
 }
 
-function LoginForm({ initialId = "" }: { initialId?: string }) {
-  const navigate = useNavigate();
+function LoginForm({
+  initialId = "",
+  onAuthenticated,
+}: {
+  initialId?: string;
+  onAuthenticated: (session: Session) => Promise<void>;
+}) {
   const [id, setId] = useState(initialId);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -227,7 +304,7 @@ function LoginForm({ initialId = "" }: { initialId?: string }) {
 
       if (data?.session) {
         toast.success("أهلاً بك! تم تسجيل الدخول بنجاح");
-        navigate({ to: "/feed" });
+        await onAuthenticated(data.session);
       }
     } catch {
       toast.error("حدث خطأ أثناء الاتصال. حاول مرة أخرى.");
@@ -371,9 +448,11 @@ function ForgotPasswordDialog({ onClose }: { onClose: () => void }) {
 function SignupForm({
   onCreated,
   onGoToLogin,
+  onAuthenticated,
 }: {
   onCreated: (email: string) => void;
   onGoToLogin: () => void;
+  onAuthenticated: (session: Session) => Promise<void>;
 }) {
   const [univ, setUniv] = useState("");
   const [email, setEmail] = useState("");
@@ -452,6 +531,11 @@ function SignupForm({
       const registered = email.trim();
       if (data?.user?.id) {
         bindAccountToDevice(data.user.id, registered);
+      }
+      if (data.session) {
+        toast.success("تم إنشاء الحساب وتسجيل الدخول بنجاح");
+        await onAuthenticated(data.session);
+        return;
       }
       setRegisteredEmail(registered);
       onCreated(registered);

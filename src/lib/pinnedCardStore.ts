@@ -98,12 +98,6 @@ export async function fetchPinnedCard(): Promise<PinnedCardConfig> {
 }
 
 export async function savePinnedCardToDb(config: PinnedCardConfig) {
-  try {
-    localStorage.setItem("unihub_pinned_featured_card_v1", JSON.stringify(config));
-    window.dispatchEvent(new CustomEvent("pinnedCardUpdated", { detail: config }));
-  } catch (e) {
-  }
-
   const row = {
     id: config.id,
     enabled: config.enabled,
@@ -122,23 +116,27 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from("pinned_cards").update(row as never).eq("id", config.id);
-  if (error) {
-    const { error: upsertError } = await supabase.from("pinned_cards").upsert({
-      ...row,
-      votes: config.votes as unknown as Json,
-      participants: config.participants as unknown as Json,
-    } as never);
-    if (upsertError) {
-      throw new Error(upsertError.message || error.message || "تعذر حفظ الكارد المثبت");
-    }
+  const { data, error } = await supabase
+    .from("pinned_cards")
+    .update(row as never)
+    .eq("id", config.id)
+    .select("*")
+    .single();
+  if (error || !data) {
+    throw new Error(error?.message || "تعذر تأكيد حفظ الكارد المثبت");
   }
+  const savedConfig = mapRowToConfig(data);
+  localStorage.setItem("unihub_pinned_featured_card_v1", JSON.stringify(savedConfig));
+  window.dispatchEvent(new CustomEvent("pinnedCardUpdated", { detail: savedConfig }));
+  return savedConfig;
 }
 
-export function usePinnedCard() {
-  const [config, setConfig] = useState<PinnedCardConfig>(DEFAULT_PINNED_CARD);
+export function usePinnedCard(options?: { initialConfig?: PinnedCardConfig; sync?: boolean }) {
+  const sync = options?.sync !== false;
+  const [config, setConfig] = useState<PinnedCardConfig>(options?.initialConfig ?? DEFAULT_PINNED_CARD);
 
   useEffect(() => {
+    if (!sync) return;
     let mounted = true;
     fetchPinnedCard()
       .then((c) => {
@@ -187,7 +185,7 @@ export function usePinnedCard() {
       window.removeEventListener("pinnedCardUpdated", handleStorageUpdate);
       window.removeEventListener("storage", handleStorageUpdate);
     };
-  }, []);
+  }, [sync]);
 
   const updateConfig = async (newConfigPartial: Partial<PinnedCardConfig>) => {
     const { data: latestRow } = await supabase
@@ -205,8 +203,9 @@ export function usePinnedCard() {
       participants: latestConfig.participants,
     };
 
-    setConfig(fullConfig);
-    await savePinnedCardToDb(fullConfig);
+    const savedConfig = await savePinnedCardToDb(fullConfig);
+    setConfig(savedConfig);
+    return savedConfig;
   };
 
   const castVote = async (userId: string, optionId: string) => {
@@ -232,35 +231,11 @@ export function usePinnedCard() {
   };
 
   const toggleParticipation = async (userId: string) => {
-    const { data: latestRow } = await supabase
-      .from("pinned_cards")
-      .select("*")
-      .eq("id", "pinned_featured_event_1")
-      .single();
-
-    let currentParticipants: string[] = [];
-    if (latestRow?.participants && Array.isArray(latestRow.participants)) {
-      currentParticipants = [...(latestRow.participants as string[])];
-    } else {
-      currentParticipants = [...(config.participants || [])];
-    }
-
-    const hasJoined = currentParticipants.includes(userId);
-    const newParticipants = hasJoined
-      ? currentParticipants.filter((id) => id !== userId)
-      : [...currentParticipants, userId];
-
-    const latestConfig = latestRow ? mapRowToConfig(latestRow) : config;
-    const updatedConfig: PinnedCardConfig = {
-      ...latestConfig,
-      participants: newParticipants,
-    };
-
-    setConfig(updatedConfig);
-    await supabase
-      .from("pinned_cards")
-      .update({ participants: newParticipants as unknown as Json, updated_at: new Date().toISOString() } as never)
-      .eq("id", "pinned_featured_event_1");
+    const { data, error } = await supabase.rpc("toggle_pinned_card_participation", {
+      p_user_id: userId,
+    });
+    if (error) throw new Error(error.message);
+    setConfig((prev) => ({ ...prev, participants: (data as string[]) || [] }));
   };
 
   const toggleEnabled = async () => {
