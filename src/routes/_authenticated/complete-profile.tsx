@@ -16,8 +16,23 @@ import {
 import { MAJORS, YEARS } from "@/lib/college";
 import { toast } from "sonner";
 import { GraduationCap, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  buildMobileSessionLink,
+  clearMobileRedirect,
+  getMobileRedirect,
+} from "@/lib/mobileAuthBridge";
 
 export const Route = createFileRoute("/_authenticated/complete-profile")({
+  head: () => ({
+    meta: [
+      { title: "إكمال الملف الشخصي | NEXUS" },
+      { name: "description", content: "أكمل بياناتك الأكاديمية للمتابعة في منصة NEXUS." },
+      { property: "og:title", content: "إكمال الملف الشخصي | NEXUS" },
+      { property: "og:description", content: "أكمل بياناتك الأكاديمية للمتابعة في منصة NEXUS." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: CompleteProfilePage,
 });
 
@@ -82,6 +97,16 @@ function CompleteProfilePage() {
 
       toast.success("تم حفظ معلوماتك بنجاح!");
       await refreshProfile();
+      const redirect = getMobileRedirect();
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (redirect && sessionData.session) {
+        const mobileLink = buildMobileSessionLink(sessionData.session, redirect);
+        if (mobileLink) {
+          clearMobileRedirect();
+          window.location.href = mobileLink;
+          return;
+        }
+      }
       navigate({ to: "/feed", replace: true });
     } catch (e) {
       toast.error((e as Error).message);

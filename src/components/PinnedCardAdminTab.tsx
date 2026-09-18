@@ -240,7 +240,7 @@ export function PinnedCardAdminTab() {
         </CardHeader>
 
         <CardContent className="p-4 md:p-6 bg-slate-950/20">
-          <PinnedEventCard isAdminPreview={true} />
+          <PinnedEventCard isAdminPreview={true} previewConfig={form} />
         </CardContent>
       </Card>
 
@@ -539,6 +539,7 @@ export function PinnedCardAdminTab() {
             </p>
             <Button
               onClick={handleSave}
+              disabled={saving}
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 rounded-xl shadow-md gap-2"
             >
               <Save className="w-4 h-4" />

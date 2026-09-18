@@ -985,6 +985,10 @@ export type Database = {
           university_number: string
         }[]
       }
+      toggle_pinned_card_participation: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       vote_on_poll: {
         Args: { p_option_id: string; p_user_id: string }
         Returns: Json
