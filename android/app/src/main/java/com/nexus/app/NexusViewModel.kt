@@ -1,0 +1,255 @@
+package com.nexus.app
+
+import android.app.Application
+import android.net.Uri
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.nexus.app.data.ApiException
+import com.nexus.app.data.AppScreen
+import com.nexus.app.data.Course
+import com.nexus.app.data.CourseComment
+import com.nexus.app.data.CourseDetail
+import com.nexus.app.data.CourseMaterial
+import com.nexus.app.data.CourseTab
+import com.nexus.app.data.NexusRepository
+import com.nexus.app.data.NexusUiState
+import com.nexus.app.data.ThemeMode
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+class NexusViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = NexusRepository(application)
+    private val _state = MutableStateFlow(NexusUiState(themeMode = repository.loadThemeMode()))
+    val state: StateFlow<NexusUiState> = _state.asStateFlow()
+
+    init {
+        restoreSession()
+    }
+
+    fun handleDeepLink(uri: Uri?) {
+        if (repository.acceptDeepLink(uri)) restoreSession()
+    }
+
+    fun restoreSession() {
+        if (_state.value.busy || _state.value.profile != null) return
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, error = null) }
+            try {
+                val profile = repository.restoreSession()
+                if (profile == null) {
+                    _state.update { it.copy(loading = false, screen = AppScreen.LOGIN) }
+                } else {
+                    _state.update { it.copy(profile = profile, loading = false, screen = AppScreen.HOME) }
+                    loadHome()
+                }
+            } catch (error: Exception) {
+                runCatching { repository.signOut() }
+                _state.update {
+                    it.copy(
+                        loading = false,
+                        screen = AppScreen.LOGIN,
+                        profile = null,
+                        error = error.message ?: "تعذّر استعادة جلسة الدخول"
+                    )
+                }
+            }
+        }
+    }
+
+    fun signIn(identifier: String, password: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                val profile = repository.signIn(identifier, password)
+                _state.update {
+                    it.copy(
+                        busy = false,
+                        loading = false,
+                        profile = profile,
+                        screen = AppScreen.HOME,
+                        notice = "مرحباً بعودتك، " + profile.fullName
+                    )
+                }
+                loadHome()
+            } catch (error: Exception) {
+                _state.update {
+                    it.copy(
+                        busy = false,
+                        loading = false,
+                        error = error.message ?: "تعذّر تسجيل الدخول"
+                    )
+                }
+            }
+        }
+    }
+
+    fun loadHome() {
+        val profile = _state.value.profile ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, error = null) }
+            try {
+                val result = repository.loadHome(profile)
+                _state.update {
+                    it.copy(
+                        loading = false,
+                        courses = result.first,
+                        recentMaterials = result.second
+                    )
+                }
+            } catch (error: Exception) {
+                _state.update {
+                    it.copy(loading = false, error = error.message ?: "تعذّر تحميل المقررات")
+                }
+            }
+        }
+    }
+
+    fun refreshHome() {
+        loadHome()
+    }
+
+    fun showCourses() {
+        _state.update { it.copy(screen = AppScreen.COURSES, error = null) }
+    }
+
+    fun showHome() {
+        _state.update { it.copy(screen = AppScreen.HOME, error = null) }
+    }
+
+    fun showProfile() {
+        _state.update { it.copy(screen = AppScreen.PROFILE, error = null) }
+    }
+
+    fun openCourse(course: Course) {
+        _state.update {
+            it.copy(
+                previousScreen = it.screen,
+                screen = AppScreen.COURSE_DETAIL,
+                selectedCourse = course,
+                courseDetail = null,
+                selectedTab = CourseTab.FILES,
+                detailLoading = true,
+                error = null
+            )
+        }
+        viewModelScope.launch {
+            try {
+                val detail = repository.loadCourseDetail(course.id)
+                _state.update { it.copy(courseDetail = detail, selectedCourse = detail.course, detailLoading = false) }
+            } catch (error: Exception) {
+                _state.update { it.copy(detailLoading = false, error = error.message ?: "تعذّر تحميل المقرر") }
+            }
+        }
+    }
+
+    fun backFromCourse() {
+        _state.update {
+            it.copy(
+                screen = it.previousScreen,
+                selectedCourse = null,
+                courseDetail = null,
+                error = null
+            )
+        }
+    }
+
+    fun selectCourseTab(tab: CourseTab) {
+        _state.update { it.copy(selectedTab = tab) }
+    }
+
+    fun postQuestion(courseId: String, content: String, anonymous: Boolean) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.postQuestion(courseId, content, anonymous)
+                val detail = repository.loadCourseDetail(courseId)
+                _state.update { it.copy(busy = false, courseDetail = detail, notice = "تم نشر سؤالك") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر نشر السؤال") }
+            }
+        }
+    }
+
+    fun addComment(courseId: String, postId: String, content: String) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.addComment(postId, content)
+                val detail = repository.loadCourseDetail(courseId)
+                _state.update { it.copy(busy = false, courseDetail = detail, notice = "تم إرسال الرد") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال الرد") }
+            }
+        }
+    }
+
+    fun openMaterial(material: CourseMaterial) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                val url = repository.resolveMaterialUrl(material)
+                _state.update { it.copy(busy = false, pendingUrl = url) }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر فتح المادة") }
+            }
+        }
+    }
+
+    fun clearPendingUrl() {
+        _state.update { it.copy(pendingUrl = null) }
+    }
+
+    fun recoverPassword(identifier: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null, notice = null) }
+            try {
+                repository.recoverPassword(identifier)
+                _state.update { it.copy(busy = false, notice = "إذا كان الحساب مسجلاً، فسيصلك رابط استعادة كلمة المرور.") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال رابط الاستعادة") }
+            }
+        }
+    }
+
+    fun changePassword(password: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.updatePassword(password)
+                _state.update { it.copy(busy = false, screen = AppScreen.PROFILE, notice = "تم تحديث كلمة المرور") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر تحديث كلمة المرور") }
+            }
+        }
+    }
+
+    fun showChangePassword() {
+        _state.update { it.copy(screen = AppScreen.CHANGE_PASSWORD, error = null) }
+    }
+
+    fun backFromPassword() {
+        _state.update { it.copy(screen = AppScreen.PROFILE, error = null) }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        repository.saveThemeMode(mode)
+        _state.update { it.copy(themeMode = mode) }
+    }
+
+    fun clearMessages() {
+        _state.update { it.copy(error = null, notice = null) }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true) }
+            runCatching { repository.signOut() }
+            _state.value = NexusUiState(themeMode = repository.loadThemeMode(), loading = false)
+        }
+    }
+}
