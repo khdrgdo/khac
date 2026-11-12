@@ -842,8 +842,8 @@ private fun SectionTitle(title: String, subtitle: String? = null) {
 }
 
 @Composable
-private fun ErrorBanner(message: String) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(MaterialTheme.colorScheme.error.copy(alpha = 0.09f)).padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun ErrorBanner(message: String, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(MaterialTheme.colorScheme.error.copy(alpha = 0.09f)).padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
