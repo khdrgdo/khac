@@ -1,33 +1,21 @@
-# NEXUS Android 1.0.0
+# NEXUS Android 1.2.0
 
 Native Kotlin + Jetpack Compose client for the existing NEXUS student platform.
 
-## Scope
-- Android only; student accounts only.
-- Reuses current Supabase Auth and PostgREST/Storage APIs.
-- No WebView wrapper and no local copy of the academic database.
-- Course catalog, course files, external links, announcements, schedules, course questions and replies.
-- Light, dark and system appearance.
-- Existing website sign-in can hand off its Supabase session through the com.nexus.app://login-callback deep link.
+## Included in 1.2.0
+- Android-native student community feed backed by the existing Supabase `posts` and `comments` tables.
+- Public and anonymous student posts through the existing `create_post_as` RPC.
+- Comments through the existing `create_comment_as` RPC.
+- Existing course catalog, files, links, course discussions, updates and schedules retained.
+- Student-only account enforcement and encrypted session storage backed by Android Keystore.
+- Light, dark and system appearance retained.
 
-## Backend contract
-- Uses the same Supabase URL and publishable key as the website.
-- University number login maps to number@college.edu, matching universityNumberToEmail in the web project.
-- The app checks user_roles and refuses non-student accounts.
-- Student profile, courses, course_links, course_updates, posts, comments and get_public_profiles use the existing schema and RLS.
-- Course file URLs are short-lived signed links from the private course-files bucket.
-- No service-role key is included. The publishable key is a public client key; Supabase RLS remains the authorization boundary.
-
-## Architecture
-- data/NexusRepository.kt: Supabase Auth, REST, RPC and Storage.
-- data/SecureSessionStore.kt: AES-GCM session storage backed by Android Keystore.
-- NexusViewModel.kt: screen state and asynchronous operations.
-- ui/NexusApp.kt: native Compose screens and interactions.
-- ui/theme/Theme.kt: NEXUS visual tokens.
+## Backend and safety
+- Reuses the existing Supabase Auth, PostgREST, RPC and Storage APIs.
+- No database migrations or destructive data operations are performed by this release.
+- No service-role key is included in the Android client.
+- Access remains enforced by Supabase RLS and the student role check.
 
 ## Build
-From the android directory:
-- gradle testDebugUnitTest
-- gradle assembleDebug
-
-GitHub Actions builds and uploads app-debug.apk as the NEXUS-Android-v1.0.0 artifact.
+From `android`: `gradle testDebugUnitTest` then `gradle assembleDebug`.
+GitHub Actions runs the same tests and publishes a debug-signed APK for device testing.

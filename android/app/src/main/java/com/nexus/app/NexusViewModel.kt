@@ -79,6 +79,51 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshHome() = loadHome()
+
+    fun showFeed() {
+        _state.update { it.copy(screen = AppScreen.FEED, error = null) }
+        loadFeed()
+    }
+
+    fun loadFeed() {
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, error = null) }
+            try {
+                val posts = repository.loadFeed()
+                _state.update { it.copy(loading = false, feedPosts = posts) }
+            } catch (error: Exception) {
+                _state.update { it.copy(loading = false, error = error.message ?: "تعذّر تحميل المنشورات") }
+            }
+        }
+    }
+
+    fun publishPost(content: String, anonymous: Boolean) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.createFeedPost(content, anonymous)
+                val posts = repository.loadFeed()
+                _state.update { it.copy(busy = false, feedPosts = posts, notice = "تم نشر مساهمتك") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر نشر المساهمة") }
+            }
+        }
+    }
+
+    fun addFeedComment(postId: String, content: String) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.addComment(postId, content)
+                val posts = repository.loadFeed()
+                _state.update { it.copy(busy = false, feedPosts = posts, notice = "تم إرسال تعليقك") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال التعليق") }
+            }
+        }
+    }
     fun showCourses() { _state.update { it.copy(screen = AppScreen.COURSES, error = null) } }
     fun showHome() { _state.update { it.copy(screen = AppScreen.HOME, error = null) } }
     fun showProfile() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }

@@ -68,7 +68,8 @@ fun NexusApp(viewModel: NexusViewModel) {
     NexusTheme(state.themeMode) {
         when (state.screen) {
             AppScreen.LOGIN -> if (state.loading) SplashScreen() else LoginScreen(state, viewModel::signIn, viewModel::recoverPassword)
-            AppScreen.HOME -> HomeScreen(state, viewModel::openCourse, viewModel::openMaterial, viewModel::refreshHome, viewModel::showCourses, viewModel::showProfile)
+            AppScreen.HOME -> HomeScreen(state, viewModel::openCourse, viewModel::openMaterial, viewModel::refreshHome, viewModel::showCourses, viewModel::showProfile, viewModel::showFeed)
+            AppScreen.FEED -> SocialFeedScreen(state, viewModel::loadFeed, viewModel::publishPost, viewModel::addFeedComment, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
             AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::signOut)
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
@@ -197,7 +198,8 @@ private fun HomeScreen(
     onOpenMaterial: (CourseMaterial) -> Unit,
     onRefresh: () -> Unit,
     onCourses: () -> Unit,
-    onProfile: () -> Unit
+    onProfile: () -> Unit,
+    onFeed: () -> Unit
 ) {
     val profile = state.profile
     var query by rememberSaveable { mutableStateOf("") }
@@ -221,6 +223,7 @@ private fun HomeScreen(
                         Text("مساحتك الأكاديمية", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = onFeed) { Icon(Icons.Outlined.Groups, null); Spacer(Modifier.width(4.dp)); Text("المجتمع") }
                         IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, "تحديث") }
                         ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 42)
                     }
@@ -773,7 +776,7 @@ private fun ProfileScreen(
                 Spacer(Modifier.width(8.dp))
                 Text("تسجيل الخروج")
             }
-            Text("NEXUS  •  الإصدار 1.0.0", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+            Text("NEXUS  •  الإصدار 1.2.0", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
         }
     }
 }

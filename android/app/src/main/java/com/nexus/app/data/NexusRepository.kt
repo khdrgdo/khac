@@ -96,6 +96,32 @@ class NexusRepository(context: Context) {
         return courses to recentRows.map { materialFrom(it, names[it.optString("course_id")]) }
     }
 
+    suspend fun loadFeed(): List<FeedPost> {
+        val rows = array(rest("/rest/v1/posts?select=id,author_id,content,created_at,is_anonymous,post_type&post_type=neq.question&order=created_at.desc&limit=50"))
+        val ids = rows.mapNotNull { it.optStringOrNull("author_id") }.toSet()
+        val profiles = publicProfiles(ids)
+        val postIds = rows.mapNotNull { it.optStringOrNull("id") }
+        val commentCounts = if (postIds.isEmpty()) emptyMap() else {
+            array(rest("/rest/v1/comments?select=post_id&post_id=in.(" + postIds.joinToString(",") + ")"))
+                .groupingBy { it.optString("post_id") }.eachCount()
+        }
+        return rows.map { row ->
+            val authorId = row.optStringOrNull("author_id")
+            val anonymous = row.optBoolean("is_anonymous") || authorId == null
+            val author = profiles[authorId]
+            FeedPost(row.optString("id"), authorId,
+                if (anonymous) "طالب مجهول" else author?.fullName ?: "طالب",
+                if (anonymous) null else author?.avatarUrl, anonymous,
+                row.optString("content"), row.optString("post_type", "post"),
+                row.optString("created_at"), commentCounts[row.optString("id")] ?: 0)
+        }
+    }
+
+    suspend fun createFeedPost(content: String, anonymous: Boolean) {
+        rest("/rest/v1/rpc/create_post_as", "POST", JSONObject()
+            .put("_content", content.trim()).put("_post_type", "post").put("_anonymous", anonymous))
+    }
+
     suspend fun loadCourseDetail(courseId: String): CourseDetail {
         val courseRow = array(rest("/rest/v1/courses?select=*&id=eq." + encode(courseId) + "&limit=1")).firstOrNull()
             ?: throw ApiException("هذا المقرر غير متاح أو تم حذفه")

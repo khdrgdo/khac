@@ -1,7 +1,7 @@
 package com.nexus.app.data
 
 enum class AppScreen {
-    LOGIN, HOME, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD
+    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD
 }
 
 enum class CourseTab(val label: String) {
@@ -87,6 +87,18 @@ data class CourseMaterial(
     val extension: String get() = url.substringAfterLast('.', "").substringBefore('?').lowercase()
 }
 
+data class FeedPost(
+    val id: String,
+    val authorId: String?,
+    val authorName: String,
+    val avatarUrl: String?,
+    val anonymous: Boolean,
+    val content: String,
+    val postType: String,
+    val createdAt: String,
+    val commentsCount: Int
+)
+
 data class CourseUpdate(
     val id: String,
     val courseId: String,
@@ -133,6 +145,7 @@ data class NexusUiState(
     val profile: StudentProfile? = null,
     val courses: List<Course> = emptyList(),
     val recentMaterials: List<CourseMaterial> = emptyList(),
+    val feedPosts: List<FeedPost> = emptyList(),
     val selectedCourse: Course? = null,
     val courseDetail: CourseDetail? = null,
     val selectedTab: CourseTab = CourseTab.FILES,

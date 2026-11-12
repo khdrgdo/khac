@@ -3,10 +3,11 @@ name: NEXUS Android APK
 on:
   push:
     branches:
-      - feature/android-v1.0.0
+      - feature/android-v1.2.0
     paths:
       - "android/**"
       - ".github/workflows/android-apk.yml"
+      - "README-ANDROID.md"
   workflow_dispatch:
 
 permissions:
@@ -14,9 +15,9 @@ permissions:
 
 jobs:
   build:
-    name: Build Android 1.0.0
+    name: Build Android 1.2.0
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,20 +39,20 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-Android-v1.0.0
+          name: NEXUS-Android-v1.2.0
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish public test release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nexus-android-v1.0.0
-          target_commitish: feature/android-v1.0.0
-          name: NEXUS Android 1.0.0 — Test Build
+          tag_name: nexus-android-v1.2.0
+          target_commitish: feature/android-v1.2.0
+          name: NEXUS Android 1.2.0 — Test Build
           body: |
-            First native Android test build of NEXUS.
-            Built with Kotlin and Jetpack Compose.
-            This is a debug-signed APK for device testing, not a Play Store release.
+            NEXUS native Android student app v1.2.0.
+            Includes the first native student community feed, anonymous posts and comments.
+            Built with Kotlin and Jetpack Compose. Debug-signed test APK; not a Play Store release.
           draft: false
           prerelease: true
           overwrite_files: true
