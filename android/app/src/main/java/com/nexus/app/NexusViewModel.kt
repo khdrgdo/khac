@@ -4,11 +4,8 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.nexus.app.data.ApiException
 import com.nexus.app.data.AppScreen
 import com.nexus.app.data.Course
-import com.nexus.app.data.CourseComment
-import com.nexus.app.data.CourseDetail
 import com.nexus.app.data.CourseMaterial
 import com.nexus.app.data.CourseTab
 import com.nexus.app.data.NexusRepository
@@ -25,35 +22,31 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     private val _state = MutableStateFlow(NexusUiState(themeMode = repository.loadThemeMode()))
     val state: StateFlow<NexusUiState> = _state.asStateFlow()
 
-    init {
+    fun start(uri: Uri?) {
+        if (uri != null) repository.acceptDeepLink(uri)
+        if (_state.value.profile != null && uri == null) return
+        _state.update { it.copy(busy = false, loading = true, profile = null, error = null) }
         restoreSession()
     }
 
-    fun handleDeepLink(uri: Uri?) {
-        if (repository.acceptDeepLink(uri)) restoreSession()
-    }
+    fun handleDeepLink(uri: Uri?) = start(uri)
 
     fun restoreSession() {
         if (_state.value.busy || _state.value.profile != null) return
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null) }
+            _state.update { it.copy(loading = true, busy = true, error = null) }
             try {
                 val profile = repository.restoreSession()
                 if (profile == null) {
-                    _state.update { it.copy(loading = false, screen = AppScreen.LOGIN) }
+                    _state.update { it.copy(loading = false, busy = false, screen = AppScreen.LOGIN) }
                 } else {
-                    _state.update { it.copy(profile = profile, loading = false, screen = AppScreen.HOME) }
+                    _state.update { it.copy(profile = profile, loading = false, busy = false, screen = AppScreen.HOME) }
                     loadHome()
                 }
             } catch (error: Exception) {
                 runCatching { repository.signOut() }
                 _state.update {
-                    it.copy(
-                        loading = false,
-                        screen = AppScreen.LOGIN,
-                        profile = null,
-                        error = error.message ?: "تعذّر استعادة جلسة الدخول"
-                    )
+                    it.copy(loading = false, busy = false, screen = AppScreen.LOGIN, profile = null, error = error.message ?: "تعذّر استعادة جلسة الدخول")
                 }
             }
         }
@@ -64,24 +57,10 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { it.copy(busy = true, error = null) }
             try {
                 val profile = repository.signIn(identifier, password)
-                _state.update {
-                    it.copy(
-                        busy = false,
-                        loading = false,
-                        profile = profile,
-                        screen = AppScreen.HOME,
-                        notice = "مرحباً بعودتك، " + profile.fullName
-                    )
-                }
+                _state.update { it.copy(busy = false, loading = false, profile = profile, screen = AppScreen.HOME, notice = "مرحباً بعودتك، " + profile.fullName) }
                 loadHome()
             } catch (error: Exception) {
-                _state.update {
-                    it.copy(
-                        busy = false,
-                        loading = false,
-                        error = error.message ?: "تعذّر تسجيل الدخول"
-                    )
-                }
+                _state.update { it.copy(busy = false, loading = false, error = error.message ?: "تعذّر تسجيل الدخول") }
             }
         }
     }
@@ -92,49 +71,20 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { it.copy(loading = true, error = null) }
             try {
                 val result = repository.loadHome(profile)
-                _state.update {
-                    it.copy(
-                        loading = false,
-                        courses = result.first,
-                        recentMaterials = result.second
-                    )
-                }
+                _state.update { it.copy(loading = false, courses = result.first, recentMaterials = result.second) }
             } catch (error: Exception) {
-                _state.update {
-                    it.copy(loading = false, error = error.message ?: "تعذّر تحميل المقررات")
-                }
+                _state.update { it.copy(loading = false, error = error.message ?: "تعذّر تحميل المقررات") }
             }
         }
     }
 
-    fun refreshHome() {
-        loadHome()
-    }
-
-    fun showCourses() {
-        _state.update { it.copy(screen = AppScreen.COURSES, error = null) }
-    }
-
-    fun showHome() {
-        _state.update { it.copy(screen = AppScreen.HOME, error = null) }
-    }
-
-    fun showProfile() {
-        _state.update { it.copy(screen = AppScreen.PROFILE, error = null) }
-    }
+    fun refreshHome() = loadHome()
+    fun showCourses() { _state.update { it.copy(screen = AppScreen.COURSES, error = null) } }
+    fun showHome() { _state.update { it.copy(screen = AppScreen.HOME, error = null) } }
+    fun showProfile() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }
 
     fun openCourse(course: Course) {
-        _state.update {
-            it.copy(
-                previousScreen = it.screen,
-                screen = AppScreen.COURSE_DETAIL,
-                selectedCourse = course,
-                courseDetail = null,
-                selectedTab = CourseTab.FILES,
-                detailLoading = true,
-                error = null
-            )
-        }
+        _state.update { it.copy(previousScreen = it.screen, screen = AppScreen.COURSE_DETAIL, selectedCourse = course, courseDetail = null, selectedTab = CourseTab.FILES, detailLoading = true, error = null) }
         viewModelScope.launch {
             try {
                 val detail = repository.loadCourseDetail(course.id)
@@ -146,19 +96,10 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun backFromCourse() {
-        _state.update {
-            it.copy(
-                screen = it.previousScreen,
-                selectedCourse = null,
-                courseDetail = null,
-                error = null
-            )
-        }
+        _state.update { it.copy(screen = it.previousScreen, selectedCourse = null, courseDetail = null, error = null) }
     }
 
-    fun selectCourseTab(tab: CourseTab) {
-        _state.update { it.copy(selectedTab = tab) }
-    }
+    fun selectCourseTab(tab: CourseTab) { _state.update { it.copy(selectedTab = tab) } }
 
     fun postQuestion(courseId: String, content: String, anonymous: Boolean) {
         if (content.isBlank()) return
@@ -200,9 +141,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun clearPendingUrl() {
-        _state.update { it.copy(pendingUrl = null) }
-    }
+    fun clearPendingUrl() { _state.update { it.copy(pendingUrl = null) } }
 
     fun recoverPassword(identifier: String) {
         viewModelScope.launch {
@@ -228,22 +167,10 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun showChangePassword() {
-        _state.update { it.copy(screen = AppScreen.CHANGE_PASSWORD, error = null) }
-    }
-
-    fun backFromPassword() {
-        _state.update { it.copy(screen = AppScreen.PROFILE, error = null) }
-    }
-
-    fun setThemeMode(mode: ThemeMode) {
-        repository.saveThemeMode(mode)
-        _state.update { it.copy(themeMode = mode) }
-    }
-
-    fun clearMessages() {
-        _state.update { it.copy(error = null, notice = null) }
-    }
+    fun showChangePassword() { _state.update { it.copy(screen = AppScreen.CHANGE_PASSWORD, error = null) } }
+    fun backFromPassword() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }
+    fun setThemeMode(mode: ThemeMode) { repository.saveThemeMode(mode); _state.update { it.copy(themeMode = mode) } }
+    fun clearMessages() { _state.update { it.copy(error = null, notice = null) } }
 
     fun signOut() {
         viewModelScope.launch {
