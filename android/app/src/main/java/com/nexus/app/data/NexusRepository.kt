@@ -203,7 +203,7 @@ class NexusRepository(context: Context) {
         } ?: false
         if (suspended) throw ApiException("هذا الحساب موقوف مؤقتاً حتى انتهاء مدة الإيقاف.")
         val roles = array(rest("/rest/v1/user_roles?select=role&user_id=eq." + encode(session?.userId ?: profile.id))).map { it.optString("role") }
-        if (!roles.contains("student") || roles.any { it == "teacher" || it == "admin" || it == "sub_admin" }) {
+        if (roles.isEmpty() || roles.any { it != "student" }) {
             throw ApiException("الإصدار الأول من NEXUS مخصص لحسابات الطلاب فقط.")
         }
     }
