@@ -16,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.nexus.app.data.*
@@ -31,70 +30,47 @@ fun PublicProfileScreen(state: NexusUiState, onBack: () -> Unit, onMessage: (Str
         "moon" -> listOf(Color(0xFF2E1065), Color(0xFF312E81))
         "sun" -> listOf(Color(0xFF7C2D12), Color(0xFF78350F))
         "galaxy" -> listOf(Color(0xFF581C87), Color(0xFF831843))
-        else -> listOf(Color(0xFF172554), Color(0xFF334155))
+        else -> listOf(Color(0xFF0F172A), Color(0xFF312E81))
     }
     Scaffold(topBar = { TopAppBar(title = { Text("الملف الشخصي") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowForward, "رجوع") } }) }) { padding ->
-        when {
-            state.publicProfileLoading && detail == null -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            detail == null -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text("الملف الشخصي غير متاح") }
-            else -> LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
-                item {
-                    Column {
-                        Box(Modifier.fillMaxWidth().height(142.dp).background(Brush.horizontalGradient(palette))) {
-                            Row(Modifier.align(Alignment.TopEnd).padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Surface(color = Color.Black.copy(alpha = .18f), shape = RoundedCornerShape(20.dp)) { Text("NEXUS MEMBER", Modifier.padding(horizontal = 12.dp, vertical = 7.dp), color = Color.White, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) }
+        if (state.publicProfileLoading && detail == null) LinearProgressIndicator(Modifier.fillMaxWidth().padding(padding))
+        else if (detail == null) Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text("الملف الشخصي غير متاح") }
+        else LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(palette)).padding(18.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            NexusAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 76.dp, ring = true)
+                            Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) {
+                                Text(profile?.fullName.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                Text(listOfNotNull(profile?.major?.uppercase(), profile?.year?.let { "السنة $it" }).joinToString(" • "), color = Color.White.copy(alpha=.85f), style = MaterialTheme.typography.bodySmall)
+                                Text("${profile?.points ?: 0} نقطة", color = Color.White, style = MaterialTheme.typography.labelMedium)
                             }
                         }
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp).offset(y = (-42).dp), verticalAlignment = Alignment.Bottom) {
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(4.dp, MaterialTheme.colorScheme.surface), modifier = Modifier.size(104.dp)) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (!profile?.avatarUrl.isNullOrBlank()) AsyncImage(model = profile?.avatarUrl, contentDescription = "الصورة الشخصية", modifier = Modifier.fillMaxSize().clip(CircleShape))
-                                    else Text(profile?.fullName?.firstOrNull()?.toString() ?: "N", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                            Spacer(Modifier.weight(1f))
-                            Button(onClick = { profile?.id?.let(onMessage) }, modifier = Modifier.padding(bottom = 7.dp), shape = RoundedCornerShape(12.dp)) { Icon(Icons.Outlined.Chat, null); Spacer(Modifier.width(7.dp)); Text("مراسلة") }
-                        }
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).offset(y = (-30).dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(profile?.fullName.orEmpty(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                                if (detail.profile.verified) { Spacer(Modifier.width(6.dp)); Icon(Icons.Outlined.Verified, "حساب موثق", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp)) }
-                            }
-                            Text(listOfNotNull(profile?.major?.uppercase(), profile?.year?.let { "السنة الدراسية $it" }).joinToString("  ·  ").ifBlank { "عضو في مجتمع NEXUS" }, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (!profile?.bio.isNullOrBlank()) Text(profile?.bio.orEmpty(), style = MaterialTheme.typography.bodyLarge)
-                            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Outlined.EmojiEvents, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(18.dp))
-                                Text("${profile?.points ?: 0} نقطة", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                                Text("·", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("عضو نشط", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                        if (!profile?.bio.isNullOrBlank()) Text(profile?.bio.orEmpty(), color = Color.White.copy(alpha=.9f))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { profile?.id?.let(onMessage) }, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = palette.first())) { Icon(Icons.Outlined.Chat, null); Spacer(Modifier.width(6.dp)); Text("مراسلة") }
+                            Surface(color = Color.White.copy(alpha=.15f), shape = RoundedCornerShape(12.dp)) { Text("عضو في NEXUS", Modifier.padding(horizontal = 10.dp, vertical = 9.dp), color = Color.White, style = MaterialTheme.typography.labelMedium) }
                         }
                     }
                 }
-                item {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatTile("المنشورات", detail.postsCount.toString(), Modifier.weight(1f))
-                        StatTile("التعليقات", detail.commentsCount.toString(), Modifier.weight(1f))
-                        StatTile("إجابات معتمدة", detail.acceptedAnswers.toString(), Modifier.weight(1f))
-                    }
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("المنشورات", detail.postsCount.toString(), Modifier.weight(1f))
+                    StatTile("التعليقات", detail.commentsCount.toString(), Modifier.weight(1f))
+                    StatTile("إجابات معتمدة", detail.acceptedAnswers.toString(), Modifier.weight(1f))
                 }
-                item { Row(Modifier.fillMaxWidth().padding(horizontal = 17.dp), verticalAlignment = Alignment.CenterVertically) { Text("النشاط والمنشورات", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Text("${detail.posts.size} منشور", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-                if (detail.posts.isEmpty()) item { Text("لا توجد منشورات ظاهرة حتى الآن", Modifier.fillMaxWidth().padding(22.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                items(detail.posts, key = { it.id }) { post ->
-                    Card(onClick = { onOpenPost(post.id) }, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp), shape = RoundedCornerShape(17.dp), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                        Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(8.dp)) { Icon(if (post.postType == "question") Icons.Outlined.HelpOutline else Icons.Outlined.Article, null, Modifier.padding(7.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer) }
-                                Spacer(Modifier.width(9.dp)); Column(Modifier.weight(1f)) { Text(if (post.postType == "question") "سؤال" else "منشور", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold); Text(post.createdAt.take(10), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                                Icon(Icons.Outlined.ChevronLeft, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Text(post.content, style = MaterialTheme.typography.bodyLarge, maxLines = 6, overflow = TextOverflow.Ellipsis)
-                            post.images.take(2).forEach { AsyncImage(it, "صورة المنشور", Modifier.fillMaxWidth().heightIn(max = 230.dp).clip(RoundedCornerShape(12.dp))) }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
-                            Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Outlined.ModeComment, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.width(6.dp)); Text("${post.commentsCount} تعليق", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.weight(1f)); Text("عرض النقاش", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary) }
-                        }
-                    }
-                }
+            }
+            item { Text("مساهمات الطالب", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            if (detail.posts.isEmpty()) item { Text("لا توجد منشورات ظاهرة", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(18.dp)) }
+            items(detail.posts, key = { it.id }) { post ->
+                Card(onClick = { onOpenPost(post.id) }, shape = RoundedCornerShape(15.dp)) { Column(Modifier.fillMaxWidth().padding(13.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(if (post.postType == "question") "سؤال" else "منشور", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                    Text(post.content, style = MaterialTheme.typography.bodyLarge, maxLines = 5)
+                    post.images.forEach { AsyncImage(it, "صورة", Modifier.fillMaxWidth().heightIn(max = 260.dp)) }
+                    Text("${post.commentsCount} تعليق", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } }
             }
         }
     }
@@ -102,10 +78,8 @@ fun PublicProfileScreen(state: NexusUiState, onBack: () -> Unit, onMessage: (Str
 
 @Composable
 private fun StatTile(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier, shape = RoundedCornerShape(15.dp), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-        Column(Modifier.fillMaxWidth().padding(vertical = 13.dp, horizontal = 7.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-        }
-    }
+    Card(modifier, shape = RoundedCornerShape(13.dp)) { Column(Modifier.fillMaxWidth().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } }
 }

@@ -401,14 +401,14 @@ class NexusRepository(context: Context) {
     }
 
     suspend fun loadAdminUsers(): List<AdminUser> {
-        val rows = array(rest("/rest/v1/profiles?select=id,full_name,university_number,major,year,points,banned,suspended_until&order=points.desc&limit=500"))
+        val rows = array(rest("/rest/v1/profiles?select=id,full_name,university_number,major,year,points,banned,suspended_until,avatar_url&order=points.desc&limit=500"))
         if (rows.isEmpty()) return emptyList()
         val ids = rows.map { it.optString("id") }
         val roleRows = array(rest("/rest/v1/user_roles?select=user_id,role&user_id=in.(${ids.joinToString(",") { encode(it) }})"))
             .groupBy { it.optString("user_id") }
         return rows.map { row -> val id = row.optString("id"); AdminUser(id, row.optString("full_name"), row.optString("university_number"),
             row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"), row.optInt("points"), row.optBoolean("banned"),
-            row.optStringOrNull("suspended_until"), roleRows[id].orEmpty().map { it.optString("role") }) }
+            row.optStringOrNull("suspended_until"), roleRows[id].orEmpty().map { it.optString("role") }, avatarDisplayUrl(row.optStringOrNull("avatar_url"))) }
     }
 
     suspend fun loadAdminReports(): List<AdminReport> {

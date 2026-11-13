@@ -153,7 +153,7 @@ data class CourseDetail(
 
 
 
-data class AdminUser(val id: String, val fullName: String, val universityNumber: String, val major: String?, val year: Int?, val points: Int, val banned: Boolean, val suspendedUntil: String?, val roles: List<String>)
+data class AdminUser(val id: String, val fullName: String, val universityNumber: String, val major: String?, val year: Int?, val points: Int, val banned: Boolean, val suspendedUntil: String?, val roles: List<String>, val avatarUrl: String? = null)
 data class AdminReport(val id: String, val postId: String, val content: String, val reporterName: String, val reason: String, val status: String, val createdAt: String, val reportType: String = "post", val reportedUserId: String? = null)
 
 data class PublicUser(val id: String, val fullName: String, val universityNumber: String, val avatarUrl: String?, val major: String?)
