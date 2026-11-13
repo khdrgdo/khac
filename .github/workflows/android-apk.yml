@@ -3,7 +3,7 @@ name: NEXUS Android APK
 on:
   push:
     branches:
-      - feature/android-v1.2.0
+      - fix/android-v1.2.1
     paths:
       - "android/**"
       - ".github/workflows/android-apk.yml"
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Android 1.2.0
+    name: Build Android 1.2.1
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -39,19 +39,19 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NEXUS-Android-v1.2.0
+          name: NEXUS-Android-v1.2.1
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
       - name: Publish public test release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nexus-android-v1.2.0
-          target_commitish: feature/android-v1.2.0
-          name: NEXUS Android 1.2.0 — Test Build
+          tag_name: nexus-android-v1.2.1
+          target_commitish: fix/android-v1.2.1
+          name: NEXUS Android 1.2.1 — Test Build
           body: |
-            NEXUS native Android student app v1.2.0.
-            Includes the first native student community feed, anonymous posts and comments.
+            NEXUS native Android student app v1.2.1.
+            Fixes feed-first home navigation, website-compatible student/teacher/admin/sub-admin sign-in, sub-admin usernames, question visibility and post type alignment.
             Built with Kotlin and Jetpack Compose. Debug-signed test APK; not a Play Store release.
           draft: false
           prerelease: true

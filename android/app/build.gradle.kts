@@ -12,8 +12,8 @@ android {
         applicationId = "com.nexus.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 120
-        versionName = "1.2.0"
+        versionCode = 121
+        versionName = "1.2.1"
 
         buildConfigField("String", "SUPABASE_URL", "\"https://nzerffnvrvtmlnuqvhkw.supabase.co\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"sb_publishable_CiCJzf7SfP7C-1bsBKuMNQ_IbS0v2K9\"")
