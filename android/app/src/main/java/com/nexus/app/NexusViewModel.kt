@@ -11,6 +11,7 @@ import com.nexus.app.data.CourseMaterial
 import com.nexus.app.data.CourseTab
 import com.nexus.app.data.NexusRepository
 import com.nexus.app.data.NexusUiState
+import com.nexus.app.data.ScheduleEntry
 import com.nexus.app.data.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

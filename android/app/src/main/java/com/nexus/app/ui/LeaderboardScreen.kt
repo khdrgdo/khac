@@ -30,8 +30,11 @@ fun LeaderboardScreen(
     var timeframe by rememberSaveable { mutableStateOf("all") }
     var major by rememberSaveable { mutableStateOf("all") }
     var year by rememberSaveable { mutableStateOf(0) }
+    var courseId by rememberSaveable { mutableStateOf("all") }
+    var courseMenuOpen by rememberSaveable { mutableStateOf(false) }
     var search by rememberSaveable { mutableStateOf("") }
-    LaunchedEffect(timeframe, major, year) { onLoad(timeframe, major.takeIf { it != "all" }, year.takeIf { it > 0 }) }
+    val tiers = listOf(0 to "🥉 برونزي", 100 to "🥈 فضي", 300 to "🥇 ذهبي", 700 to "💠 بلاتيني", 1500 to "💎 ماسي")
+    LaunchedEffect(timeframe, major, year, courseId) { onLoad(timeframe, major.takeIf { it != "all" }, year.takeIf { it > 0 }, courseId.takeIf { it != "all" }) }
     val visible = state.leaderboard.filter { it.fullName.contains(search, true) }
     Scaffold(bottomBar = {
         NavigationBar {
@@ -70,7 +73,7 @@ fun LeaderboardScreen(
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FilterChip(year == 0, { year = 0 }, label = { Text("كل السنوات") })
+                    FilterChip(year == 0, { year = 0; courseId = "all" }, enabled = courseId == "all", label = { Text("كل السنوات") })
                     (1..4).forEach { y -> FilterChip(year == y, { year = y; courseId = "all" }, enabled = courseId == "all", label = { Text("السنة $y") }) }
                 }
             }
@@ -98,7 +101,6 @@ fun LeaderboardScreen(
             item {
                 val myRank = visible.indexOfFirst { it.id == state.profile?.id } + 1
                 val points = state.profile?.points ?: 0
-                val tiers = listOf(0 to "🥉 برونزي", 100 to "🥈 فضي", 300 to "🥇 ذهبي", 700 to "💠 بلاتيني", 1500 to "💎 ماسي")
                 val next = tiers.firstOrNull { it.first > points }
                 val previous = tiers.lastOrNull { it.first <= points }?.first ?: 0
                 Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {

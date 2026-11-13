@@ -10,6 +10,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okio.source
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -498,7 +499,7 @@ class NexusRepository(context: Context) {
         val prefs = appContext.getSharedPreferences("nexus_notifications", android.content.Context.MODE_PRIVATE)
         val values = prefs.getStringSet("${kind}_$userId", emptySet()).orEmpty().toMutableSet()
         values.add(id)
-        prefs.edit().putStringSet("${kind}_$userId", values.takeLast(500).toSet()).apply()
+        prefs.edit().putStringSet("${kind}_$userId", values.toList().takeLast(500).toSet()).apply()
     }
 
     suspend fun markNotificationRead(id: String) {
