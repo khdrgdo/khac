@@ -97,7 +97,7 @@ class NexusRepository(context: Context) {
     }
 
     suspend fun loadFeed(): List<FeedPost> {
-        val rows = array(rest("/rest/v1/posts?select=id,author_id,content,created_at,is_anonymous,post_type&post_type=neq.question&order=created_at.desc&limit=50"))
+        val rows = array(rest("/rest/v1/posts?select=id,author_id,content,created_at,is_anonymous,post_type&order=created_at.desc&limit=50"))
         val ids = rows.mapNotNull { it.optStringOrNull("author_id") }.toSet()
         val profiles = publicProfiles(ids)
         val postIds = rows.mapNotNull { it.optStringOrNull("id") }
@@ -119,7 +119,7 @@ class NexusRepository(context: Context) {
 
     suspend fun createFeedPost(content: String, anonymous: Boolean) {
         rest("/rest/v1/rpc/create_post_as", "POST", JSONObject()
-            .put("_content", content.trim()).put("_post_type", "post").put("_anonymous", anonymous))
+            .put("_content", content.trim()).put("_post_type", "general").put("_anonymous", anonymous))
     }
 
     suspend fun loadCourseDetail(courseId: String): CourseDetail {
@@ -229,8 +229,8 @@ class NexusRepository(context: Context) {
         } ?: false
         if (suspended) throw ApiException("هذا الحساب موقوف مؤقتاً حتى انتهاء مدة الإيقاف.")
         val roles = array(rest("/rest/v1/user_roles?select=role&user_id=eq." + encode(session?.userId ?: profile.id))).map { it.optString("role") }
-        if (roles.isEmpty() || roles.any { it != "student" }) {
-            throw ApiException("الإصدار الأول من NEXUS مخصص لحسابات الطلاب فقط.")
+        if (roles.isEmpty() || roles.any { it !in setOf("student", "teacher", "admin", "sub_admin") }) {
+            throw ApiException("هذا الحساب لا يملك دوراً معتمداً في NEXUS.")
         }
     }
 

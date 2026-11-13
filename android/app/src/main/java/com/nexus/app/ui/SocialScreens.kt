@@ -35,8 +35,7 @@ fun SocialFeedScreen(
     Scaffold(
         bottomBar = {
             NavigationBar {
-                NavigationBarItem(false, onHome, icon = { Icon(Icons.Outlined.Home, null) }, label = { Text("الرئيسية") })
-                NavigationBarItem(true, {}, icon = { Icon(Icons.Outlined.Groups, null) }, label = { Text("المجتمع") })
+                NavigationBarItem(true, onHome, icon = { Icon(Icons.Outlined.Home, null) }, label = { Text("الرئيسية") })
                 NavigationBarItem(false, onCourses, icon = { Icon(Icons.Outlined.MenuBook, null) }, label = { Text("المقررات") })
                 NavigationBarItem(false, onProfile, icon = { Icon(Icons.Outlined.PersonOutline, null) }, label = { Text("حسابي") })
             }
@@ -50,7 +49,7 @@ fun SocialFeedScreen(
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("المجتمع الطلابي", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                        Text("الرئيسية", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Text("شارك المعرفة وناقش أفكارك مع زملائك", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, "تحديث") }

@@ -160,7 +160,9 @@ fun normalizeLoginIdentifier(value: String): String {
     if (cleaned.isEmpty()) throw IllegalArgumentException("أدخل الرقم الجامعي أو البريد الإلكتروني")
     if (cleaned.contains("@")) return cleaned
     if (cleaned.all { it.isDigit() }) return cleaned + "@college.edu"
-    throw IllegalArgumentException("استخدم الرقم الجامعي أو البريد الإلكتروني المسجل في الموقع")
+    val username = cleaned.lowercase().replace(Regex("\\s+"), "").removePrefix("sub_")
+    if (username.isNotBlank()) return username + "@subadmin.edu"
+    throw IllegalArgumentException("أدخل الرقم الجامعي أو اسم المشرف المساعد أو البريد الإلكتروني")
 }
 
 fun majorLabel(code: String?): String = when (code?.lowercase()) {

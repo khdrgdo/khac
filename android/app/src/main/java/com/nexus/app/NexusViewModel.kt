@@ -40,8 +40,8 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                 if (profile == null) {
                     _state.update { it.copy(loading = false, busy = false, screen = AppScreen.LOGIN) }
                 } else {
-                    _state.update { it.copy(profile = profile, loading = false, busy = false, screen = AppScreen.HOME) }
-                    loadHome()
+                    _state.update { it.copy(profile = profile, loading = false, busy = false, screen = AppScreen.FEED) }
+                    loadFeed()
                 }
             } catch (error: Exception) {
                 runCatching { repository.signOut() }
@@ -57,8 +57,8 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { it.copy(busy = true, error = null) }
             try {
                 val profile = repository.signIn(identifier, password)
-                _state.update { it.copy(busy = false, loading = false, profile = profile, screen = AppScreen.HOME, notice = "مرحباً بعودتك، " + profile.fullName) }
-                loadHome()
+                _state.update { it.copy(busy = false, loading = false, profile = profile, screen = AppScreen.FEED, notice = "مرحباً بعودتك، " + profile.fullName) }
+                loadFeed()
             } catch (error: Exception) {
                 _state.update { it.copy(busy = false, loading = false, error = error.message ?: "تعذّر تسجيل الدخول") }
             }
@@ -124,8 +124,8 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-    fun showCourses() { _state.update { it.copy(screen = AppScreen.COURSES, error = null) } }
-    fun showHome() { _state.update { it.copy(screen = AppScreen.HOME, error = null) } }
+    fun showCourses() { _state.update { it.copy(screen = AppScreen.COURSES, error = null) }; loadHome() }
+    fun showHome() { showFeed() }
     fun showProfile() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }
 
     fun openCourse(course: Course) {
