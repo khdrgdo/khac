@@ -423,14 +423,12 @@ class NexusRepository(context: Context) {
         appContext.getSharedPreferences("nexus_preferences", Context.MODE_PRIVATE).getString("theme_mode", ThemeMode.SYSTEM.name)
     )
 
-    private suspend fun loadCurrentProfile(): StudentProfile {
+    suspend fun loadCurrentProfile(): StudentProfile {
         val userId = session?.userId?.takeIf { it.isNotBlank() } ?: JSONObject(rest("/auth/v1/user")).optString("id")
         session = session?.copy(userId = userId)
         persistSession()
         return loadProfile(userId)
     }
-
-    suspend fun loadCurrentProfile(): StudentProfile { val id = session?.userId ?: throw ApiException("جلسة غير صالحة"); return loadProfile(id) }
 
     private suspend fun loadProfile(userId: String): StudentProfile {
         val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,theme&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
