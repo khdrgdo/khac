@@ -1,7 +1,7 @@
 package com.nexus.app.data
 
 enum class AppScreen {
-    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD, LEADERBOARD, SAVED, NOTIFICATIONS, MESSAGES, CHAT, ADMIN
+    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD, LEADERBOARD, SAVED, NOTIFICATIONS, MESSAGES, CHAT, ADMIN, POST_DETAIL
 }
 
 enum class CourseTab(val label: String) {
@@ -107,6 +107,10 @@ data class FeedPost(
     val acceptedAnswerId: String? = null
 )
 
+
+data class FeedComment(val id: String, val postId: String, val authorId: String?, val authorName: String, val avatarUrl: String?, val content: String, val createdAt: String, val anonymous: Boolean, val parentId: String?)
+data class PostDetail(val post: FeedPost, val comments: List<FeedComment>)
+
 data class FeedReaction(val userId: String, val type: String)
 
 data class CourseUpdate(
@@ -203,6 +207,8 @@ data class NexusUiState(
     val adminReports: List<AdminReport> = emptyList(),
     val adminLoading: Boolean = false,
     val pinnedCard: PinnedCardConfig? = null,
+    val postDetail: PostDetail? = null,
+    val postDetailLoading: Boolean = false,
     val selectedCourse: Course? = null,
     val courseDetail: CourseDetail? = null,
     val selectedTab: CourseTab = CourseTab.FILES,

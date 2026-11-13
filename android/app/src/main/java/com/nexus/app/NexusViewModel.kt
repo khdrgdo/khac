@@ -203,6 +203,37 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun reportChatUser(conversationId: String, userId: String, reason: String, note: String?) { viewModelScope.launch { runCatching { repository.reportMessageUser(conversationId, userId, reason, note) }.onSuccess { _state.update { it.copy(notice = "تم إرسال البلاغ") } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
     fun backToMessages() { _state.update { it.copy(screen = AppScreen.MESSAGES, activeConversationId = null) }; loadConversations() }
 
+
+    fun openPostDetail(postId: String) { _state.update { it.copy(screen = AppScreen.POST_DETAIL, postDetail = null, postDetailLoading = true) }; loadPostDetail(postId) }
+    fun loadPostDetail(postId: String) { viewModelScope.launch { runCatching { repository.loadPostDetail(postId) }.onSuccess { detail -> _state.update { it.copy(postDetail = detail, postDetailLoading = false) } }.onFailure { e -> _state.update { it.copy(postDetailLoading = false, error = e.message) } } }
+    fun addPostComment(content: String, anonymous: Boolean, parentId: String?) {
+        val detail = _state.value.postDetail ?: return
+        val profile = _state.value.profile
+        if (profile?.roles?.contains("sub_admin") == true) { _state.update { it.copy(error = "حساب المشرف المساعد مخصص للإشراف ولا يملك صلاحية التعليق") }; return }
+        val suspended = profile?.suspendedUntil?.let { runCatching { java.time.Instant.parse(it).epochSecond > System.currentTimeMillis()/1000L }.getOrDefault(false) } == true
+        if (suspended) { _state.update { it.copy(error = "حسابك موقوف مؤقتاً ولا يمكنه التعليق") }; return }
+        viewModelScope.launch { runCatching { repository.createPostComment(detail.post.id, content, anonymous, parentId); repository.loadPostDetail(detail.post.id) }
+            .onSuccess { refreshed -> _state.update { it.copy(postDetail = refreshed, notice = "تم نشر التعليق") } }
+            .onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر نشر التعليق") } } }
+    }
+    fun acceptPostAnswer(commentId: String?) {
+        val detail = _state.value.postDetail ?: return
+        if (detail.post.postType != "question" || detail.post.authorId != _state.value.profile?.id) { _state.update { it.copy(error = "قبول الإجابة متاح لصاحب السؤال فقط") }; return }
+        viewModelScope.launch { runCatching { repository.acceptPostAnswer(detail.post.id, commentId); repository.loadPostDetail(detail.post.id) }
+            .onSuccess { refreshed -> _state.update { it.copy(postDetail = refreshed, notice = "تم تحديث الإجابة المعتمدة") } }
+            .onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر اعتماد الإجابة") } } }
+    }
+    fun deletePostComment(commentId: String) {
+        val comment = _state.value.postDetail?.comments?.firstOrNull { it.id == commentId } ?: return
+        val profile = _state.value.profile
+        if (comment.authorId != profile?.id && profile?.roles?.contains("admin") != true) { _state.update { it.copy(error = "لا تملك صلاحية حذف هذا التعليق") }; return }
+        val postId = _state.value.postDetail?.post?.id ?: return
+        viewModelScope.launch { runCatching { repository.deletePostComment(commentId); repository.loadPostDetail(postId) }
+            .onSuccess { refreshed -> _state.update { it.copy(postDetail = refreshed, notice = "تم حذف التعليق") } }
+            .onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر حذف التعليق") } } }
+    }
+    fun backToFeed() { _state.update { it.copy(screen = AppScreen.FEED, postDetail = null) }; loadFeed() }
+
     fun showSavedPosts() { _state.update { it.copy(screen = AppScreen.SAVED, error = null, loading = true) }; loadSavedPosts() }
     fun loadSavedPosts() { viewModelScope.launch { runCatching { repository.loadFeed(true) }.onSuccess { rows -> _state.update { it.copy(feedPosts = rows, loading = false) } }.onFailure { e -> _state.update { it.copy(loading = false, error = e.message) } } } }
     fun showNotifications() { _state.update { it.copy(screen = AppScreen.NOTIFICATIONS, error = null) }; loadNotifications() }

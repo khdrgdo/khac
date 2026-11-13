@@ -47,6 +47,7 @@ fun SocialFeedScreen(
     onVotePinnedCard: (String) -> Unit,
     onParticipatePinnedCard: () -> Unit,
     onOpenPinnedAction: (String) -> Unit,
+    onOpenPost: (String) -> Unit,
     onProfile: () -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
@@ -133,7 +134,7 @@ fun SocialFeedScreen(
             items(state.feedPosts, key = { it.id }) { post ->
                 FeedPostCard(post = post, busy = state.busy, ownPost = post.authorId == state.profile?.id,
                     onComment = { text -> onComment(post.id, text) }, onReact = { onReact(post.id, it) },
-                    onSave = { onSave(post.id, post.saved) }, onReport = { onReport(post.id, it) }, onDelete = { onDelete(post.id) })
+                    onSave = { onSave(post.id, post.saved) }, onReport = { onReport(post.id, it) }, onDelete = { onDelete(post.id) }, onOpenPost = { onOpenPost(post.id) })
             }
         }
     }
@@ -141,7 +142,7 @@ fun SocialFeedScreen(
 
 @Composable
 private fun FeedPostCard(post: FeedPost, busy: Boolean, ownPost: Boolean, onComment: (String) -> Unit,
-    onReact: (String?) -> Unit, onSave: () -> Unit, onReport: (String) -> Unit, onDelete: () -> Unit) {
+    onReact: (String?) -> Unit, onSave: () -> Unit, onReport: (String) -> Unit, onDelete: () -> Unit, onOpenPost: () -> Unit) {
     var reply by rememberSaveable(post.id) { mutableStateOf("") }
     var reportOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     var reportReason by rememberSaveable(post.id) { mutableStateOf("محتوى غير لائق أو مسيء") }

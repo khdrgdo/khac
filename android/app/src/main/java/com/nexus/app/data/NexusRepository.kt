@@ -255,6 +255,40 @@ class NexusRepository(context: Context) {
 
 
 
+
+    suspend fun loadPostDetail(postId: String): PostDetail {
+        val row = array(rest("/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&id=eq.${encode(postId)}&limit=1")).firstOrNull()
+            ?: throw ApiException("المنشور غير موجود")
+        val comments = array(rest("/rest/v1/comments?select=id,post_id,author_id,content,created_at,is_anonymous,parent_id&post_id=eq.${encode(postId)}&order=created_at.asc"))
+        val ids = buildSet { row.optStringOrNull("author_id")?.let(::add); comments.forEach { it.optStringOrNull("author_id")?.let(::add) } }
+        val profiles = publicProfiles(ids)
+        val authorId = row.optStringOrNull("author_id")
+        val anonymous = row.optBoolean("is_anonymous") || authorId == null
+        val imagePaths = row.optJSONArray("images")?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotBlank) } }.orEmpty()
+        val images = imagePaths.mapNotNull { path -> runCatching { signedStorageUrl("post-images", path) }.getOrNull() }
+        val post = FeedPost(postId, authorId, if (anonymous) "طالب مجهول" else profiles[authorId]?.fullName ?: "طالب",
+            if (anonymous) null else profiles[authorId]?.avatarUrl, anonymous, row.optString("content"), row.optString("post_type", "general"),
+            row.optString("created_at"), comments.size, images, emptyList(), null, false, row.optStringOrNull("accepted_answer_id"))
+        val mapped = comments.map { c -> val id = c.optStringOrNull("author_id"); val anon = c.optBoolean("is_anonymous") || id == null
+            FeedComment(c.optString("id"), postId, id, if (anon) "طالب مجهول" else profiles[id]?.fullName ?: "طالب",
+                if (anon) null else profiles[id]?.avatarUrl, c.optString("content"), c.optString("created_at"), anon, c.optStringOrNull("parent_id")) }
+        return PostDetail(post, mapped)
+    }
+
+    suspend fun createPostComment(postId: String, content: String, anonymous: Boolean, parentId: String?) {
+        val body = JSONObject().put("_post_id", postId).put("_content", content.trim()).put("_anonymous", anonymous)
+        if (!parentId.isNullOrBlank()) body.put("_parent_id", parentId)
+        rest("/rest/v1/rpc/create_comment_as", "POST", body)
+    }
+
+    suspend fun acceptPostAnswer(postId: String, commentId: String?) {
+        rest("/rest/v1/posts?id=eq.${encode(postId)}", "PATCH", JSONObject().put("accepted_answer_id", commentId?.let { it } ?: JSONObject.NULL))
+    }
+
+    suspend fun deletePostComment(commentId: String) {
+        rest("/rest/v1/comments?id=eq.${encode(commentId)}", "DELETE")
+    }
+
     suspend fun loadPinnedCard(): PinnedCardConfig? {
         val row = array(rest("/rest/v1/pinned_cards?select=id,enabled,type,theme,badge_text,title,description,image_url,end_date,action_button_text,action_button_url,target_year,target_major,poll_options,votes,participants&id=eq.pinned_featured_event_1&limit=1")).firstOrNull() ?: return null
         val options = row.optJSONArray("poll_options")?.let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { PollOption(it.optString("id"), it.optString("text")) } } }.orEmpty()
