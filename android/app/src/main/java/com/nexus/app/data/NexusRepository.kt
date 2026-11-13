@@ -254,6 +254,33 @@ class NexusRepository(context: Context) {
     }
 
 
+
+    suspend fun loadPinnedCard(): PinnedCardConfig? {
+        val row = array(rest("/rest/v1/pinned_cards?select=id,enabled,type,theme,badge_text,title,description,image_url,end_date,action_button_text,action_button_url,target_year,target_major,poll_options,votes,participants&id=eq.pinned_featured_event_1&limit=1")).firstOrNull() ?: return null
+        val options = row.optJSONArray("poll_options")?.let { a -> (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { PollOption(it.optString("id"), it.optString("text")) } } }.orEmpty()
+        val votesObject = row.optJSONObject("votes") ?: JSONObject()
+        val votes = buildMap { val keys = votesObject.keys(); while (keys.hasNext()) { val key = keys.next(); put(key, votesObject.optString(key)) } }
+        val participantsArray = row.optJSONArray("participants")
+        val participants = participantsArray?.let { a -> (0 until a.length()).map { a.optString(it) }.filter(String::isNotBlank) }.orEmpty()
+        return PinnedCardConfig(row.optString("id"), row.optBoolean("enabled"), row.optString("type", "event"), row.optString("theme", "royal"),
+            row.optString("badge_text"), row.optString("title"), row.optString("description"), row.optStringOrNull("image_url"),
+            row.optStringOrNull("end_date"), row.optStringOrNull("action_button_text"), row.optStringOrNull("action_button_url"),
+            if (row.isNull("target_year")) null else row.optInt("target_year"), row.optStringOrNull("target_major"), options, votes, participants)
+    }
+
+    suspend fun voteOnPinnedPoll(optionId: String): Map<String, String> {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        val raw = rest("/rest/v1/rpc/vote_on_poll", "POST", JSONObject().put("p_user_id", userId).put("p_option_id", optionId))
+        val obj = JSONObject(raw); return buildMap { val keys = obj.keys(); while (keys.hasNext()) { val key = keys.next(); put(key, obj.optString(key)) } }
+    }
+
+    suspend fun togglePinnedParticipation(): List<String> {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        val raw = rest("/rest/v1/rpc/toggle_pinned_card_participation", "POST", JSONObject().put("p_user_id", userId))
+        val arr = runCatching { JSONArray(raw) }.getOrNull() ?: JSONArray()
+        return (0 until arr.length()).map { arr.optString(it) }.filter(String::isNotBlank)
+    }
+
     suspend fun loadAdminUsers(): List<AdminUser> {
         val rows = array(rest("/rest/v1/profiles?select=id,full_name,university_number,major,year,points,banned,suspended_until&order=points.desc&limit=500"))
         if (rows.isEmpty()) return emptyList()

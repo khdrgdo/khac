@@ -44,6 +44,9 @@ fun SocialFeedScreen(
     onSaved: () -> Unit,
     onNotifications: () -> Unit,
     onMessages: () -> Unit,
+    onVotePinnedCard: (String) -> Unit,
+    onParticipatePinnedCard: () -> Unit,
+    onOpenPinnedAction: (String) -> Unit,
     onProfile: () -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
@@ -79,6 +82,7 @@ fun SocialFeedScreen(
                     IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, "تحديث") }
                 }
             }
+            item { PinnedEventCard(state.pinnedCard, state.profile, onVotePinnedCard, onParticipatePinnedCard, onOpenPinnedAction) }
             item {
                 Card(shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

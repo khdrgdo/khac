@@ -91,12 +91,22 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { it.copy(loading = true, error = null) }
             try {
                 val posts = repository.loadFeed()
-                _state.update { it.copy(loading = false, feedPosts = posts) }
+                val card = runCatching { repository.loadPinnedCard() }.getOrNull()
+                _state.update { it.copy(loading = false, feedPosts = posts, pinnedCard = card) }
             } catch (error: Exception) {
                 _state.update { it.copy(loading = false, error = error.message ?: "تعذّر تحميل المنشورات") }
             }
         }
     }
+
+    fun votePinnedCard(optionId: String) { viewModelScope.launch { try {
+        repository.voteOnPinnedPoll(optionId); _state.update { it.copy(pinnedCard = repository.loadPinnedCard(), notice = "تم تسجيل تصويتك") }
+    } catch (e: Exception) { _state.update { it.copy(error = e.message ?: "تعذّر التصويت") } } } }
+
+    fun togglePinnedParticipation() { viewModelScope.launch { try {
+        repository.togglePinnedParticipation(); _state.update { it.copy(pinnedCard = repository.loadPinnedCard(), notice = "تم تحديث مشاركتك") }
+    } catch (e: Exception) { _state.update { it.copy(error = e.message ?: "تعذّر تحديث المشاركة") } } } }
+
 
     fun publishPost(content: String, anonymous: Boolean, postType: String = "general") {
         if (content.isBlank()) return

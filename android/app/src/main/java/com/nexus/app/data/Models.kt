@@ -156,6 +156,15 @@ data class PublicUser(val id: String, val fullName: String, val universityNumber
 data class ConversationPreview(val id: String, val title: String, val isGroup: Boolean, val otherUserId: String?, val lastMessage: String, val updatedAt: String)
 data class ChatMessage(val id: String, val conversationId: String, val senderId: String, val content: String, val createdAt: String)
 
+
+data class PollOption(val id: String, val text: String)
+data class PinnedCardConfig(
+    val id: String, val enabled: Boolean, val type: String, val theme: String, val badgeText: String, val title: String,
+    val description: String, val imageUrl: String?, val endDate: String?, val actionButtonText: String?, val actionButtonUrl: String?,
+    val targetYear: Int?, val targetMajor: String?, val pollOptions: List<PollOption>, val votes: Map<String, String>,
+    val participants: List<String>
+)
+
 data class NotificationItem(val id: String, val title: String, val body: String, val type: String, val link: String?, val read: Boolean, val createdAt: String)
 
 data class LeaderboardUser(
@@ -193,6 +202,7 @@ data class NexusUiState(
     val adminUsers: List<AdminUser> = emptyList(),
     val adminReports: List<AdminReport> = emptyList(),
     val adminLoading: Boolean = false,
+    val pinnedCard: PinnedCardConfig? = null,
     val selectedCourse: Course? = null,
     val courseDetail: CourseDetail? = null,
     val selectedTab: CourseTab = CourseTab.FILES,
