@@ -165,6 +165,20 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+
+    fun showAdmin() {
+        val roles = _state.value.profile?.roles.orEmpty()
+        if (roles.none { it == "admin" || it == "sub_admin" }) { _state.update { it.copy(error = "هذه الصفحة مخصصة للإدارة") }; return }
+        _state.update { it.copy(screen = AppScreen.ADMIN, error = null) }; loadAdminData()
+    }
+    fun loadAdminData() { viewModelScope.launch {
+        _state.update { it.copy(adminLoading = true) }
+        val users = runCatching { repository.loadAdminUsers() }
+        val reports = if (_state.value.profile?.roles?.contains("admin") == true) runCatching { repository.loadAdminReports() } else Result.success(emptyList())
+        _state.update { it.copy(adminUsers = users.getOrDefault(emptyList()), adminReports = reports.getOrDefault(emptyList()), adminLoading = false,
+            error = users.exceptionOrNull()?.message ?: reports.exceptionOrNull()?.message) }
+    } }
+
     fun updateProfileTheme(theme: String) { viewModelScope.launch { runCatching { repository.updateProfileTheme(theme); repository.loadCurrentProfile() }.onSuccess { profile -> _state.update { it.copy(profile = profile, notice = "تم تحديث إطار البطاقة") } }.onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر حفظ الإطار") } } } }
     fun updateProfileBio(bio: String) { viewModelScope.launch { runCatching { repository.updateProfileBio(bio); repository.loadCurrentProfile() }.onSuccess { profile -> _state.update { it.copy(profile = profile, notice = "تم تحديث النبذة") } }.onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر حفظ النبذة") } } } }
 

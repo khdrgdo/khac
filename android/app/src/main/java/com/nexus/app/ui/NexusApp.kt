@@ -79,9 +79,10 @@ fun NexusApp(viewModel: NexusViewModel) {
                 { userId, reason, note -> state.activeConversationId?.let { viewModel.reportChatUser(it, userId, reason, note) } })
             AppScreen.SAVED -> SavedPostsScreen(state, viewModel::loadSavedPosts, viewModel::savePost, viewModel::showHome, viewModel::showCourses, viewModel::showLeaderboard, viewModel::showProfile)
             AppScreen.NOTIFICATIONS -> NotificationsScreen(state, viewModel::loadNotifications, viewModel::readNotification, viewModel::deleteNotification, viewModel::showHome)
+            AppScreen.ADMIN -> AdminDashboardScreen(state, viewModel::loadAdminData, viewModel::showProfile)
             AppScreen.LEADERBOARD -> LeaderboardScreen(state, viewModel::loadLeaderboard, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
-            AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::updateProfileTheme, viewModel::updateProfileBio, viewModel::signOut)
+            AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::updateProfileTheme, viewModel::updateProfileBio, viewModel::showAdmin, viewModel::signOut)
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
             AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial, viewModel::postQuestion, viewModel::addComment)
         }
@@ -734,6 +735,7 @@ private fun ProfileScreen(
     onTheme: (ThemeMode) -> Unit,
     onProfileTheme: (String) -> Unit,
     onBioSave: (String) -> Unit,
+    onAdmin: () -> Unit,
     onSignOut: () -> Unit
 ) {
     val profile = state.profile
@@ -791,6 +793,13 @@ private fun ProfileScreen(
             Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Row(Modifier.fillMaxWidth().clickable { bioDraft = profile?.bio.orEmpty(); bioOpen = true }.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.secondary); Spacer(Modifier.width(9.dp)); Text("تعديل النبذة الشخصية", Modifier.weight(1f)); Icon(Icons.Outlined.ChevronLeft, null)
+                }
+            }
+            if (profile?.roles?.any { it == "admin" || it == "sub_admin" } == true) {
+                Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Row(Modifier.fillMaxWidth().clickable(onClick = onAdmin).padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.AdminPanelSettings, null, tint = MaterialTheme.colorScheme.secondary); Spacer(Modifier.width(9.dp)); Text("لوحة الإدارة", Modifier.weight(1f)); Icon(Icons.Outlined.ChevronLeft, null)
+                    }
                 }
             }
             SectionTitle("إعدادات التطبيق")

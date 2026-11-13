@@ -253,6 +253,30 @@ class NexusRepository(context: Context) {
             .put("conversation_id", conversationId).put("reason", reason).put("note", note?.takeIf(String::isNotBlank)?.let { it } ?: JSONObject.NULL))
     }
 
+
+    suspend fun loadAdminUsers(): List<AdminUser> {
+        val rows = array(rest("/rest/v1/profiles?select=id,full_name,university_number,major,year,points,banned,suspended_until&order=points.desc&limit=500"))
+        if (rows.isEmpty()) return emptyList()
+        val ids = rows.map { it.optString("id") }
+        val roleRows = array(rest("/rest/v1/user_roles?select=user_id,role&user_id=in.(${ids.joinToString(",") { encode(it) }})"))
+            .groupBy { it.optString("user_id") }
+        return rows.map { row -> val id = row.optString("id"); AdminUser(id, row.optString("full_name"), row.optString("university_number"),
+            row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"), row.optInt("points"), row.optBoolean("banned"),
+            row.optStringOrNull("suspended_until"), roleRows[id].orEmpty().map { it.optString("role") }) }
+    }
+
+    suspend fun loadAdminReports(): List<AdminReport> {
+        val reports = array(rest("/rest/v1/post_reports?select=id,post_id,reporter_id,reason,status,created_at&order=created_at.desc&limit=100"))
+        if (reports.isEmpty()) return emptyList()
+        val postIds = reports.map { it.optString("post_id") }.filter(String::isNotBlank).distinct()
+        val reporterIds = reports.map { it.optString("reporter_id") }.filter(String::isNotBlank).distinct()
+        val posts = if (postIds.isEmpty()) emptyMap() else array(rest("/rest/v1/posts?select=id,content&id=in.(${postIds.joinToString(",") { encode(it) }})")).associateBy { it.optString("id") }
+        val profiles = publicProfiles(reporterIds)
+        return reports.map { row -> val postId = row.optString("post_id"); val reporterId = row.optString("reporter_id")
+            AdminReport(row.optString("id"), postId, posts[postId]?.optString("content").orEmpty(), profiles[reporterId]?.fullName ?: "مستخدم",
+                row.optString("reason"), row.optString("status", "pending"), row.optString("created_at")) }
+    }
+
     suspend fun updateProfileTheme(theme: String) {
         require(theme in setOf("stars", "clouds", "moon", "sun", "galaxy")) { "مظهر غير معروف" }
         val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
@@ -411,10 +435,17 @@ class NexusRepository(context: Context) {
     private suspend fun loadProfile(userId: String): StudentProfile {
         val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,theme&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
             ?: throw ApiException("لم يُعثر على ملف الطالب المرتبط بهذا الحساب")
+        val roles = array(rest("/rest/v1/user_roles?select=role&user_id=eq.${encode(userId)}")).map { it.optString("role") }.filter(String::isNotBlank)
+        val permissionRow = if ("sub_admin" in roles) array(rest("/rest/v1/subadmin_permissions?select=can_warn,can_suspend,can_courses,can_reports,can_words,can_teachers&user_id=eq.${encode(userId)}&limit=1")).firstOrNull() else null
+        val permissions = permissionRow?.let { row -> buildSet {
+            if (row.optBoolean("can_warn")) add("warn"); if (row.optBoolean("can_suspend")) add("suspend")
+            if (row.optBoolean("can_courses")) add("courses"); if (row.optBoolean("can_reports")) add("reports")
+            if (row.optBoolean("can_words")) add("words"); if (row.optBoolean("can_teachers")) add("teachers")
+        } } ?: emptySet()
         return StudentProfile(row.optString("id"), row.optString("university_number"), row.optString("full_name"),
             row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"),
             row.optStringOrNull("avatar_url"), row.optStringOrNull("bio"), row.optBoolean("must_change_password"),
-            row.optInt("points"), row.optBoolean("banned"), row.optStringOrNull("suspended_until"), row.optString("theme", "stars"))
+            row.optInt("points"), row.optBoolean("banned"), row.optStringOrNull("suspended_until"), row.optString("theme", "stars"), roles, permissions)
     }
 
     private suspend fun verifyStudentAccess(profile: StudentProfile) {

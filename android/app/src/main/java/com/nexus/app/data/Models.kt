@@ -1,7 +1,7 @@
 package com.nexus.app.data
 
 enum class AppScreen {
-    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD, LEADERBOARD, SAVED, NOTIFICATIONS, MESSAGES, CHAT
+    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD, LEADERBOARD, SAVED, NOTIFICATIONS, MESSAGES, CHAT, ADMIN
 }
 
 enum class CourseTab(val label: String) {
@@ -41,7 +41,9 @@ data class StudentProfile(
     val points: Int,
     val banned: Boolean,
     val suspendedUntil: String?,
-    val theme: String = "stars"
+    val theme: String = "stars",
+    val roles: List<String> = listOf("student"),
+    val subAdminPermissions: Set<String> = emptySet()
 )
 
 data class PublicProfile(
@@ -146,6 +148,10 @@ data class CourseDetail(
 
 
 
+
+data class AdminUser(val id: String, val fullName: String, val universityNumber: String, val major: String?, val year: Int?, val points: Int, val banned: Boolean, val suspendedUntil: String?, val roles: List<String>)
+data class AdminReport(val id: String, val postId: String, val content: String, val reporterName: String, val reason: String, val status: String, val createdAt: String)
+
 data class PublicUser(val id: String, val fullName: String, val universityNumber: String, val avatarUrl: String?, val major: String?)
 data class ConversationPreview(val id: String, val title: String, val isGroup: Boolean, val otherUserId: String?, val lastMessage: String, val updatedAt: String)
 data class ChatMessage(val id: String, val conversationId: String, val senderId: String, val content: String, val createdAt: String)
@@ -184,6 +190,9 @@ data class NexusUiState(
     val activeConversationId: String? = null,
     val messageSearchResults: List<PublicUser> = emptyList(),
     val messagesLoading: Boolean = false,
+    val adminUsers: List<AdminUser> = emptyList(),
+    val adminReports: List<AdminReport> = emptyList(),
+    val adminLoading: Boolean = false,
     val selectedCourse: Course? = null,
     val courseDetail: CourseDetail? = null,
     val selectedTab: CourseTab = CourseTab.FILES,
