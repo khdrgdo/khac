@@ -49,7 +49,7 @@ fun MessagesScreen(state: NexusUiState, onRefresh: () -> Unit, onSearch: (String
                 items(state.messageSearchResults, key = { "user-" + it.id }) { user ->
                     Card(onClick = { if (groupMode) selectedIds = if (user.id in selectedIds) selectedIds - user.id else selectedIds + user.id else onStartChat(user.id) }, shape = RoundedCornerShape(14.dp)) {
                         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            if (!user.avatarUrl.isNullOrBlank()) AsyncImage(model = user.avatarUrl, contentDescription = null, modifier = Modifier.size(40.dp).clip(CircleShape))
+                            if (!user.avatarUrl.isNullOrBlank()) StudentAvatar(user.avatarUrl, user.fullName, 40)
                             else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(40.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1)) } }
                             Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(user.fullName, fontWeight = FontWeight.SemiBold); Text(user.universityNumber, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             if (groupMode) Checkbox(user.id in selectedIds, { selectedIds = if (it) selectedIds + user.id else selectedIds - user.id })
@@ -64,7 +64,7 @@ fun MessagesScreen(state: NexusUiState, onRefresh: () -> Unit, onSearch: (String
             items(state.conversations, key = { it.id }) { c ->
                 Card(onClick = { onOpenChat(c.id) }, shape = RoundedCornerShape(14.dp)) {
                     Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (!c.avatarUrl.isNullOrBlank() && !c.isGroup) AsyncImage(model = c.avatarUrl, contentDescription = null, modifier = Modifier.size(42.dp).clip(CircleShape))
+                        if (!c.avatarUrl.isNullOrBlank() && !c.isGroup) StudentAvatar(c.avatarUrl, c.title, 42)
                         else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(42.dp)) { Box(contentAlignment = Alignment.Center) { Icon(if (c.isGroup) Icons.Outlined.Groups else Icons.Outlined.Person, null) } }
                         Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) {
                             Text(c.title, fontWeight = FontWeight.SemiBold)
@@ -85,6 +85,7 @@ fun ChatScreen(state: NexusUiState, onBack: () -> Unit, onRefresh: () -> Unit, o
     var draft by rememberSaveable { mutableStateOf("") }
     var blockConfirm by rememberSaveable { mutableStateOf(false) }
     var reportOpen by rememberSaveable { mutableStateOf(false) }
+    var reportConfirm by rememberSaveable { mutableStateOf(false) }
     var reportTarget by rememberSaveable { mutableStateOf<String?>(null) }
     var reportNote by rememberSaveable { mutableStateOf("") }
     var reportReason by rememberSaveable { mutableStateOf("محتوى مسيء أو تحرّش") }
@@ -128,8 +129,13 @@ fun ChatScreen(state: NexusUiState, onBack: () -> Unit, onRefresh: () -> Unit, o
             Text(if (reportNote.startsWith("نص الرسالة:")) "نوع البلاغ عن الرسالة" else "نوع البلاغ عن المستخدم", style = MaterialTheme.typography.labelMedium)
             listOf("محتوى مسيء أو تحرّش", "تهديد أو عنف", "انتحال شخصية", "رسائل مزعجة أو احتيال", "مشاركة معلومات خاصة", "أخرى").forEach { reason -> Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = reportReason == reason, onClick = { reportReason = reason }); Text(reason, style = MaterialTheme.typography.bodySmall) } }
             OutlinedTextField(reportNote, { reportNote = it }, Modifier.fillMaxWidth(), minLines = 2, maxLines = 4, label = { Text("تفاصيل إضافية (اختياري)") })
-        } }, confirmButton = { TextButton(onClick = { onReport(reportTarget!!, reportReason, reportNote); reportOpen = false }) { Text("إرسال البلاغ") } },
+        } }, confirmButton = { TextButton(onClick = { reportConfirm = true }) { Text("متابعة") } },
         dismissButton = { TextButton(onClick = { reportOpen = false }) { Text("إلغاء") } })
+    if (reportConfirm && reportTarget != null) AlertDialog(onDismissRequest = { reportConfirm = false },
+        title = { Text("تأكيد إرسال البلاغ") },
+        text = { Text("سيُرسل البلاغ بصفته ${if (reportNote.startsWith("نص الرسالة:")) "بلاغاً عن رسالة محددة" else "بلاغاً عن المستخدم"}، والسبب: $reportReason. هل تريد المتابعة؟") },
+        confirmButton = { TextButton(onClick = { onReport(reportTarget!!, reportReason, reportNote); reportConfirm = false; reportOpen = false }) { Text("إرسال البلاغ") } },
+        dismissButton = { TextButton(onClick = { reportConfirm = false }) { Text("مراجعة البلاغ") } })
 }
 
 private fun Boolean?.orFalse(): Boolean = this ?: false
