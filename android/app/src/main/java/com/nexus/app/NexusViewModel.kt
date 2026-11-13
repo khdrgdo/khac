@@ -163,6 +163,13 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+    fun showSavedPosts() { _state.update { it.copy(screen = AppScreen.SAVED, error = null, loading = true) }; loadSavedPosts() }
+    fun loadSavedPosts() { viewModelScope.launch { runCatching { repository.loadFeed(true) }.onSuccess { rows -> _state.update { it.copy(feedPosts = rows, loading = false) } }.onFailure { e -> _state.update { it.copy(loading = false, error = e.message) } } } }
+    fun showNotifications() { _state.update { it.copy(screen = AppScreen.NOTIFICATIONS, error = null) }; loadNotifications() }
+    fun loadNotifications() { viewModelScope.launch { _state.update { it.copy(notificationsLoading = true) }; runCatching { repository.loadNotifications() }.onSuccess { rows -> _state.update { it.copy(notifications = rows, notificationsLoading = false) } }.onFailure { e -> _state.update { it.copy(notificationsLoading = false, error = e.message) } } } }
+    fun readNotification(id: String) { viewModelScope.launch { runCatching { repository.markNotificationRead(id); repository.loadNotifications() }.onSuccess { rows -> _state.update { it.copy(notifications = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+    fun deleteNotification(id: String) { viewModelScope.launch { runCatching { repository.deleteNotification(id); repository.loadNotifications() }.onSuccess { rows -> _state.update { it.copy(notifications = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+
     fun showLeaderboard() { _state.update { it.copy(screen = AppScreen.LEADERBOARD, error = null) }; loadLeaderboard() }
 
     fun loadLeaderboard(timeframe: String = "all", major: String? = null, year: Int? = null) {

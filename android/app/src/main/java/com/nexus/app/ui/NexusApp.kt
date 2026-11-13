@@ -71,7 +71,9 @@ fun NexusApp(viewModel: NexusViewModel) {
             AppScreen.HOME -> HomeScreen(state, viewModel::openCourse, viewModel::openMaterial, viewModel::refreshHome, viewModel::showCourses, viewModel::showProfile, viewModel::showFeed)
             AppScreen.FEED -> SocialFeedScreen(state, viewModel::loadFeed, viewModel::publishPost, viewModel::addFeedComment,
                 viewModel::uploadPostImage, viewModel::removeDraftImage, viewModel::reactToPost, viewModel::savePost,
-                viewModel::reportPost, viewModel::deletePost, viewModel::showHome, viewModel::showCourses, viewModel::showLeaderboard, viewModel::showProfile)
+                viewModel::reportPost, viewModel::deletePost, viewModel::showHome, viewModel::showCourses, viewModel::showLeaderboard, viewModel::showSavedPosts, viewModel::showNotifications, viewModel::showProfile)
+            AppScreen.SAVED -> SavedPostsScreen(state, viewModel::loadSavedPosts, viewModel::savePost, viewModel::showHome, viewModel::showCourses, viewModel::showLeaderboard, viewModel::showProfile)
+            AppScreen.NOTIFICATIONS -> NotificationsScreen(state, viewModel::loadNotifications, viewModel::readNotification, viewModel::deleteNotification, viewModel::showHome)
             AppScreen.LEADERBOARD -> LeaderboardScreen(state, viewModel::loadLeaderboard, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
             AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::signOut)

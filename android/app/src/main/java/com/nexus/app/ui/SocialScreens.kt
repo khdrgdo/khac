@@ -41,6 +41,8 @@ fun SocialFeedScreen(
     onHome: () -> Unit,
     onCourses: () -> Unit,
     onLeaderboard: () -> Unit,
+    onSaved: () -> Unit,
+    onNotifications: () -> Unit,
     onProfile: () -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
@@ -70,6 +72,8 @@ fun SocialFeedScreen(
                         Text("الرئيسية", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Text("شارك المعرفة وناقش أفكارك مع زملائك", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    IconButton(onClick = onSaved) { Icon(Icons.Outlined.Bookmarks, "المحفوظات") }
+                    IconButton(onClick = onNotifications) { Icon(Icons.Outlined.NotificationsNone, "الإشعارات") }
                     IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, "تحديث") }
                 }
             }

@@ -98,8 +98,13 @@ class NexusRepository(context: Context) {
         return courses to recentRows.map { materialFrom(it, names[it.optString("course_id")]) }
     }
 
-    suspend fun loadFeed(): List<FeedPost> {
-        val rows = array(rest("/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&order=created_at.desc&limit=50"))
+    suspend fun loadFeed(savedOnly: Boolean = false): List<FeedPost> {
+        val currentUser = session?.userId.orEmpty()
+        val savedAll = if (currentUser.isBlank()) emptyList() else array(rest("/rest/v1/saved_posts?select=post_id&user_id=eq.${encode(currentUser)}&order=created_at.desc&limit=200"))
+            .map { it.optString("post_id") }.filter(String::isNotBlank)
+        if (savedOnly && savedAll.isEmpty()) return emptyList()
+        val postQuery = if (savedOnly) "id=in.(${savedAll.joinToString(",") { encode(it) }})&order=created_at.desc" else "order=created_at.desc&limit=50"
+        val rows = array(rest("/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&$postQuery"))
         val ids = rows.mapNotNull { it.optStringOrNull("author_id") }.toSet()
         val profiles = publicProfiles(ids)
         val postIds = rows.mapNotNull { it.optStringOrNull("id") }
@@ -109,9 +114,7 @@ class NexusRepository(context: Context) {
             .groupingBy { it.optString("post_id") }.eachCount()
         val reactionsByPost = array(rest("/rest/v1/post_reactions?select=post_id,user_id,reaction&post_id=in.($inFilter)"))
             .groupBy { it.optString("post_id") }
-        val currentUser = session?.userId.orEmpty()
-        val savedIds = if (currentUser.isBlank()) emptySet() else array(rest("/rest/v1/saved_posts?select=post_id&user_id=eq.${encode(currentUser)}&post_id=in.($inFilter)"))
-            .map { it.optString("post_id") }.toSet()
+        val savedIds = savedAll.toSet()
         return rows.map { row ->
             val authorId = row.optStringOrNull("author_id")
             val anonymous = row.optBoolean("is_anonymous") || authorId == null
@@ -187,6 +190,23 @@ class NexusRepository(context: Context) {
         return if (signed.startsWith("http")) signed else baseUrl + "/storage/v1" + if (signed.startsWith("/")) signed else "/" + signed
     }
 
+
+
+    suspend fun loadNotifications(): List<NotificationItem> {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        return array(rest("/rest/v1/notifications?select=id,title,body,type,link,read,created_at&recipient_id=eq.${encode(userId)}&order=created_at.desc&limit=100"))
+            .map { row -> NotificationItem(row.optString("id"), row.optString("title"), row.optString("body"), row.optString("type"), row.optStringOrNull("link"), row.optBoolean("read"), row.optString("created_at")) }
+    }
+
+    suspend fun markNotificationRead(id: String) {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        rest("/rest/v1/notifications?id=eq.${encode(id)}&recipient_id=eq.${encode(userId)}", "PATCH", JSONObject().put("read", true))
+    }
+
+    suspend fun deleteNotification(id: String) {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        rest("/rest/v1/notifications?id=eq.${encode(id)}&recipient_id=eq.${encode(userId)}", "DELETE")
+    }
 
     suspend fun loadLeaderboard(timeframe: String = "all", major: String? = null, year: Int? = null): List<LeaderboardUser> {
         val args = JSONObject()

@@ -1,7 +1,7 @@
 package com.nexus.app.data
 
 enum class AppScreen {
-    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD, LEADERBOARD
+    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD, LEADERBOARD, SAVED, NOTIFICATIONS
 }
 
 enum class CourseTab(val label: String) {
@@ -144,6 +144,8 @@ data class CourseDetail(
 )
 
 
+data class NotificationItem(val id: String, val title: String, val body: String, val type: String, val link: String?, val read: Boolean, val createdAt: String)
+
 data class LeaderboardUser(
     val id: String,
     val fullName: String,
@@ -169,6 +171,8 @@ data class NexusUiState(
     val draftImagePaths: List<String> = emptyList(),
     val leaderboard: List<LeaderboardUser> = emptyList(),
     val leaderboardLoading: Boolean = false,
+    val notifications: List<NotificationItem> = emptyList(),
+    val notificationsLoading: Boolean = false,
     val selectedCourse: Course? = null,
     val courseDetail: CourseDetail? = null,
     val selectedTab: CourseTab = CourseTab.FILES,
