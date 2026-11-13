@@ -26,6 +26,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -79,7 +81,7 @@ fun NexusApp(viewModel: NexusViewModel) {
             AppScreen.NOTIFICATIONS -> NotificationsScreen(state, viewModel::loadNotifications, viewModel::readNotification, viewModel::deleteNotification, viewModel::showHome)
             AppScreen.LEADERBOARD -> LeaderboardScreen(state, viewModel::loadLeaderboard, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
-            AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::signOut)
+            AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::updateProfileTheme, viewModel::updateProfileBio, viewModel::signOut)
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
             AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial, viewModel::postQuestion, viewModel::addComment)
         }
@@ -730,21 +732,65 @@ private fun ProfileScreen(
     onCourses: () -> Unit,
     onChangePassword: () -> Unit,
     onTheme: (ThemeMode) -> Unit,
+    onProfileTheme: (String) -> Unit,
+    onBioSave: (String) -> Unit,
     onSignOut: () -> Unit
 ) {
     val profile = state.profile
+    var bioOpen by rememberSaveable { mutableStateOf(false) }
+    var bioDraft by rememberSaveable(profile?.bio) { mutableStateOf(profile?.bio.orEmpty()) }
+    val themes = listOf(Triple("stars", "🌟 النجوم", 0), Triple("clouds", "☁️ السحاب", 100), Triple("moon", "🌙 القمر", 300), Triple("sun", "☀️ الشمس", 700), Triple("galaxy", "🌌 المجرة", 1500))
+    val activeTheme = profile?.theme ?: "stars"
+    val palette = when (activeTheme) {
+        "clouds" -> listOf(Color(0xFF0C4A6E), Color(0xFF164E63))
+        "moon" -> listOf(Color(0xFF2E1065), Color(0xFF312E81))
+        "sun" -> listOf(Color(0xFF7C2D12), Color(0xFF78350F))
+        "galaxy" -> listOf(Color(0xFF581C87), Color(0xFF831843))
+        else -> listOf(Color(0xFF0F172A), Color(0xFF312E81))
+    }
     Scaffold(bottomBar = { NexusBottomBar(AppScreen.PROFILE, onHome, onCourses, {}) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("حسابي", style = MaterialTheme.typography.headlineLarge)
-            Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
-                Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-                    ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 58)
-                    Spacer(Modifier.width(13.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(profile?.fullName ?: "طالب NEXUS", style = MaterialTheme.typography.titleLarge)
-                        Text(profile?.universityNumber ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(listOfNotNull(profile?.major?.let(::majorLabel), profile?.year?.let { "السنة " + it }).joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(palette)).padding(18.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 60)
+                        Spacer(Modifier.width(13.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(profile?.fullName ?: "طالب NEXUS", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                            Text(listOfNotNull(profile?.major?.let(::majorLabel), profile?.year?.let { "السنة " + it }).joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = .8f))
+                            Text("${profile?.points ?: 0} نقطة • ${themes.firstOrNull { it.first == activeTheme }?.second ?: "النجوم"}", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                        }
                     }
+                    if (!profile?.bio.isNullOrBlank()) Text(profile?.bio.orEmpty(), color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
+                    Text("الرقم الجامعي: ${profile?.universityNumber.orEmpty()}", color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            SectionTitle("إطار البطاقة الشخصية")
+            Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text("افتح الإطارات بجمع النقاط", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    themes.forEach { (id, label, minPoints) ->
+                        val unlocked = (profile?.points ?: 0) >= minPoints
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            FilterChip(selected = activeTheme == id, onClick = { if (unlocked) onProfileTheme(id) }, enabled = unlocked,
+                                label = { Text(if (unlocked) label else "$label · 🔒 $minPoints") })
+                            Spacer(Modifier.weight(1f))
+                            if (activeTheme == id) Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    val nextTheme = themes.firstOrNull { it.third > (profile?.points ?: 0) }
+                    if (nextTheme != null) {
+                        val previous = themes.lastOrNull { it.third <= (profile?.points ?: 0) }?.third ?: 0
+                        val progress = ((profile?.points ?: 0) - previous).toFloat() / (nextTheme.third - previous).toFloat()
+                        Text("المظهر التالي: ${nextTheme.second} — متبقي ${nextTheme.third - (profile?.points ?: 0)} نقطة", style = MaterialTheme.typography.labelSmall)
+                        LinearProgressIndicator(progress = progress.coerceIn(0f, 1f), modifier = Modifier.fillMaxWidth())
+                    } else Text("وصلت إلى أعلى إطار متاح.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                }
+            }
+            Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Row(Modifier.fillMaxWidth().clickable { bioDraft = profile?.bio.orEmpty(); bioOpen = true }.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.secondary); Spacer(Modifier.width(9.dp)); Text("تعديل النبذة الشخصية", Modifier.weight(1f)); Icon(Icons.Outlined.ChevronLeft, null)
                 }
             }
             SectionTitle("إعدادات التطبيق")
@@ -784,9 +830,13 @@ private fun ProfileScreen(
                 Spacer(Modifier.width(8.dp))
                 Text("تسجيل الخروج")
             }
-            Text("NEXUS  •  الإصدار 1.2.0", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+            Text("NEXUS  •  الإصدار 1.3.0", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
         }
     }
+    if (bioOpen) AlertDialog(onDismissRequest = { bioOpen = false }, title = { Text("النبذة الشخصية") },
+        text = { OutlinedTextField(bioDraft, { bioDraft = it }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 5, placeholder = { Text("اكتب نبذة قصيرة عنك") }) },
+        confirmButton = { TextButton(onClick = { onBioSave(bioDraft); bioOpen = false }) { Text("حفظ") } },
+        dismissButton = { TextButton(onClick = { bioOpen = false }) { Text("إلغاء") } })
 }
 
 @Composable

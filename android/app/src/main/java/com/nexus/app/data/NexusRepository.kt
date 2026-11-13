@@ -253,6 +253,17 @@ class NexusRepository(context: Context) {
             .put("conversation_id", conversationId).put("reason", reason).put("note", note?.takeIf(String::isNotBlank)?.let { it } ?: JSONObject.NULL))
     }
 
+    suspend fun updateProfileTheme(theme: String) {
+        require(theme in setOf("stars", "clouds", "moon", "sun", "galaxy")) { "مظهر غير معروف" }
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        rest("/rest/v1/profiles?id=eq.${encode(userId)}", "PATCH", JSONObject().put("theme", theme))
+    }
+
+    suspend fun updateProfileBio(bio: String?) {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        rest("/rest/v1/profiles?id=eq.${encode(userId)}", "PATCH", JSONObject().put("bio", bio?.trim()?.takeIf(String::isNotBlank) ?: JSONObject.NULL))
+    }
+
     suspend fun loadNotifications(): List<NotificationItem> {
         val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
         return array(rest("/rest/v1/notifications?select=id,title,body,type,link,read,created_at&recipient_id=eq.${encode(userId)}&order=created_at.desc&limit=100"))
@@ -395,13 +406,15 @@ class NexusRepository(context: Context) {
         return loadProfile(userId)
     }
 
+    suspend fun loadCurrentProfile(): StudentProfile { val id = session?.userId ?: throw ApiException("جلسة غير صالحة"); return loadProfile(id) }
+
     private suspend fun loadProfile(userId: String): StudentProfile {
-        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
+        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,theme&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
             ?: throw ApiException("لم يُعثر على ملف الطالب المرتبط بهذا الحساب")
         return StudentProfile(row.optString("id"), row.optString("university_number"), row.optString("full_name"),
             row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"),
             row.optStringOrNull("avatar_url"), row.optStringOrNull("bio"), row.optBoolean("must_change_password"),
-            row.optInt("points"), row.optBoolean("banned"), row.optStringOrNull("suspended_until"))
+            row.optInt("points"), row.optBoolean("banned"), row.optStringOrNull("suspended_until"), row.optString("theme", "stars"))
     }
 
     private suspend fun verifyStudentAccess(profile: StudentProfile) {

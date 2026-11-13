@@ -40,7 +40,8 @@ data class StudentProfile(
     val mustChangePassword: Boolean,
     val points: Int,
     val banned: Boolean,
-    val suspendedUntil: String?
+    val suspendedUntil: String?,
+    val theme: String = "stars"
 )
 
 data class PublicProfile(

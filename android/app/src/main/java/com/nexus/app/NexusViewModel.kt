@@ -165,6 +165,9 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateProfileTheme(theme: String) { viewModelScope.launch { runCatching { repository.updateProfileTheme(theme); repository.loadCurrentProfile() }.onSuccess { profile -> _state.update { it.copy(profile = profile, notice = "تم تحديث إطار البطاقة") } }.onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر حفظ الإطار") } } } }
+    fun updateProfileBio(bio: String) { viewModelScope.launch { runCatching { repository.updateProfileBio(bio); repository.loadCurrentProfile() }.onSuccess { profile -> _state.update { it.copy(profile = profile, notice = "تم تحديث النبذة") } }.onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر حفظ النبذة") } } } }
+
     fun showMessages() { _state.update { it.copy(screen = AppScreen.MESSAGES, error = null) }; loadConversations() }
     fun loadConversations() { viewModelScope.launch { _state.update { it.copy(messagesLoading = true) }; runCatching { repository.loadConversations() }.onSuccess { rows -> _state.update { it.copy(conversations = rows, messagesLoading = false) } }.onFailure { e -> _state.update { it.copy(messagesLoading = false, error = e.message) } } } }
     fun searchMessageUsers(query: String) { viewModelScope.launch { runCatching { repository.searchPublicUsers(query) }.onSuccess { rows -> _state.update { it.copy(messageSearchResults = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
