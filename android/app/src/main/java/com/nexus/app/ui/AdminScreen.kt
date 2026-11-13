@@ -60,9 +60,10 @@ fun AdminDashboardScreen(state: NexusUiState, onRefresh: () -> Unit, onBack: () 
                     if (state.adminReports.isEmpty()) item { Text("لا توجد بلاغات ظاهرة لهذا الحساب", Modifier.padding(20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     items(state.adminReports, key = { it.id }) { report ->
                         Card(shape = RoundedCornerShape(13.dp)) { Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) { Text("بلاغ منشور", Modifier.weight(1f), fontWeight = FontWeight.SemiBold); AssistChip(onClick = {}, label = { Text(report.status) }) }
+                            Row(verticalAlignment = Alignment.CenterVertically) { Text(if (report.reportType == "message") "بلاغ رسالة / مستخدم" else "بلاغ منشور", Modifier.weight(1f), fontWeight = FontWeight.SemiBold); AssistChip(onClick = {}, label = { Text(report.status) }) }
                             Text(report.content, style = MaterialTheme.typography.bodyMedium, maxLines = 4)
                             Text("المبلّغ: ${report.reporterName} • السبب: ${report.reason}", style = MaterialTheme.typography.labelSmall)
+                            if (report.reportType == "message") Text("المستخدم المبلّغ عنه: ${report.reportedUserId.orEmpty()}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         } }
                     }
                 }

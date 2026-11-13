@@ -87,7 +87,7 @@ fun NexusApp(viewModel: NexusViewModel) {
             AppScreen.ADMIN -> AdminDashboardScreen(state, viewModel::loadAdminData, viewModel::showProfile)
             AppScreen.LEADERBOARD -> LeaderboardScreen(state, viewModel::loadLeaderboard, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
-            AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::updateProfileTheme, viewModel::updateProfileBio, viewModel::showAdmin, viewModel::signOut)
+            AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::updateProfileTheme, viewModel::updateProfileBio, viewModel::updateProfileAvatar, viewModel::showAdmin, viewModel::signOut)
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
             AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial,
                 viewModel::postQuestion, viewModel::addComment, viewModel::uploadCourseFile, viewModel::addCourseLink,
@@ -806,10 +806,12 @@ private fun ProfileScreen(
     onTheme: (ThemeMode) -> Unit,
     onProfileTheme: (String) -> Unit,
     onBioSave: (String) -> Unit,
+    onAvatarSelected: (Uri) -> Unit,
     onAdmin: () -> Unit,
     onSignOut: () -> Unit
 ) {
     val profile = state.profile
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> uri?.let(onAvatarSelected) }
     var bioOpen by rememberSaveable { mutableStateOf(false) }
     var bioDraft by rememberSaveable(profile?.bio) { mutableStateOf(profile?.bio.orEmpty()) }
     val themes = listOf(Triple("stars", "🌟 النجوم المضيئة", 0), Triple("clouds", "☁️ السحاب الهادئ", 100), Triple("moon", "🌙 القمر والكسوف", 300), Triple("sun", "☀️ الشمس والوهج الشمسي", 700), Triple("galaxy", "🌌 السديم الفضائي والأسطورة", 1500))
@@ -827,7 +829,10 @@ private fun ProfileScreen(
             Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(palette)).padding(18.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 60)
+                        Box {
+                            ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 60)
+                            IconButton(onClick = { avatarPicker.launch("image/*") }, modifier = Modifier.align(Alignment.BottomEnd).size(26.dp)) { Icon(Icons.Outlined.CameraAlt, "تغيير الصورة", tint = Color.White, modifier = Modifier.size(18.dp)) }
+                        }
                         Spacer(Modifier.width(13.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(profile?.fullName ?: "طالب NEXUS", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)

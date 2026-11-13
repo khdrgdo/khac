@@ -189,6 +189,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             error = users.exceptionOrNull()?.message ?: reports.exceptionOrNull()?.message) }
     } }
 
+    fun updateProfileAvatar(uri: Uri) { viewModelScope.launch { runCatching { repository.uploadProfileAvatar(uri); repository.loadCurrentProfile() }.onSuccess { profile -> _state.update { it.copy(profile = profile, notice = "تم تحديث الصورة الشخصية") } }.onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر رفع الصورة") } } } }
     fun updateProfileTheme(theme: String) { viewModelScope.launch { runCatching { repository.updateProfileTheme(theme); repository.loadCurrentProfile() }.onSuccess { profile -> _state.update { it.copy(profile = profile, notice = "تم تحديث إطار البطاقة") } }.onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر حفظ الإطار") } } } }
     fun updateProfileBio(bio: String) { viewModelScope.launch { runCatching { repository.updateProfileBio(bio); repository.loadCurrentProfile() }.onSuccess { profile -> _state.update { it.copy(profile = profile, notice = "تم تحديث النبذة") } }.onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر حفظ النبذة") } } } }
 

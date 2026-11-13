@@ -416,9 +416,32 @@ class NexusRepository(context: Context) {
         val reporterIds = reports.map { it.optString("reporter_id") }.filter(String::isNotBlank).toSet()
         val posts = if (postIds.isEmpty()) emptyMap() else array(rest("/rest/v1/posts?select=id,content&id=in.(${postIds.joinToString(",") { encode(it) }})")).associateBy { it.optString("id") }
         val profiles = publicProfiles(reporterIds)
-        return reports.map { row -> val postId = row.optString("post_id"); val reporterId = row.optString("reporter_id")
+        val postReports = reports.map { row -> val postId = row.optString("post_id"); val reporterId = row.optString("reporter_id")
             AdminReport(row.optString("id"), postId, posts[postId]?.optString("content").orEmpty(), profiles[reporterId]?.fullName ?: "مستخدم",
-                row.optString("reason"), row.optString("status", "pending"), row.optString("created_at")) }
+                row.optString("reason"), row.optString("status", "pending"), row.optString("created_at"), "post") }
+        val messageRows = array(rest("/rest/v1/message_reports?select=id,reporter_id,reported_user_id,conversation_id,reason,note,created_at&order=created_at.desc&limit=100"))
+        val messageReporterIds = messageRows.map { it.optString("reporter_id") }.filter(String::isNotBlank).toSet()
+        val messageProfiles = if (messageReporterIds.isEmpty()) emptyMap() else publicProfiles(messageReporterIds)
+        val messageReports = messageRows.map { row -> AdminReport(row.optString("id"), row.optString("conversation_id"), row.optString("note").ifBlank { "بلاغ عن رسالة أو مستخدم" },
+            messageProfiles[row.optString("reporter_id")]?.fullName ?: "مستخدم", row.optString("reason"), "pending", row.optString("created_at"), "message", row.optStringOrNull("reported_user_id")) }
+        return (postReports + messageReports).sortedByDescending { it.createdAt }
+    }
+
+
+    suspend fun uploadProfileAvatar(uri: Uri) {
+        val current = session ?: throw ApiException("جلسة غير صالحة")
+        val mime = appContext.contentResolver.getType(uri) ?: "image/jpeg"
+        if (!mime.startsWith("image/")) throw ApiException("اختر صورة صالحة")
+        val bytes = appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw ApiException("تعذرت قراءة الصورة")
+        if (bytes.size > 5 * 1024 * 1024) throw ApiException("حجم الصورة يتجاوز 5MB")
+        val ext = when (mime.lowercase()) { "image/png" -> "png"; "image/webp" -> "webp"; "image/jpeg" -> "jpg"; else -> "jpg" }
+        val path = "${current.userId}/${System.currentTimeMillis()}-${UUID.randomUUID().toString().take(6)}.$ext"
+        val request = Request.Builder().url(baseUrl + "/storage/v1/object/avatars/" + Uri.encode(path, "/"))
+            .header("apikey", publishableKey).header("Authorization", "Bearer " + current.accessToken)
+            .header("Content-Type", mime).header("x-upsert", "false").post(bytes.toRequestBody(mime.toMediaType())).build()
+        execute(request)
+        val publicUrl = baseUrl + "/storage/v1/object/public/avatars/" + Uri.encode(path, "/")
+        rest("/rest/v1/profiles?id=eq.${encode(current.userId)}", "PATCH", JSONObject().put("avatar_url", publicUrl))
     }
 
     suspend fun updateProfileTheme(theme: String) {
