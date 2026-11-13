@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import com.nexus.app.BuildConfig
 import com.nexus.app.NexusViewModel
 import com.nexus.app.data.*
@@ -981,14 +983,17 @@ private fun NexusBrand(showTagline: Boolean, centered: Boolean = false) {
 }
 
 @Composable
-private fun ProfileAvatar(url: String?, name: String, size: Int) {
-    if (!url.isNullOrBlank() && url.startsWith("http")) {
-        AsyncImage(model = url, contentDescription = "الصورة الشخصية", modifier = Modifier.size(size.dp).clip(CircleShape))
-    } else {
-        Box(Modifier.size(size.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+fun ProfileAvatar(url: String?, name: String, size: Int) {
+    val avatarSize = size.dp
+    val fallback: @Composable () -> Unit = {
+        Box(Modifier.size(avatarSize).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
             Text(name.trim().firstOrNull()?.uppercase() ?: "N", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold, fontSize = (size / 2.3).sp)
         }
     }
+    if (!url.isNullOrBlank() && (url.startsWith("http://") || url.startsWith("https://"))) {
+        SubcomposeAsyncImage(model = url, contentDescription = "الصورة الشخصية", modifier = Modifier.size(avatarSize).clip(CircleShape),
+            loading = { fallback() }, error = { fallback() }, success = { SubcomposeAsyncImageContent() })
+    } else fallback()
 }
 
 @Composable

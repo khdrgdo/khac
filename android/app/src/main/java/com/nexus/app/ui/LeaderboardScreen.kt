@@ -99,7 +99,7 @@ fun LeaderboardScreen(
             }
 
             if (visible.isNotEmpty()) item {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { Text("منصة المتصدرين", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("أفضل ثلاثة طلاب وفق نقاط الفترة المحددة", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Text("المراكز الأولى", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 val winners = visible.take(3)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.Bottom) {
                     listOf(1, 0, 2).forEach { rank ->
@@ -109,11 +109,10 @@ fun LeaderboardScreen(
                             val tint = when(rank) { 0 -> MaterialTheme.colorScheme.tertiaryContainer; 1 -> MaterialTheme.colorScheme.secondaryContainer; else -> MaterialTheme.colorScheme.surfaceVariant }
                             Card(Modifier.weight(1f).height(height), shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 12.dp, bottomEnd = 12.dp), colors = CardDefaults.cardColors(containerColor = tint), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                                 Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
-                                    Text(when(rank) { 0 -> "🥇 الأول"; 1 -> "🥈 الثاني"; else -> "🥉 الثالث" }, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                                    if (!user.avatarUrl.isNullOrBlank()) StudentAvatar(user.avatarUrl, user.fullName, if (rank == 0) 48 else 40)
-                                    else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha=.7f), modifier = Modifier.size(if (rank == 0) 48.dp else 40.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1), fontWeight = FontWeight.Bold) } }
+                                    Text(when(rank) { 0 -> "🥇"; 1 -> "🥈"; else -> "🥉" }, style = MaterialTheme.typography.headlineSmall)
+                                    NexusAvatar(user.avatarUrl, user.fullName, if (rank == 0) 54 else 46)
                                     Text(user.fullName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                                    Text("${user.score} نقطة", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                                    Text("${user.score} نقطة", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -150,8 +149,7 @@ fun LeaderboardScreen(
                             Box(contentAlignment = Alignment.Center) { Text("${index+1}", fontWeight = FontWeight.Bold) }
                         }
                         Spacer(Modifier.width(10.dp))
-                        if (!user.avatarUrl.isNullOrBlank()) StudentAvatar(user.avatarUrl, user.fullName, 44)
-                        else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1)) } }
+                        NexusAvatar(user.avatarUrl, user.fullName, 44)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(user.fullName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)

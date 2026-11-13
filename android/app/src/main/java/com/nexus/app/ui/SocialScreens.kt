@@ -154,15 +154,15 @@ private fun FeedPostCard(post: FeedPost, busy: Boolean, ownPost: Boolean, onComm
     var deleteOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     var reactionMenu by rememberSaveable(post.id) { mutableStateOf(false) }
     var moreMenu by rememberSaveable(post.id) { mutableStateOf(false) }
-    val reactions = listOf("like" to "👍", "love" to "❤️", "haha" to "😂", "wow" to "😮", "sad" to "😢")
+    val reactions = listOf("like" to "👍", "love" to "❤️", "care" to "🤗", "haha" to "😂", "wow" to "😮", "sad" to "😢", "angry" to "😡")
     val totalReactions = post.reactions.size
     val topReactions = post.reactions.groupingBy { it.type }.eachCount().entries.sortedByDescending { it.value }.take(3)
     val selectedEmoji = reactions.firstOrNull { it.first == post.myReaction }?.second ?: "👍"
-    Card(shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .72f)), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
+    Card(shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .75f)), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
         Column(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (!post.avatarUrl.isNullOrBlank() && !post.anonymous) StudentAvatar(post.avatarUrl, post.authorName, 44)
-                else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Text(if (post.anonymous) "؟" else post.authorName.take(1), fontWeight = FontWeight.Bold) } }
+                if (post.anonymous) Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Text("؟", fontWeight = FontWeight.Bold) } }
+                else NexusAvatar(post.avatarUrl, post.authorName, 44, post.anonymous)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     TextButton(onClick = onOpenProfile, contentPadding = PaddingValues(0.dp), enabled = !post.anonymous) { Text(post.authorName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface) }
@@ -188,27 +188,39 @@ private fun FeedPostCard(post: FeedPost, busy: Boolean, ownPost: Boolean, onComm
                 Icon(if (post.acceptedAnswerId == null) Icons.Outlined.HelpOutline else Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
                 Spacer(Modifier.width(6.dp)); Text(if (post.acceptedAnswerId == null) "سؤال ينتظر الإجابة" else "تم اعتماد إجابة", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             }
-            {
+            if (totalReactions > 0 || post.commentsCount > 0) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
                 Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         topReactions.forEach { entry -> Text(reactions.firstOrNull { it.first == entry.key }?.second ?: "👍", modifier = Modifier.offset(x = (-3 * topReactions.indexOf(entry)).dp), fontSize = 17.sp) }
-                        Text(if (totalReactions == 0) "كن أول المتفاعلين" else "$totalReactions تفاعل", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (totalReactions > 0) Text("$totalReactions تفاعل", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.weight(1f))
-                    Text("${post.commentsCount} تعليق", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (post.commentsCount > 0) Text("${post.commentsCount} تعليق", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+            if (reactionMenu) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                reactions.forEach { (type, emoji) -> TextButton(onClick = { onReact(if (post.myReaction == type) null else type); reactionMenu = false }, contentPadding = PaddingValues(3.dp)) { Text(emoji, fontSize = 27.sp) } }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
             Row(Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).combinedClickable(onClick = { onReact(if (post.myReaction == null) "like" else null) }, onLongClick = { reactionMenu = true }).padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Text(selectedEmoji, fontSize = 19.sp); Spacer(Modifier.width(6.dp)); Text(if (post.myReaction == null) "أعجبني" else when(post.myReaction) { "love" -> "أحببته"; "haha" -> "أضحكني"; "wow" -> "أدهشني"; "sad" -> "أحزنني"; else -> "أعجبني" }, style = MaterialTheme.typography.labelLarge, color = if (post.myReaction != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+                        Text(selectedEmoji, fontSize = 19.sp); Spacer(Modifier.width(6.dp)); Text(if (post.myReaction == null) "تفاعل" else when(post.myReaction) { "love" -> "أحببته"; "care" -> "أهتم"; "haha" -> "أضحكني"; "wow" -> "أدهشني"; "sad" -> "أحزنني"; "angry" -> "أغضبني"; else -> "أعجبني" }, style = MaterialTheme.typography.labelLarge, color = if (post.myReaction != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                     }
-                    DropdownMenu(expanded = reactionMenu, onDismissRequest = { reactionMenu = false }) {
-                        Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { reactions.forEach { (type, emoji) ->
-                            TextButton(onClick = { onReact(if (post.myReaction == type) null else type); reactionMenu = false }, contentPadding = PaddingValues(4.dp)) { Text(emoji, fontSize = 24.sp) }
-                        } }
+                    if (reactionMenu) Surface(
+                        modifier = Modifier.align(Alignment.BottomCenter).offset(y = (-48).dp),
+                        shape = RoundedCornerShape(28.dp), tonalElevation = 8.dp, shadowElevation = 8.dp,
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
+                        Row(Modifier.padding(horizontal = 7.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                            reactions.forEach { (type, emoji) ->
+                                TextButton(onClick = { onReact(if (post.myReaction == type) null else type); reactionMenu = false },
+                                    contentPadding = PaddingValues(horizontal = 5.dp, vertical = 3.dp), modifier = Modifier.size(40.dp)) {
+                                    Text(emoji, fontSize = 23.sp)
+                                }
+                            }
+                        }
                     }
                 }
                 TextButton(onClick = onOpenPost, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.ModeComment, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("تعليق", style = MaterialTheme.typography.labelLarge) }
