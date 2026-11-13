@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.nexus.app.data.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GlobalSearchScreen(state: NexusUiState, onSearch: (String) -> Unit, onBack: () -> Unit,
     onOpenPost: (String) -> Unit, onOpenCourse: (String) -> Unit, onStartChat: (String) -> Unit, onOpenProfile: (String) -> Unit) {

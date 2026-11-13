@@ -22,7 +22,7 @@ import com.nexus.app.data.*
 @Composable
 fun LeaderboardScreen(
     state: NexusUiState,
-    onLoad: (String, String?, Int?) -> Unit,
+    onLoad: (String, String?, Int?, String?) -> Unit,
     onHome: () -> Unit,
     onCourses: () -> Unit,
     onProfile: () -> Unit
@@ -51,7 +51,7 @@ fun LeaderboardScreen(
                         Text("تنافس بالنقاط والمساهمات الأكاديمية", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { onLoad(timeframe, major.takeIf { it != "all" }, year.takeIf { it > 0 }) }) { Icon(Icons.Outlined.Refresh, "تحديث") }
+                    IconButton(onClick = { onLoad(timeframe, major.takeIf { it != "all" }, year.takeIf { it > 0 }, courseId.takeIf { it != "all" }) }) { Icon(Icons.Outlined.Refresh, "تحديث") }
                 }
             }
             item {
@@ -64,19 +64,53 @@ fun LeaderboardScreen(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("all" to "كل التخصصات", "it" to "IT", "is" to "IS", "se" to "SE").forEach { (key, label) ->
-                        FilterChip(major == key, { major = key }, label = { Text(label) })
+                        FilterChip(major == key, { major = key; courseId = "all" }, enabled = courseId == "all", label = { Text(label) })
                     }
                 }
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilterChip(year == 0, { year = 0 }, label = { Text("كل السنوات") })
-                    (1..4).forEach { y -> FilterChip(year == y, { year = y }, label = { Text("السنة $y") }) }
+                    (1..4).forEach { y -> FilterChip(year == y, { year = y; courseId = "all" }, enabled = courseId == "all", label = { Text("السنة $y") }) }
+                }
+            }
+
+            item {
+                Box {
+                    OutlinedButton(onClick = { courseMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Outlined.MenuBook, null); Spacer(Modifier.width(8.dp))
+                        Text(state.leaderboardCourses.firstOrNull { it.id == courseId }?.name ?: "كل المقررات")
+                        Spacer(Modifier.weight(1f)); Icon(Icons.Outlined.ExpandMore, null)
+                    }
+                    DropdownMenu(expanded = courseMenuOpen, onDismissRequest = { courseMenuOpen = false }) {
+                        DropdownMenuItem(text = { Text("كل المقررات") }, onClick = { courseId = "all"; major = "all"; year = 0; courseMenuOpen = false })
+                        state.leaderboardCourses.forEach { course -> DropdownMenuItem(text = { Text(course.name) }, onClick = {
+                            courseId = course.id; major = "all"; year = 0; courseMenuOpen = false
+                        }) }
+                    }
                 }
             }
             item {
                 OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), singleLine = true,
                     placeholder = { Text("ابحث عن طالب") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, shape = RoundedCornerShape(13.dp))
+            }
+
+            item {
+                val myRank = visible.indexOfFirst { it.id == state.profile?.id } + 1
+                val points = state.profile?.points ?: 0
+                val tiers = listOf(0 to "🥉 برونزي", 100 to "🥈 فضي", 300 to "🥇 ذهبي", 700 to "💠 بلاتيني", 1500 to "💎 ماسي")
+                val next = tiers.firstOrNull { it.first > points }
+                val previous = tiers.lastOrNull { it.first <= points }?.first ?: 0
+                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) { Text("ترتيبك الحالي", Modifier.weight(1f), fontWeight = FontWeight.SemiBold); Text(if (myRank > 0) "#${myRank}" else "غير مصنف", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+                        Text("${points} نقطة • ${tiers.last { it.first <= points }.second}", style = MaterialTheme.typography.labelMedium)
+                        if (next != null) {
+                            Text("المستوى التالي: ${next.second} — متبقي ${next.first - points} نقطة", style = MaterialTheme.typography.labelSmall)
+                            LinearProgressIndicator(progress = ((points - previous).toFloat() / (next.first - previous)).coerceIn(0f, 1f), modifier = Modifier.fillMaxWidth())
+                        } else Text("وصلت إلى أعلى رتبة!", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
             }
             if (state.leaderboardLoading && state.leaderboard.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if (!state.leaderboardLoading && visible.isEmpty()) item {
@@ -94,6 +128,7 @@ fun LeaderboardScreen(
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(user.fullName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            Text(tiers.last { it.first <= user.points }.second, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
                             Text(listOfNotNull(user.major?.uppercase(), user.year?.let { "السنة $it" }).joinToString(" • "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Column(horizontalAlignment = Alignment.End) {

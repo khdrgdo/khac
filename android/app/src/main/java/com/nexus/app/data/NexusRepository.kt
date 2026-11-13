@@ -434,24 +434,86 @@ class NexusRepository(context: Context) {
 
     suspend fun loadNotifications(): List<NotificationItem> {
         val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
-        return array(rest("/rest/v1/notifications?select=id,title,body,type,link,read,created_at&recipient_id=eq.${encode(userId)}&order=created_at.desc&limit=100"))
-            .map { row -> NotificationItem(row.optString("id"), row.optString("title"), row.optString("body"), row.optString("type"), row.optStringOrNull("link"), row.optBoolean("read"), row.optString("created_at")) }
+        val items = mutableListOf<NotificationItem>()
+        val dbRows = array(rest("/rest/v1/notifications?select=id,title,body,type,link,read,created_at,actor_name,priority&recipient_id=eq.${encode(userId)}&order=created_at.desc&limit=100"))
+        dbRows.forEach { n -> items += NotificationItem(n.optString("id"), n.optString("title"), n.optString("body"), n.optString("type"), n.optStringOrNull("link"), n.optBoolean("read"), n.optString("created_at"), n.optStringOrNull("actor_name"), n.optString("priority", "normal"), false, n.optStringOrNull("actor_id")) }
+        val ownPosts = array(rest("/rest/v1/posts?select=id,content&author_id=eq.${encode(userId)}&limit=500"))
+        val postIds = ownPosts.map { it.optString("id") }.filter(String::isNotBlank)
+        val postTitles = ownPosts.associate { it.optString("id") to it.optString("content").take(30) }
+        val actorIds = mutableSetOf<String>()
+        val synthetic = mutableListOf<NotificationItem>()
+        if (postIds.isNotEmpty()) {
+            val inFilter = postIds.joinToString(",") { encode(it) }
+            val comments = array(rest("/rest/v1/comments?select=id,post_id,author_id,content,created_at&post_id=in.($inFilter)&author_id=neq.$userId&order=created_at.desc&limit=50"))
+            comments.forEach { c -> c.optStringOrNull("author_id")?.let(actorIds::add); synthetic += NotificationItem("comment_${c.optString("id")}", "تعليق جديد على منشورك", c.optString("content"), "post_comment", "/posts/${c.optString("post_id")}", false, c.optString("created_at"), null, "normal", true, c.optStringOrNull("author_id")) }
+            val reactions = array(rest("/rest/v1/post_reactions?select=post_id,user_id,reaction,created_at&post_id=in.($inFilter)&user_id=neq.$userId&order=created_at.desc&limit=50"))
+            reactions.forEach { r ->
+                val actor = r.optString("user_id"); actorIds += actor
+                val emoji = when(r.optString("reaction")) { "like" -> "👍 إعجاب"; "love" -> "❤️ أحببته"; "haha" -> "😂 مضحك"; "wow" -> "😮 مدهش"; "sad" -> "😢 محزن"; else -> "تفاعل" }
+                synthetic += NotificationItem("react_${r.optString("post_id")}_${actor}_${r.optString("reaction")}", "تفاعل جديد على منشورك", "$emoji • ${postTitles[r.optString("post_id")].orEmpty()}", "post_like", "/posts/${r.optString("post_id")}", false, r.optString("created_at"), null, "normal", true, actor)
+            }
+        }
+        val convIds = array(rest("/rest/v1/conversation_members?select=conversation_id&user_id=eq.${encode(userId)}")).map { it.optString("conversation_id") }
+        if (convIds.isNotEmpty()) {
+            val msgs = array(rest("/rest/v1/messages?select=id,conversation_id,sender_id,content,created_at&conversation_id=in.(${convIds.joinToString(",") { encode(it) }})&sender_id=neq.$userId&order=created_at.desc&limit=20"))
+            msgs.forEach { m -> actorIds += m.optString("sender_id"); synthetic += NotificationItem("msg_${m.optString("id")}", "رسالة خاصة", m.optString("content"), "comment_reply", "/messages/${m.optString("conversation_id")}", false, m.optString("created_at"), null, "normal", true, m.optString("sender_id")) }
+        }
+        val warnings = array(rest("/rest/v1/user_warnings?select=id,reason,created_at&user_id=eq.${encode(userId)}&order=created_at.desc&limit=10"))
+        warnings.forEach { w -> synthetic += NotificationItem("warn_${w.optString("id")}", "تنبيه إداري ⚠️", "سبب التنبيه: ${w.optString("reason")}", "announcement", "/feed", false, w.optString("created_at"), null, "important", true, null) }
+        val actorProfiles = if (actorIds.isEmpty()) emptyMap() else publicProfiles(actorIds)
+        val hydrated = synthetic.map { n -> n.copy(actorName = n.actorId?.let { actorProfiles[it]?.fullName }) }
+        val unique = (items + hydrated).distinctBy { it.id }
+        val prefs = appContext.getSharedPreferences("nexus_notifications", android.content.Context.MODE_PRIVATE)
+        val localRead = prefs.getStringSet("read_$userId", emptySet()).orEmpty()
+        val localHidden = prefs.getStringSet("hidden_$userId", emptySet()).orEmpty()
+        return unique.filter { !it.localActivity || it.id !in localHidden }
+            .map { if (it.localActivity && it.id in localRead) it.copy(read = true) else it }
+            .sortedByDescending { it.createdAt }
+    }
+
+    private fun updateLocalNotificationSet(userId: String, kind: String, id: String) {
+        val prefs = appContext.getSharedPreferences("nexus_notifications", android.content.Context.MODE_PRIVATE)
+        val values = prefs.getStringSet("${kind}_$userId", emptySet()).orEmpty().toMutableSet()
+        values.add(id)
+        prefs.edit().putStringSet("${kind}_$userId", values.takeLast(500).toSet()).apply()
     }
 
     suspend fun markNotificationRead(id: String) {
         val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        if (id.startsWith("comment_") || id.startsWith("react_") || id.startsWith("msg_") || id.startsWith("warn_")) { updateLocalNotificationSet(userId, "read", id); return }
         rest("/rest/v1/notifications?id=eq.${encode(id)}&recipient_id=eq.${encode(userId)}", "PATCH", JSONObject().put("read", true))
+    }
+
+
+    suspend fun markAllNotificationsRead() {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        val local = loadNotifications().filter { it.localActivity }.map { it.id }
+        local.forEach { updateLocalNotificationSet(userId, "read", it) }
+        rest("/rest/v1/notifications?recipient_id=eq.${encode(userId)}&read=eq.false", "PATCH", JSONObject().put("read", true))
+    }
+
+    suspend fun clearAllNotifications() {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        loadNotifications().filter { it.localActivity }.forEach { updateLocalNotificationSet(userId, "hidden", it.id) }
+        rest("/rest/v1/notifications?recipient_id=eq.${encode(userId)}", "DELETE")
     }
 
     suspend fun deleteNotification(id: String) {
         val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        if (id.startsWith("comment_") || id.startsWith("react_") || id.startsWith("msg_") || id.startsWith("warn_")) { updateLocalNotificationSet(userId, "hidden", id); return }
         rest("/rest/v1/notifications?id=eq.${encode(id)}&recipient_id=eq.${encode(userId)}", "DELETE")
     }
 
-    suspend fun loadLeaderboard(timeframe: String = "all", major: String? = null, year: Int? = null): List<LeaderboardUser> {
+    suspend fun loadLeaderboardCourses(): List<LeaderboardCourse> = array(rest("/rest/v1/courses?select=id,name,major,year&order=name.asc&limit=300"))
+        .map { LeaderboardCourse(it.optString("id"), it.optString("name"), it.optStringOrNull("major"), if (it.isNull("year")) null else it.optInt("year")) }
+
+    suspend fun loadLeaderboard(timeframe: String = "all", major: String? = null, year: Int? = null, courseId: String? = null): List<LeaderboardUser> {
+        val course = courseId?.let { id -> loadLeaderboardCourses().firstOrNull { it.id == id } }
+        val effectiveMajor = course?.major ?: major
+        val effectiveYear = course?.year ?: year
         val args = JSONObject()
-        if (!major.isNullOrBlank()) args.put("_major", major)
-        if (year != null) args.put("_year", year)
+        if (!effectiveMajor.isNullOrBlank()) args.put("_major", effectiveMajor)
+        if (effectiveYear != null) args.put("_year", effectiveYear)
         val profiles = array(rest("/rest/v1/rpc/get_leaderboard_profiles", "POST", args))
         if (profiles.isEmpty()) return emptyList()
         val adminRows = array(rest("/rest/v1/user_roles?select=user_id&role=in.(admin,sub_admin)"))

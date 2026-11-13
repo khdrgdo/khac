@@ -78,9 +78,9 @@ fun NexusApp(viewModel: NexusViewModel) {
             AppScreen.CHAT -> ChatScreen(state, viewModel::backToMessages, { viewModel.loadChat() }, viewModel::sendChatMessage, viewModel::blockChatUser,
                 { userId, reason, note -> state.activeConversationId?.let { viewModel.reportChatUser(it, userId, reason, note) } })
             AppScreen.SAVED -> SavedPostsScreen(state, viewModel::loadSavedPosts, viewModel::savePost, viewModel::showHome, viewModel::showCourses, viewModel::showLeaderboard, viewModel::showProfile)
-            AppScreen.NOTIFICATIONS -> NotificationsScreen(state, viewModel::loadNotifications, viewModel::readNotification, viewModel::deleteNotification, viewModel::showHome)
+            AppScreen.NOTIFICATIONS -> NotificationsScreen(state, viewModel::loadNotifications, viewModel::readNotification, viewModel::deleteNotification, viewModel::markAllNotificationsRead, viewModel::clearAllNotifications, viewModel::showHome)
             AppScreen.PUBLIC_PROFILE -> PublicProfileScreen(state, viewModel::backFromPublicProfile, viewModel::startDirectChat, viewModel::openPostDetail)
-            AppScreen.SEARCH -> GlobalSearchScreen(state, viewModel::runGlobalSearch, viewModel::showHome, viewModel::openPostDetail, viewModel::openCourse, viewModel::startDirectChat, viewModel::openPublicProfile)
+            AppScreen.SEARCH -> GlobalSearchScreen(state, viewModel::runGlobalSearch, viewModel::showHome, viewModel::openPostDetail, viewModel::openCourseById, viewModel::startDirectChat, viewModel::openPublicProfile)
             AppScreen.POST_DETAIL -> PostDetailScreen(state, viewModel::backToFeed, viewModel::addPostComment, viewModel::acceptPostAnswer, viewModel::deletePostComment)
             AppScreen.ADMIN -> AdminDashboardScreen(state, viewModel::loadAdminData, viewModel::showProfile)
             AppScreen.LEADERBOARD -> LeaderboardScreen(state, viewModel::loadLeaderboard, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)

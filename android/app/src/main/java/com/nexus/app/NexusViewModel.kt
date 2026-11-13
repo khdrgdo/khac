@@ -252,23 +252,35 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun loadSavedPosts() { viewModelScope.launch { runCatching { repository.loadFeed(true) }.onSuccess { rows -> _state.update { it.copy(feedPosts = rows, loading = false) } }.onFailure { e -> _state.update { it.copy(loading = false, error = e.message) } } } }
     fun showNotifications() { _state.update { it.copy(screen = AppScreen.NOTIFICATIONS, error = null) }; loadNotifications() }
     fun loadNotifications() { viewModelScope.launch { _state.update { it.copy(notificationsLoading = true) }; runCatching { repository.loadNotifications() }.onSuccess { rows -> _state.update { it.copy(notifications = rows, notificationsLoading = false) } }.onFailure { e -> _state.update { it.copy(notificationsLoading = false, error = e.message) } } } }
+    fun markAllNotificationsRead() { viewModelScope.launch { runCatching { repository.markAllNotificationsRead(); repository.loadNotifications() }.onSuccess { rows -> _state.update { it.copy(notifications = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+    fun clearAllNotifications() { viewModelScope.launch { runCatching { repository.clearAllNotifications(); repository.loadNotifications() }.onSuccess { rows -> _state.update { it.copy(notifications = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
     fun readNotification(id: String) { viewModelScope.launch { runCatching { repository.markNotificationRead(id); repository.loadNotifications() }.onSuccess { rows -> _state.update { it.copy(notifications = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
     fun deleteNotification(id: String) { viewModelScope.launch { runCatching { repository.deleteNotification(id); repository.loadNotifications() }.onSuccess { rows -> _state.update { it.copy(notifications = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
 
     fun showLeaderboard() { _state.update { it.copy(screen = AppScreen.LEADERBOARD, error = null) }; loadLeaderboard() }
 
-    fun loadLeaderboard(timeframe: String = "all", major: String? = null, year: Int? = null) {
+    fun loadLeaderboard(timeframe: String = "all", major: String? = null, year: Int? = null, courseId: String? = null) {
         viewModelScope.launch {
             _state.update { it.copy(leaderboardLoading = true, error = null) }
-            runCatching { repository.loadLeaderboard(timeframe, major, year) }
-                .onSuccess { rows -> _state.update { it.copy(leaderboard = rows, leaderboardLoading = false) } }
-                .onFailure { error -> _state.update { it.copy(leaderboardLoading = false, error = error.message ?: "تعذّر تحميل لوحة الصدارة") } }
+            val courses = runCatching { repository.loadLeaderboardCourses() }.getOrDefault(emptyList())
+            runCatching { repository.loadLeaderboard(timeframe, major, year, courseId) }
+                .onSuccess { rows -> _state.update { it.copy(leaderboard = rows, leaderboardCourses = courses, leaderboardLoading = false) } }
+                .onFailure { error -> _state.update { it.copy(leaderboardLoading = false, leaderboardCourses = courses, error = error.message ?: "تعذّر تحميل لوحة الصدارة") } }
         }
     }
 
     fun showCourses() { _state.update { it.copy(screen = AppScreen.COURSES, error = null) }; loadHome() }
     fun showHome() { showFeed() }
     fun showProfile() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }
+
+
+    fun openCourseById(courseId: String) {
+        val cached = _state.value.courses.firstOrNull { it.id == courseId }
+        if (cached != null) { openCourse(cached); return }
+        viewModelScope.launch { runCatching { repository.loadCourseDetail(courseId) }.onSuccess { detail ->
+            _state.update { it.copy(previousScreen = it.screen, screen = AppScreen.COURSE_DETAIL, selectedCourse = detail.course, courseDetail = detail, selectedTab = CourseTab.FILES, detailLoading = false) }
+        }.onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر فتح المقرر") } } }
+    }
 
     fun openCourse(course: Course) {
         _state.update { it.copy(previousScreen = it.screen, screen = AppScreen.COURSE_DETAIL, selectedCourse = course, courseDetail = null, selectedTab = CourseTab.FILES, detailLoading = true, error = null) }

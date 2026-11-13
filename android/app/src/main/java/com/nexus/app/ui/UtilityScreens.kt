@@ -50,8 +50,13 @@ fun SavedPostsScreen(state: NexusUiState, onRefresh: () -> Unit, onUnsave: (Stri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationsScreen(state: NexusUiState, onRefresh: () -> Unit, onRead: (String) -> Unit, onDelete: (String) -> Unit, onBack: () -> Unit) {
-    Scaffold(topBar = { TopAppBar(title = { Text("الإشعارات") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowForward, "رجوع") } }, actions = { IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, "تحديث") } }) }) { padding ->
+fun NotificationsScreen(state: NexusUiState, onRefresh: () -> Unit, onRead: (String) -> Unit, onDelete: (String) -> Unit,
+    onMarkAll: () -> Unit, onClearAll: () -> Unit, onBack: () -> Unit) {
+    Scaffold(topBar = { TopAppBar(title = { Text("الإشعارات") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowForward, "رجوع") } }, actions = {
+            IconButton(onClick = onMarkAll) { Icon(Icons.Outlined.DoneAll, "تحديد الكل كمقروء") }
+            IconButton(onClick = onClearAll) { Icon(Icons.Outlined.DeleteSweep, "مسح الكل") }
+            IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, "تحديث") }
+        }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             if (state.notificationsLoading && state.notifications.isEmpty()) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             if (!state.notificationsLoading && state.notifications.isEmpty()) item { Text("لا توجد إشعارات", Modifier.fillMaxWidth().padding(28.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -63,6 +68,7 @@ fun NotificationsScreen(state: NexusUiState, onRefresh: () -> Unit, onRead: (Str
                             Spacer(Modifier.width(8.dp)); Text(n.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                             if (!n.read) Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.primaryContainer) { Text("جديد", Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall) }
                         }
+                        if (!n.actorName.isNullOrBlank()) Text("من: ${n.actorName}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         Text(n.body, style = MaterialTheme.typography.bodyMedium)
                         Text(n.createdAt.take(16).replace('T',' '), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

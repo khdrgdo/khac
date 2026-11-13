@@ -173,8 +173,10 @@ data class PublicProfileDetail(val profile: StudentProfile, val posts: List<Feed
 
 data class SearchBundle(val posts: List<FeedPost>, val courses: List<Course>, val users: List<PublicUser>)
 
-data class NotificationItem(val id: String, val title: String, val body: String, val type: String, val link: String?, val read: Boolean, val createdAt: String)
+data class NotificationItem(val id: String, val title: String, val body: String, val type: String, val link: String?, val read: Boolean, val createdAt: String,
+    val actorName: String? = null, val priority: String = "normal", val localActivity: Boolean = false, val actorId: String? = null)
 
+data class LeaderboardCourse(val id: String, val name: String, val major: String?, val year: Int?)
 data class LeaderboardUser(
     val id: String,
     val fullName: String,
@@ -199,6 +201,7 @@ data class NexusUiState(
     val feedPosts: List<FeedPost> = emptyList(),
     val draftImagePaths: List<String> = emptyList(),
     val leaderboard: List<LeaderboardUser> = emptyList(),
+    val leaderboardCourses: List<LeaderboardCourse> = emptyList(),
     val leaderboardLoading: Boolean = false,
     val notifications: List<NotificationItem> = emptyList(),
     val notificationsLoading: Boolean = false,
