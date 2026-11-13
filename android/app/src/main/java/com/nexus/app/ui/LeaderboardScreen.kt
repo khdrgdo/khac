@@ -98,6 +98,29 @@ fun LeaderboardScreen(
                     placeholder = { Text("ابحث عن طالب") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, shape = RoundedCornerShape(13.dp))
             }
 
+            if (visible.isNotEmpty()) item {
+                Text("المراكز الأولى", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                val winners = visible.take(3)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.Bottom) {
+                    listOf(1, 0, 2).forEach { rank ->
+                        val user = winners.getOrNull(rank)
+                        if (user != null) {
+                            val height = when(rank) { 0 -> 154.dp; 1 -> 132.dp; else -> 118.dp }
+                            val tint = when(rank) { 0 -> MaterialTheme.colorScheme.tertiaryContainer; 1 -> MaterialTheme.colorScheme.secondaryContainer; else -> MaterialTheme.colorScheme.surfaceVariant }
+                            Card(Modifier.weight(1f).height(height), shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 12.dp, bottomEnd = 12.dp), colors = CardDefaults.cardColors(containerColor = tint), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                                Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
+                                    Text(when(rank) { 0 -> "🥇"; 1 -> "🥈"; else -> "🥉" }, style = MaterialTheme.typography.headlineSmall)
+                                    if (!user.avatarUrl.isNullOrBlank()) AsyncImage(user.avatarUrl, null, Modifier.size(if (rank == 0) 48.dp else 40.dp).clip(CircleShape))
+                                    else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha=.7f), modifier = Modifier.size(if (rank == 0) 48.dp else 40.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1), fontWeight = FontWeight.Bold) } }
+                                    Text(user.fullName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                    Text("${user.score} نقطة", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 val myRank = visible.indexOfFirst { it.id == state.profile?.id } + 1
                 val points = state.profile?.points ?: 0
@@ -118,7 +141,9 @@ fun LeaderboardScreen(
             if (!state.leaderboardLoading && visible.isEmpty()) item {
                 Text("لا توجد نتائج لهذه التصفية", Modifier.fillMaxWidth().padding(28.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            itemsIndexed(visible, key = { _, user -> user.id }) { index, user ->
+            if (visible.size > 3) item { Text("بقية الترتيب", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            itemsIndexed(visible.drop(3), key = { _, user -> user.id }) { offset, user ->
+                val index = offset + 3
                 Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                         Surface(shape = CircleShape, color = when(index) { 0 -> MaterialTheme.colorScheme.tertiaryContainer; 1 -> MaterialTheme.colorScheme.secondaryContainer; 2 -> MaterialTheme.colorScheme.primaryContainer; else -> MaterialTheme.colorScheme.surfaceVariant }, modifier = Modifier.size(34.dp)) {

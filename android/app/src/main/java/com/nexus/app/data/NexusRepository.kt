@@ -204,7 +204,7 @@ class NexusRepository(context: Context) {
             val name = row.optString("full_name")
             row.optString("id") != currentUser && !number.startsWith("sub_") &&
                 !listOf("أدمن", "ادمن", "admin", "مدير", "a guard").any { name.contains(it, true) }
-        }.map { PublicUser(it.optString("id"), it.optString("full_name", "مستخدم"), it.optString("university_number"), it.optStringOrNull("avatar_url"), it.optStringOrNull("major")) }
+        }.map { PublicUser(it.optString("id"), it.optString("full_name", "مستخدم"), it.optString("university_number"), avatarDisplayUrl(it.optStringOrNull("avatar_url")), it.optStringOrNull("major")) }
     }
 
     suspend fun loadConversations(): List<ConversationPreview> {
@@ -217,10 +217,10 @@ class NexusRepository(context: Context) {
             val id = c.optString("id")
             val members = array(rest("/rest/v1/conversation_members?select=user_id&conversation_id=eq.${encode(id)}"))
             val otherId = members.map { it.optString("user_id") }.firstOrNull { it != userId }
-            val profile = if (otherId == null) null else array(rest("/rest/v1/rpc/get_public_profiles", "POST", JSONObject().put("_ids", JSONArray().put(otherId)))).firstOrNull()
+            val profile = if (otherId == null) null else publicProfiles(setOf(otherId))[otherId]
             val last = array(rest("/rest/v1/messages?select=content,created_at&conversation_id=eq.${encode(id)}&order=created_at.desc&limit=1")).firstOrNull()
-            ConversationPreview(id, if (c.optBoolean("is_group")) c.optString("name", "مجموعة") else profile?.optString("full_name", "محادثة") ?: "محادثة",
-                c.optBoolean("is_group"), otherId, last?.optString("content").orEmpty(), c.optString("updated_at"))
+            ConversationPreview(id, if (c.optBoolean("is_group")) c.optString("name", "مجموعة") else profile?.fullName ?: "محادثة",
+                c.optBoolean("is_group"), otherId, last?.optString("content").orEmpty(), c.optString("updated_at"), profile?.avatarUrl)
         }
     }
 
@@ -296,7 +296,7 @@ class NexusRepository(context: Context) {
         val currentRoles = array(rest("/rest/v1/user_roles?select=role&user_id=eq.${encode(currentId)}")).map { it.optString("role") }
         if (isSubAdmin && profileId != currentId && "admin" !in currentRoles) throw ApiException("هذا الملف غير متاح للطلاب")
         val avatarPath = row.optStringOrNull("avatar_url")
-        val avatar = if (avatarPath.isNullOrBlank() || avatarPath.startsWith("http")) avatarPath else runCatching { signedStorageUrl("avatars", avatarPath) }.getOrNull()
+        val avatar = avatarDisplayUrl(avatarPath)
         val theme = if (profileId == currentId) row.optString("theme", "stars") else runCatching {
             array(rest("/rest/v1/profiles?select=theme&id=eq.${encode(profileId)}&limit=1")).firstOrNull()?.optString("theme", "stars") ?: "stars"
         }.getOrDefault("stars")
@@ -413,11 +413,10 @@ class NexusRepository(context: Context) {
 
     suspend fun loadAdminReports(): List<AdminReport> {
         val reports = array(rest("/rest/v1/post_reports?select=id,post_id,reporter_id,reason,status,created_at&order=created_at.desc&limit=100"))
-        if (reports.isEmpty()) return emptyList()
         val postIds = reports.map { it.optString("post_id") }.filter(String::isNotBlank).distinct()
         val reporterIds = reports.map { it.optString("reporter_id") }.filter(String::isNotBlank).toSet()
         val posts = if (postIds.isEmpty()) emptyMap() else array(rest("/rest/v1/posts?select=id,content&id=in.(${postIds.joinToString(",") { encode(it) }})")).associateBy { it.optString("id") }
-        val profiles = publicProfiles(reporterIds)
+        val profiles = if (reporterIds.isEmpty()) emptyMap() else publicProfiles(reporterIds)
         val postReports = reports.map { row -> val postId = row.optString("post_id"); val reporterId = row.optString("reporter_id")
             AdminReport(row.optString("id"), postId, posts[postId]?.optString("content").orEmpty(), profiles[reporterId]?.fullName ?: "مستخدم",
                 row.optString("reason"), row.optString("status", "pending"), row.optString("created_at"), "post") }
@@ -442,8 +441,7 @@ class NexusRepository(context: Context) {
             .header("apikey", publishableKey).header("Authorization", "Bearer " + current.accessToken)
             .header("Content-Type", mime).header("x-upsert", "false").post(bytes.toRequestBody(mime.toMediaType())).build()
         execute(request)
-        val publicUrl = baseUrl + "/storage/v1/object/public/avatars/" + Uri.encode(path, "/")
-        rest("/rest/v1/profiles?id=eq.${encode(current.userId)}", "PATCH", JSONObject().put("avatar_url", publicUrl))
+        rest("/rest/v1/profiles?id=eq.${encode(current.userId)}", "PATCH", JSONObject().put("avatar_url", path))
     }
 
     suspend fun updateProfileTheme(theme: String) {
@@ -541,6 +539,7 @@ class NexusRepository(context: Context) {
         if (effectiveYear != null) args.put("_year", effectiveYear)
         val profiles = array(rest("/rest/v1/rpc/get_leaderboard_profiles", "POST", args))
         if (profiles.isEmpty()) return emptyList()
+        val avatarProfiles = publicProfiles(profiles.map { it.optString("id") }.filter(String::isNotBlank).toSet())
         val adminRows = array(rest("/rest/v1/user_roles?select=user_id&role=in.(admin,sub_admin)"))
         val excluded = adminRows.map { it.optString("user_id") }.toSet()
         val contribution = mutableMapOf<String, Int>()
@@ -564,7 +563,7 @@ class NexusRepository(context: Context) {
             if (fullName.contains("admin", true) || fullName.contains("مدير") || fullName.contains("ادمن")) return@mapNotNull null
             val points = row.optInt("points")
             val score = if (timeframe == "all") points else contribution[id] ?: 0
-            LeaderboardUser(id, fullName, row.optStringOrNull("avatar_url"), points,
+            LeaderboardUser(id, fullName, avatarProfiles[id]?.avatarUrl, points,
                 row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"),
                 row.optBoolean("verified"), score, contribution[id] ?: 0)
         }.sortedByDescending { it.score }
@@ -747,7 +746,7 @@ class NexusRepository(context: Context) {
         } } ?: emptySet()
         return StudentProfile(row.optString("id"), row.optString("university_number"), row.optString("full_name"),
             row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"),
-            row.optStringOrNull("avatar_url"), row.optStringOrNull("bio"), row.optBoolean("must_change_password"),
+            avatarDisplayUrl(row.optStringOrNull("avatar_url")), row.optStringOrNull("bio"), row.optBoolean("must_change_password"),
             row.optInt("points"), row.optBoolean("banned"), row.optStringOrNull("suspended_until"), row.optString("theme", "stars"), roles, permissions)
     }
 
@@ -763,15 +762,28 @@ class NexusRepository(context: Context) {
         }
     }
 
+    private suspend fun avatarDisplayUrl(value: String?): String? {
+        val raw = value?.trim()?.takeIf(String::isNotBlank) ?: return null
+        val publicMarker = "/storage/v1/object/public/avatars/"
+        val signedMarker = "/storage/v1/object/sign/avatars/"
+        val path = when {
+            publicMarker in raw -> raw.substringAfter(publicMarker).substringBefore('?')
+            signedMarker in raw -> raw.substringAfter(signedMarker).substringBefore('?')
+            raw.startsWith("http://") || raw.startsWith("https://") -> return raw
+            else -> raw.trimStart('/')
+        }
+        return runCatching { signedStorageUrl("avatars", path) }.getOrNull()
+    }
+
     private suspend fun publicProfiles(ids: Set<String>): Map<String, PublicProfile> {
         if (ids.isEmpty()) return emptyMap()
         val idArray = JSONArray()
         ids.forEach { idArray.put(it) }
         val rows = array(rest("/rest/v1/rpc/get_public_profiles", "POST", JSONObject().put("_ids", idArray)))
-        return rows.associate { row ->
-            val id = row.optString("id")
-            id to PublicProfile(id, row.optString("full_name", "مستخدم"), row.optStringOrNull("avatar_url"), row.optBoolean("verified"))
-        }
+        return rows.mapNotNull { row ->
+            val id = row.optString("id").takeIf(String::isNotBlank) ?: return@mapNotNull null
+            id to PublicProfile(id, row.optString("full_name", "مستخدم"), avatarDisplayUrl(row.optStringOrNull("avatar_url")), row.optBoolean("verified"))
+        }.toMap()
     }
 
     private suspend fun ensureFreshSession() {

@@ -826,22 +826,34 @@ private fun ProfileScreen(
     Scaffold(bottomBar = { NexusBottomBar(AppScreen.PROFILE, onHome, onCourses, {}) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("حسابي", style = MaterialTheme.typography.headlineLarge)
-            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(palette)).padding(18.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box {
-                            ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 60)
-                            IconButton(onClick = { avatarPicker.launch("image/*") }, modifier = Modifier.align(Alignment.BottomEnd).size(26.dp)) { Icon(Icons.Outlined.CameraAlt, "تغيير الصورة", tint = Color.White, modifier = Modifier.size(18.dp)) }
+                            ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 76)
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.BottomEnd).size(27.dp).clickable { avatarPicker.launch("image/*") }) {
+                                Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.CameraAlt, "تغيير الصورة", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp)) }
+                            }
                         }
                         Spacer(Modifier.width(13.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(profile?.fullName ?: "طالب NEXUS", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
-                            Text(listOfNotNull(profile?.major?.let(::majorLabel), profile?.year?.let { "السنة " + it }).joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = .8f))
-                            Text("${profile?.points ?: 0} نقطة • ${themes.firstOrNull { it.first == activeTheme }?.second ?: "النجوم"}", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                            Text(profile?.fullName ?: "طالب NEXUS", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(listOfNotNull(profile?.major?.let(::majorLabel), profile?.year?.let { "السنة $it" }).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${profile?.universityNumber.orEmpty()}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            AssistChip(onClick = {}, label = { Text(themes.firstOrNull { it.first == activeTheme }?.second ?: "إطار النجوم") }, leadingIcon = { Icon(Icons.Outlined.Star, null) })
                         }
                     }
-                    if (!profile?.bio.isNullOrBlank()) Text(profile?.bio.orEmpty(), color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
-                    Text("الرقم الجامعي: ${profile?.universityNumber.orEmpty()}", color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.labelSmall)
+                    if (!profile?.bio.isNullOrBlank()) Text(profile?.bio.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("${profile?.points ?: 0}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Text("النقاط", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text(themes.lastOrNull { it.third <= (profile?.points ?: 0) }?.second?.substringBefore(' ') ?: "برونزي", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("المستوى", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text(if (profile?.roles?.contains("teacher") == true) "أستاذ" else "طالب", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Text("نوع الحساب", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { bioDraft = profile?.bio.orEmpty(); bioOpen = true }, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.Edit, null); Spacer(Modifier.width(5.dp)); Text("تعديل النبذة") }
+                        OutlinedButton(onClick = { avatarPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.PhotoCamera, null); Spacer(Modifier.width(5.dp)); Text("تغيير الصورة") }
+                    }
                 }
             }
             SectionTitle("إطار البطاقة الشخصية")

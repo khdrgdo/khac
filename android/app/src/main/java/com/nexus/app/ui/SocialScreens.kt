@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -151,65 +152,76 @@ private fun FeedPostCard(post: FeedPost, busy: Boolean, ownPost: Boolean, onComm
     var reportOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     var reportReason by rememberSaveable(post.id) { mutableStateOf("محتوى غير لائق أو مسيء") }
     var deleteOpen by rememberSaveable(post.id) { mutableStateOf(false) }
-    Card(shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!post.avatarUrl.isNullOrBlank()) AsyncImage(post.avatarUrl, null, Modifier.size(42.dp).clip(CircleShape))
-                else Box(Modifier.size(42.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
-                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
-                        Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) { Text(post.authorName.take(1), fontWeight = FontWeight.Bold) }
+    var reactionMenu by rememberSaveable(post.id) { mutableStateOf(false) }
+    var moreMenu by rememberSaveable(post.id) { mutableStateOf(false) }
+    val reactions = listOf("like" to "👍", "love" to "❤️", "haha" to "😂", "wow" to "😮", "sad" to "😢")
+    val totalReactions = post.reactions.size
+    val topReactions = post.reactions.groupingBy { it.type }.eachCount().entries.sortedByDescending { it.value }.take(3)
+    val selectedEmoji = reactions.firstOrNull { it.first == post.myReaction }?.second ?: "👍"
+    Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (!post.avatarUrl.isNullOrBlank() && !post.anonymous) AsyncImage(model = post.avatarUrl, contentDescription = null, modifier = Modifier.size(44.dp).clip(CircleShape))
+                else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Text(if (post.anonymous) "؟" else post.authorName.take(1), fontWeight = FontWeight.Bold) } }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    TextButton(onClick = onOpenProfile, contentPadding = PaddingValues(0.dp), enabled = !post.anonymous) { Text(post.authorName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface) }
+                    Text((if (post.anonymous) "منشور مجهول" else post.createdAt.take(16).replace('T',' ')) + if (post.postType == "question") " · سؤال" else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Box {
+                    IconButton(onClick = { moreMenu = true }) { Icon(Icons.Outlined.MoreHoriz, "المزيد") }
+                    DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
+                        DropdownMenuItem(text = { Text(if (post.saved) "إزالة من المحفوظات" else "حفظ المنشور") }, leadingIcon = { Icon(Icons.Outlined.BookmarkBorder, null) }, onClick = { onSave(); moreMenu = false })
+                        DropdownMenuItem(text = { Text("مشاركة") }, leadingIcon = { Icon(Icons.Outlined.Share, null) }, onClick = { onShare(); moreMenu = false })
+                        if (!ownPost) DropdownMenuItem(text = { Text("الإبلاغ عن المنشور") }, leadingIcon = { Icon(Icons.Outlined.Flag, null) }, onClick = { reportOpen = true; moreMenu = false })
+                        if (ownPost) DropdownMenuItem(text = { Text("حذف المنشور", color = MaterialTheme.colorScheme.error) }, leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) }, onClick = { deleteOpen = true; moreMenu = false })
                     }
                 }
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    TextButton(onClick = onOpenProfile, contentPadding = PaddingValues(0.dp)) { Text(post.authorName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) }
-                    Text(if (post.anonymous) "منشور مجهول" else post.createdAt.take(10), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (post.postType == "question") AssistChip(onClick = {}, label = { Text("سؤال") })
             }
-            Text(post.content, style = MaterialTheme.typography.bodyLarge)
+            if (post.content.isNotBlank()) Text(post.content, Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.bodyLarge)
             if (post.images.isNotEmpty()) {
-                post.images.forEach { imageUrl -> AsyncImage(model = imageUrl, contentDescription = "صورة في المنشور",
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp).clip(RoundedCornerShape(12.dp))) }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) { post.images.take(4).forEach { imageUrl ->
+                    AsyncImage(model = imageUrl, contentDescription = "صورة في المنشور", modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 360.dp).clip(RoundedCornerShape(4.dp)))
+                } }
             }
-            if (post.postType == "question") {
-                AssistChip(onClick = {}, label = { Text(if (post.acceptedAnswerId == null) "سؤال مفتوح" else "تمت الإجابة") },
-                    leadingIcon = { Icon(if (post.acceptedAnswerId == null) Icons.Outlined.HelpOutline else Icons.Outlined.CheckCircle, null) })
+            if (post.postType == "question") Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(if (post.acceptedAnswerId == null) Icons.Outlined.HelpOutline else Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
+                Spacer(Modifier.width(6.dp)); Text(if (post.acceptedAnswerId == null) "سؤال ينتظر الإجابة" else "تم اعتماد إجابة", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("like" to "👍", "love" to "❤️", "haha" to "😂", "wow" to "😮", "sad" to "😢").forEach { (type, emoji) ->
-                    val count = post.reactions.count { it.type == type }
-                    AssistChip(onClick = { onReact(if (post.myReaction == type) null else type) },
-                        label = { Text(if (count > 0) "$emoji $count" else emoji) },
-                        leadingIcon = if (post.myReaction == type) ({ Icon(Icons.Outlined.Check, null) }) else null)
+            if (totalReactions > 0 || post.commentsCount > 0) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
+                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        topReactions.forEach { entry -> Text(reactions.firstOrNull { it.first == entry.key }?.second ?: "👍", modifier = Modifier.offset(x = (-3 * topReactions.indexOf(entry)).dp), fontSize = 17.sp) }
+                        if (totalReactions > 0) Text("$totalReactions", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    if (post.commentsCount > 0) Text("${post.commentsCount} تعليق", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                AssistChip(onClick = onShare, label = { Text("مشاركة") }, leadingIcon = { Icon(Icons.Outlined.Share, null) })
-                AssistChip(onClick = onSave, label = { Text(if (post.saved) "محفوظ" else "حفظ") },
-                    leadingIcon = { Icon(if (post.saved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, null) })
-                if (!ownPost) AssistChip(onClick = { reportOpen = true }, label = { Text("بلاغ") }, leadingIcon = { Icon(Icons.Outlined.Flag, null) })
-                if (ownPost) AssistChip(onClick = { deleteOpen = true }, label = { Text("حذف") }, leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null) })
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.ModeComment, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(17.dp))
-                Spacer(Modifier.width(5.dp))
-                Text("${post.commentsCount} تعليق", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .6f))
+            Row(Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) {
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(9.dp)).combinedClickable(onClick = { onReact(if (post.myReaction == null) "like" else null) }, onLongClick = { reactionMenu = true }).padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Text(selectedEmoji, fontSize = 19.sp); Spacer(Modifier.width(6.dp)); Text(if (post.myReaction == null) "أعجبني" else when(post.myReaction) { "love" -> "أحببته"; "haha" -> "أضحكني"; "wow" -> "أدهشني"; "sad" -> "أحزنني"; else -> "أعجبني" }, style = MaterialTheme.typography.labelLarge, color = if (post.myReaction != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+                    }
+                    DropdownMenu(expanded = reactionMenu, onDismissRequest = { reactionMenu = false }) {
+                        Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { reactions.forEach { (type, emoji) ->
+                            TextButton(onClick = { onReact(if (post.myReaction == type) null else type); reactionMenu = false }, contentPadding = PaddingValues(4.dp)) { Text(emoji, fontSize = 24.sp) }
+                        } }
+                    }
+                }
+                TextButton(onClick = onOpenPost, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.ModeComment, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("تعليق", style = MaterialTheme.typography.labelLarge) }
+                TextButton(onClick = onShare, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.Share, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("مشاركة", style = MaterialTheme.typography.labelLarge) }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(reply, { reply = it }, Modifier.weight(1f), placeholder = { Text("اكتب تعليقاً...") }, singleLine = true, shape = RoundedCornerShape(12.dp))
-                Spacer(Modifier.width(7.dp))
-                IconButton(onClick = { onComment(reply); reply = "" }, enabled = reply.isNotBlank() && !busy) { Icon(Icons.Outlined.Send, "إرسال التعليق") }
+            Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(reply, { reply = it }, Modifier.weight(1f), placeholder = { Text("اكتب تعليقاً...") }, singleLine = true, shape = RoundedCornerShape(22.dp))
+                IconButton(onClick = { onComment(reply.trim()); reply = "" }, enabled = reply.isNotBlank() && !busy) { Icon(Icons.Outlined.Send, "إرسال التعليق") }
             }
         }
     }
-    if (reportOpen) AlertDialog(onDismissRequest = { reportOpen = false }, title = { Text("الإبلاغ عن المنشور") },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("محتوى غير لائق أو مسيء", "تنمّر أو تحرّش", "معلومات مضللة", "بريد مزعج / إعلان", "أخرى").forEach { reason ->
-                Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = reportReason == reason, onClick = { reportReason = reason }); Text(reason) }
-            }
-        } }, confirmButton = { TextButton(onClick = { onReport(reportReason); reportOpen = false }) { Text("إرسال البلاغ") } },
-        dismissButton = { TextButton(onClick = { reportOpen = false }) { Text("إلغاء") } })
-    if (deleteOpen) AlertDialog(onDismissRequest = { deleteOpen = false }, title = { Text("حذف المنشور؟") },
-        text = { Text("لن يظهر المنشور بعد حذفه.") }, confirmButton = { TextButton(onClick = { onDelete(); deleteOpen = false }) { Text("حذف") } },
-        dismissButton = { TextButton(onClick = { deleteOpen = false }) { Text("إلغاء") } })
+    if (reportOpen) AlertDialog(onDismissRequest = { reportOpen = false }, title = { Text("الإبلاغ عن المنشور") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("محتوى غير لائق أو مسيء", "تنمّر أو تحرّش", "معلومات مضللة", "بريد مزعج / إعلان", "انتحال شخصية", "أخرى").forEach { reason -> Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = reportReason == reason, onClick = { reportReason = reason }); Text(reason) } }
+    } }, confirmButton = { TextButton(onClick = { onReport(reportReason); reportOpen = false }) { Text("إرسال البلاغ") } }, dismissButton = { TextButton(onClick = { reportOpen = false }) { Text("إلغاء") } })
+    if (deleteOpen) AlertDialog(onDismissRequest = { deleteOpen = false }, title = { Text("حذف المنشور؟") }, text = { Text("لن يظهر المنشور بعد حذفه.") }, confirmButton = { TextButton(onClick = { onDelete(); deleteOpen = false }) { Text("حذف") } }, dismissButton = { TextButton(onClick = { deleteOpen = false }) { Text("إلغاء") } })
 }
