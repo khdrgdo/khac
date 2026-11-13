@@ -244,7 +244,7 @@ private fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = onFeed) { Icon(Icons.Outlined.Groups, null); Spacer(Modifier.width(4.dp)); Text("المجتمع") }
                         IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, "تحديث") }
-                        ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 42)
+                        NexusAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 42.dp)
                     }
                 }
             }
@@ -827,22 +827,26 @@ private fun ProfileScreen(
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("حسابي", style = MaterialTheme.typography.headlineLarge)
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box {
-                            ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 76)
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.BottomEnd).size(27.dp).clickable { avatarPicker.launch("image/*") }) {
-                                Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.CameraAlt, "تغيير الصورة", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp)) }
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Box(Modifier.fillMaxWidth().height(112.dp).background(Brush.linearGradient(palette))) {
+                        Text("NEXUS", Modifier.align(Alignment.TopEnd).padding(14.dp), color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    }
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(Modifier.offset(y = (-30).dp), verticalAlignment = Alignment.Bottom) {
+                            Box {
+                                NexusAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 88.dp)
+                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.BottomEnd).size(28.dp).clickable { avatarPicker.launch("image/*") }) {
+                                    Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.CameraAlt, "تغيير الصورة", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp)) }
+                                }
+                            }
+                            Spacer(Modifier.width(13.dp))
+                            Column(Modifier.weight(1f).padding(bottom = 5.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(profile?.fullName ?: "طالب NEXUS", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                Text(listOfNotNull(profile?.major?.let(::majorLabel), profile?.year?.let { "السنة $it" }).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
-                        Spacer(Modifier.width(13.dp))
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(profile?.fullName ?: "طالب NEXUS", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text(listOfNotNull(profile?.major?.let(::majorLabel), profile?.year?.let { "السنة $it" }).joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("${profile?.universityNumber.orEmpty()}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            AssistChip(onClick = {}, label = { Text(themes.firstOrNull { it.first == activeTheme }?.second ?: "إطار النجوم") }, leadingIcon = { Icon(Icons.Outlined.Star, null) })
-                        }
-                    }
+                        Text("الرقم الجامعي: ${profile?.universityNumber.orEmpty()}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.offset(y = (-22).dp))
+                        AssistChip(onClick = {}, label = { Text(themes.firstOrNull { it.first == activeTheme }?.second ?: "إطار النجوم") }, leadingIcon = { Icon(Icons.Outlined.Star, null) }, modifier = Modifier.offset(y = (-22).dp))
                     if (!profile?.bio.isNullOrBlank()) Text(profile?.bio.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -853,6 +857,7 @@ private fun ProfileScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { bioDraft = profile?.bio.orEmpty(); bioOpen = true }, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.Edit, null); Spacer(Modifier.width(5.dp)); Text("تعديل النبذة") }
                         OutlinedButton(onClick = { avatarPicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.PhotoCamera, null); Spacer(Modifier.width(5.dp)); Text("تغيير الصورة") }
+                    }
                     }
                 }
             }
@@ -982,7 +987,13 @@ private fun NexusBrand(showTagline: Boolean, centered: Boolean = false) {
 
 @Composable
 private fun ProfileAvatar(url: String?, name: String, size: Int) {
-    NexusAvatar(url, name, size)
+    if (!url.isNullOrBlank() && url.startsWith("http")) {
+        AsyncImage(model = url, contentDescription = "الصورة الشخصية", modifier = Modifier.size(size.dp).clip(CircleShape))
+    } else {
+        Box(Modifier.size(size.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Text(name.trim().firstOrNull()?.uppercase() ?: "N", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold, fontSize = (size / 2.3).sp)
+        }
+    }
 }
 
 @Composable
