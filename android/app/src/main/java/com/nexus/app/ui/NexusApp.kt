@@ -74,7 +74,7 @@ fun NexusApp(viewModel: NexusViewModel) {
                 viewModel::uploadPostImage, viewModel::removeDraftImage, viewModel::reactToPost, viewModel::savePost,
                 viewModel::reportPost, viewModel::deletePost, viewModel::showHome, viewModel::showCourses, viewModel::showLeaderboard, viewModel::showSavedPosts, viewModel::showNotifications, viewModel::showMessages, viewModel::showSearch, viewModel::votePinnedCard, viewModel::togglePinnedParticipation,
                 { url -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }, viewModel::openPostDetail, viewModel::showProfile)
-            AppScreen.MESSAGES -> MessagesScreen(state, viewModel::loadConversations, viewModel::searchMessageUsers, viewModel::startDirectChat, viewModel::openChat, viewModel::showHome)
+            AppScreen.MESSAGES -> MessagesScreen(state, viewModel::loadConversations, viewModel::searchMessageUsers, viewModel::startDirectChat, viewModel::createGroupChat, viewModel::openChat, viewModel::showHome)
             AppScreen.CHAT -> ChatScreen(state, viewModel::backToMessages, { viewModel.loadChat() }, viewModel::sendChatMessage, viewModel::blockChatUser,
                 { userId, reason, note -> state.activeConversationId?.let { viewModel.reportChatUser(it, userId, reason, note) } })
             AppScreen.SAVED -> SavedPostsScreen(state, viewModel::loadSavedPosts, viewModel::savePost, viewModel::showHome, viewModel::showCourses, viewModel::showLeaderboard, viewModel::showProfile)
@@ -743,7 +743,7 @@ private fun ProfileScreen(
     val profile = state.profile
     var bioOpen by rememberSaveable { mutableStateOf(false) }
     var bioDraft by rememberSaveable(profile?.bio) { mutableStateOf(profile?.bio.orEmpty()) }
-    val themes = listOf(Triple("stars", "🌟 النجوم", 0), Triple("clouds", "☁️ السحاب", 100), Triple("moon", "🌙 القمر", 300), Triple("sun", "☀️ الشمس", 700), Triple("galaxy", "🌌 المجرة", 1500))
+    val themes = listOf(Triple("stars", "🌟 النجوم المضيئة", 0), Triple("clouds", "☁️ السحاب الهادئ", 100), Triple("moon", "🌙 القمر والكسوف", 300), Triple("sun", "☀️ الشمس والوهج الشمسي", 700), Triple("galaxy", "🌌 السديم الفضائي والأسطورة", 1500))
     val activeTheme = profile?.theme ?: "stars"
     val palette = when (activeTheme) {
         "clouds" -> listOf(Color(0xFF0C4A6E), Color(0xFF164E63))

@@ -196,7 +196,13 @@ class NexusRepository(context: Context) {
     suspend fun searchPublicUsers(query: String): List<PublicUser> {
         if (query.trim().length < 2) return emptyList()
         val rows = array(rest("/rest/v1/rpc/search_public_profiles", "POST", JSONObject().put("_q", query.trim())))
-        return rows.map { PublicUser(it.optString("id"), it.optString("full_name", "مستخدم"), it.optString("university_number"), it.optStringOrNull("avatar_url"), it.optStringOrNull("major")) }
+        val currentUser = session?.userId
+        return rows.filter { row ->
+            val number = row.optString("university_number")
+            val name = row.optString("full_name")
+            row.optString("id") != currentUser && !number.startsWith("sub_") &&
+                !listOf("أدمن", "ادمن", "admin", "مدير", "a guard").any { name.contains(it, true) }
+        }.map { PublicUser(it.optString("id"), it.optString("full_name", "مستخدم"), it.optString("university_number"), it.optStringOrNull("avatar_url"), it.optStringOrNull("major")) }
     }
 
     suspend fun loadConversations(): List<ConversationPreview> {
@@ -220,8 +226,28 @@ class NexusRepository(context: Context) {
         .map { ChatMessage(it.optString("id"), it.optString("conversation_id"), it.optString("sender_id"), it.optString("content"), it.optString("created_at")) }
 
     suspend fun createDirectConversation(otherUserId: String): String {
-        val raw = rest("/rest/v1/rpc/create_dm", "POST", JSONObject().put("_other", otherUserId)).trim()
-        return runCatching { JSONObject(raw).optString("id") }.getOrDefault(raw.trim('"')).ifBlank { throw ApiException("تعذّر إنشاء المحادثة") }
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        if (otherUserId == userId) throw ApiException("لا يمكنك مراسلة نفسك")
+        val rpcId = runCatching {
+            val raw = rest("/rest/v1/rpc/create_dm", "POST", JSONObject().put("_other", otherUserId)).trim()
+            runCatching { JSONObject(raw).optString("id") }.getOrDefault(raw.trim('"'))
+        }.getOrNull()?.takeIf(String::isNotBlank)
+        if (rpcId != null) return rpcId
+        val mine = array(rest("/rest/v1/conversation_members?select=conversation_id&user_id=eq.${encode(userId)}"))
+            .map { it.optString("conversation_id") }
+        if (mine.isNotEmpty()) {
+            val theirs = array(rest("/rest/v1/conversation_members?select=conversation_id&user_id=eq.${encode(otherUserId)}&conversation_id=in.(${mine.joinToString(",") { encode(it) }})"))
+                .map { it.optString("conversation_id") }
+            if (theirs.isNotEmpty()) {
+                val match = array(rest("/rest/v1/conversations?select=id&id=in.(${theirs.joinToString(",") { encode(it) }})&is_group=eq.false&order=updated_at.desc&limit=1")).firstOrNull()?.optString("id")
+                if (!match.isNullOrBlank()) return match
+            }
+        }
+        val created = JSONObject(rest("/rest/v1/conversations?select=id", "POST", JSONObject().put("is_group", false).put("created_by", userId).put("updated_at", java.time.Instant.now().toString())))
+        val conversationId = created.optString("id").ifBlank { throw ApiException("تعذّر إنشاء المحادثة") }
+        rest("/rest/v1/conversation_members", "POST", JSONObject().put("conversation_id", conversationId).put("user_id", userId))
+        rest("/rest/v1/conversation_members", "POST", JSONObject().put("conversation_id", conversationId).put("user_id", otherUserId))
+        return conversationId
     }
 
     suspend fun createGroupConversation(name: String, memberIds: List<String>): String {
@@ -352,7 +378,7 @@ class NexusRepository(context: Context) {
         val reports = array(rest("/rest/v1/post_reports?select=id,post_id,reporter_id,reason,status,created_at&order=created_at.desc&limit=100"))
         if (reports.isEmpty()) return emptyList()
         val postIds = reports.map { it.optString("post_id") }.filter(String::isNotBlank).distinct()
-        val reporterIds = reports.map { it.optString("reporter_id") }.filter(String::isNotBlank).distinct()
+        val reporterIds = reports.map { it.optString("reporter_id") }.filter(String::isNotBlank).toSet()
         val posts = if (postIds.isEmpty()) emptyMap() else array(rest("/rest/v1/posts?select=id,content&id=in.(${postIds.joinToString(",") { encode(it) }})")).associateBy { it.optString("id") }
         val profiles = publicProfiles(reporterIds)
         return reports.map { row -> val postId = row.optString("post_id"); val reporterId = row.optString("reporter_id")

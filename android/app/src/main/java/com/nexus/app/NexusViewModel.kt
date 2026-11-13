@@ -198,6 +198,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun openChat(id: String) { _state.update { it.copy(screen = AppScreen.CHAT, activeConversationId = id, messages = emptyList()) }; loadChat(id) }
     fun loadChat(id: String = _state.value.activeConversationId.orEmpty()) { if (id.isBlank()) return; viewModelScope.launch { runCatching { repository.loadMessages(id) }.onSuccess { rows -> _state.update { it.copy(messages = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
     fun startDirectChat(otherId: String) { viewModelScope.launch { runCatching { repository.createDirectConversation(otherId) }.onSuccess { id -> loadConversations(); openChat(id) }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+    fun createGroupChat(name: String, memberIds: List<String>) { viewModelScope.launch { runCatching { repository.createGroupConversation(name, memberIds) }.onSuccess { id -> loadConversations(); openChat(id) }.onFailure { e -> _state.update { it.copy(error = e.message ?: "تعذّر إنشاء المجموعة") } } } }
     fun sendChatMessage(content: String) { val id = _state.value.activeConversationId ?: return; viewModelScope.launch { runCatching { repository.sendMessage(id, content); repository.loadMessages(id) }.onSuccess { rows -> _state.update { it.copy(messages = rows) }; loadConversations() }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
     fun blockChatUser(userId: String) { viewModelScope.launch { runCatching { repository.blockUser(userId) }.onSuccess { _state.update { it.copy(notice = "تم حظر المستخدم") } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
     fun reportChatUser(conversationId: String, userId: String, reason: String, note: String?) { viewModelScope.launch { runCatching { repository.reportMessageUser(conversationId, userId, reason, note) }.onSuccess { _state.update { it.copy(notice = "تم إرسال البلاغ") } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
@@ -211,7 +212,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             .onFailure { e -> _state.update { it.copy(searchLoading = false, error = e.message ?: "تعذّر البحث") } } } }
 
     fun openPostDetail(postId: String) { _state.update { it.copy(screen = AppScreen.POST_DETAIL, postDetail = null, postDetailLoading = true) }; loadPostDetail(postId) }
-    fun loadPostDetail(postId: String) { viewModelScope.launch { runCatching { repository.loadPostDetail(postId) }.onSuccess { detail -> _state.update { it.copy(postDetail = detail, postDetailLoading = false) } }.onFailure { e -> _state.update { it.copy(postDetailLoading = false, error = e.message) } } }
+    fun loadPostDetail(postId: String) { viewModelScope.launch { runCatching { repository.loadPostDetail(postId) }.onSuccess { detail -> _state.update { it.copy(postDetail = detail, postDetailLoading = false) } }.onFailure { e -> _state.update { it.copy(postDetailLoading = false, error = e.message) } } } }
     fun addPostComment(content: String, anonymous: Boolean, parentId: String?) {
         val detail = _state.value.postDetail ?: return
         val profile = _state.value.profile

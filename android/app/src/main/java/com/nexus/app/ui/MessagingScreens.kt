@@ -19,10 +19,21 @@ import com.nexus.app.data.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagesScreen(state: NexusUiState, onRefresh: () -> Unit, onSearch: (String) -> Unit,
-    onStartChat: (String) -> Unit, onOpenChat: (String) -> Unit, onBack: () -> Unit) {
+    onStartChat: (String) -> Unit, onCreateGroup: (String, List<String>) -> Unit, onOpenChat: (String) -> Unit, onBack: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
-    Scaffold(topBar = { TopAppBar(title = { Text("المحادثات") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowForward, "رجوع") } }, actions = { IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, "تحديث") } }) }) { padding ->
+    var groupMode by rememberSaveable { mutableStateOf(false) }
+    var groupName by rememberSaveable { mutableStateOf("") }
+    var selectedIds by remember { mutableStateOf(setOf<String>()) }
+    Scaffold(topBar = { TopAppBar(title = { Text("المحادثات") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowForward, "رجوع") } }, actions = {
+        IconButton(onClick = { groupMode = !groupMode; selectedIds = emptySet() }) { Icon(if (groupMode) Icons.Outlined.Close else Icons.Outlined.GroupAdd, "إنشاء مجموعة") }
+        IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, "تحديث") }
+    }) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (groupMode) item {
+                OutlinedTextField(groupName, { groupName = it }, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("اسم المجموعة") })
+                Button(onClick = { onCreateGroup(groupName, selectedIds.toList()); groupMode = false; groupName = ""; selectedIds = emptySet() },
+                    enabled = groupName.isNotBlank() && selectedIds.size >= 1, modifier = Modifier.fillMaxWidth()) { Text("إنشاء مجموعة (${selectedIds.size} أعضاء)") }
+            }
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(query, { query = it }, Modifier.weight(1f), singleLine = true,
@@ -33,11 +44,12 @@ fun MessagesScreen(state: NexusUiState, onRefresh: () -> Unit, onSearch: (String
             if (state.messageSearchResults.isNotEmpty()) {
                 item { Text("نتائج البحث", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
                 items(state.messageSearchResults, key = { "user-" + it.id }) { user ->
-                    Card(onClick = { onStartChat(user.id) }, shape = RoundedCornerShape(14.dp)) {
+                    Card(onClick = { if (groupMode) selectedIds = if (user.id in selectedIds) selectedIds - user.id else selectedIds + user.id else onStartChat(user.id) }, shape = RoundedCornerShape(14.dp)) {
                         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(40.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1)) } }
                             Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(user.fullName, fontWeight = FontWeight.SemiBold); Text(user.universityNumber, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            Icon(Icons.Outlined.Chat, null, tint = MaterialTheme.colorScheme.primary)
+                            if (groupMode) Checkbox(user.id in selectedIds, { selectedIds = if (it) selectedIds + user.id else selectedIds - user.id })
+                            else Icon(Icons.Outlined.Chat, null, tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
