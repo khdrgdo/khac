@@ -1,7 +1,7 @@
 package com.nexus.app.data
 
 enum class AppScreen {
-    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD, LEADERBOARD, SAVED, NOTIFICATIONS
+    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD, LEADERBOARD, SAVED, NOTIFICATIONS, MESSAGES, CHAT
 }
 
 enum class CourseTab(val label: String) {
@@ -144,6 +144,11 @@ data class CourseDetail(
 )
 
 
+
+data class PublicUser(val id: String, val fullName: String, val universityNumber: String, val avatarUrl: String?, val major: String?)
+data class ConversationPreview(val id: String, val title: String, val isGroup: Boolean, val otherUserId: String?, val lastMessage: String, val updatedAt: String)
+data class ChatMessage(val id: String, val conversationId: String, val senderId: String, val content: String, val createdAt: String)
+
 data class NotificationItem(val id: String, val title: String, val body: String, val type: String, val link: String?, val read: Boolean, val createdAt: String)
 
 data class LeaderboardUser(
@@ -173,6 +178,11 @@ data class NexusUiState(
     val leaderboardLoading: Boolean = false,
     val notifications: List<NotificationItem> = emptyList(),
     val notificationsLoading: Boolean = false,
+    val conversations: List<ConversationPreview> = emptyList(),
+    val messages: List<ChatMessage> = emptyList(),
+    val activeConversationId: String? = null,
+    val messageSearchResults: List<PublicUser> = emptyList(),
+    val messagesLoading: Boolean = false,
     val selectedCourse: Course? = null,
     val courseDetail: CourseDetail? = null,
     val selectedTab: CourseTab = CourseTab.FILES,

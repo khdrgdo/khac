@@ -164,6 +164,18 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    fun showMessages() { _state.update { it.copy(screen = AppScreen.MESSAGES, error = null) }; loadConversations() }
+    fun loadConversations() { viewModelScope.launch { _state.update { it.copy(messagesLoading = true) }; runCatching { repository.loadConversations() }.onSuccess { rows -> _state.update { it.copy(conversations = rows, messagesLoading = false) } }.onFailure { e -> _state.update { it.copy(messagesLoading = false, error = e.message) } } } }
+    fun searchMessageUsers(query: String) { viewModelScope.launch { runCatching { repository.searchPublicUsers(query) }.onSuccess { rows -> _state.update { it.copy(messageSearchResults = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+    fun openChat(id: String) { _state.update { it.copy(screen = AppScreen.CHAT, activeConversationId = id, messages = emptyList()) }; loadChat(id) }
+    fun loadChat(id: String = _state.value.activeConversationId.orEmpty()) { if (id.isBlank()) return; viewModelScope.launch { runCatching { repository.loadMessages(id) }.onSuccess { rows -> _state.update { it.copy(messages = rows) } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+    fun startDirectChat(otherId: String) { viewModelScope.launch { runCatching { repository.createDirectConversation(otherId) }.onSuccess { id -> loadConversations(); openChat(id) }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+    fun sendChatMessage(content: String) { val id = _state.value.activeConversationId ?: return; viewModelScope.launch { runCatching { repository.sendMessage(id, content); repository.loadMessages(id) }.onSuccess { rows -> _state.update { it.copy(messages = rows) }; loadConversations() }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+    fun blockChatUser(userId: String) { viewModelScope.launch { runCatching { repository.blockUser(userId) }.onSuccess { _state.update { it.copy(notice = "تم حظر المستخدم") } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+    fun reportChatUser(conversationId: String, userId: String, reason: String, note: String?) { viewModelScope.launch { runCatching { repository.reportMessageUser(conversationId, userId, reason, note) }.onSuccess { _state.update { it.copy(notice = "تم إرسال البلاغ") } }.onFailure { e -> _state.update { it.copy(error = e.message) } } } }
+    fun backToMessages() { _state.update { it.copy(screen = AppScreen.MESSAGES, activeConversationId = null) }; loadConversations() }
+
     fun showSavedPosts() { _state.update { it.copy(screen = AppScreen.SAVED, error = null, loading = true) }; loadSavedPosts() }
     fun loadSavedPosts() { viewModelScope.launch { runCatching { repository.loadFeed(true) }.onSuccess { rows -> _state.update { it.copy(feedPosts = rows, loading = false) } }.onFailure { e -> _state.update { it.copy(loading = false, error = e.message) } } } }
     fun showNotifications() { _state.update { it.copy(screen = AppScreen.NOTIFICATIONS, error = null) }; loadNotifications() }

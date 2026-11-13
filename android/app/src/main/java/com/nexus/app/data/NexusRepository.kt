@@ -192,6 +192,67 @@ class NexusRepository(context: Context) {
 
 
 
+
+    suspend fun searchPublicUsers(query: String): List<PublicUser> {
+        if (query.trim().length < 2) return emptyList()
+        val rows = array(rest("/rest/v1/rpc/search_public_profiles", "POST", JSONObject().put("_q", query.trim())))
+        return rows.map { PublicUser(it.optString("id"), it.optString("full_name", "مستخدم"), it.optString("university_number"), it.optStringOrNull("avatar_url"), it.optStringOrNull("major")) }
+    }
+
+    suspend fun loadConversations(): List<ConversationPreview> {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        val memberships = array(rest("/rest/v1/conversation_members?select=conversation_id&user_id=eq.${encode(userId)}"))
+        val ids = memberships.map { it.optString("conversation_id") }.filter(String::isNotBlank)
+        if (ids.isEmpty()) return emptyList()
+        val convs = array(rest("/rest/v1/conversations?select=id,is_group,name,created_by,updated_at&id=in.(${ids.joinToString(",")})&order=updated_at.desc"))
+        return convs.map { c ->
+            val id = c.optString("id")
+            val members = array(rest("/rest/v1/conversation_members?select=user_id&conversation_id=eq.${encode(id)}"))
+            val otherId = members.map { it.optString("user_id") }.firstOrNull { it != userId }
+            val profile = if (otherId == null) null else array(rest("/rest/v1/rpc/get_public_profiles", "POST", JSONObject().put("_ids", JSONArray().put(otherId)))).firstOrNull()
+            val last = array(rest("/rest/v1/messages?select=content,created_at&conversation_id=eq.${encode(id)}&order=created_at.desc&limit=1")).firstOrNull()
+            ConversationPreview(id, if (c.optBoolean("is_group")) c.optString("name", "مجموعة") else profile?.optString("full_name", "محادثة") ?: "محادثة",
+                c.optBoolean("is_group"), otherId, last?.optString("content").orEmpty(), c.optString("updated_at"))
+        }
+    }
+
+    suspend fun loadMessages(conversationId: String): List<ChatMessage> = array(rest("/rest/v1/messages?select=id,conversation_id,sender_id,content,created_at&conversation_id=eq.${encode(conversationId)}&order=created_at.asc&limit=300"))
+        .map { ChatMessage(it.optString("id"), it.optString("conversation_id"), it.optString("sender_id"), it.optString("content"), it.optString("created_at")) }
+
+    suspend fun createDirectConversation(otherUserId: String): String {
+        val raw = rest("/rest/v1/rpc/create_dm", "POST", JSONObject().put("_other", otherUserId)).trim()
+        return runCatching { JSONObject(raw).optString("id") }.getOrDefault(raw.trim('"')).ifBlank { throw ApiException("تعذّر إنشاء المحادثة") }
+    }
+
+    suspend fun createGroupConversation(name: String, memberIds: List<String>): String {
+        val raw = rest("/rest/v1/rpc/create_group", "POST", JSONObject().put("_name", name.trim()).put("_members", JSONArray(memberIds))).trim()
+        return runCatching { JSONObject(raw).optString("id") }.getOrDefault(raw.trim('"')).ifBlank { throw ApiException("تعذّر إنشاء المجموعة") }
+    }
+
+    suspend fun sendMessage(conversationId: String, content: String) {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        if (content.isBlank()) return
+        val members = array(rest("/rest/v1/conversation_members?select=user_id&conversation_id=eq.${encode(conversationId)}"))
+        val otherIds = members.map { it.optString("user_id") }.filter { it != userId }
+        for (otherId in otherIds) {
+            val blocked = array(rest("/rest/v1/blocked_users?select=id&blocker_id=eq.${encode(userId)}&blocked_id=eq.${encode(otherId)}&limit=1"))
+            if (blocked.isNotEmpty()) throw ApiException("أزل الحظر أولاً قبل إرسال رسالة")
+        }
+        rest("/rest/v1/messages", "POST", JSONObject().put("conversation_id", conversationId).put("sender_id", userId).put("content", content.trim()))
+        rest("/rest/v1/conversations?id=eq.${encode(conversationId)}", "PATCH", JSONObject().put("updated_at", java.time.Instant.now().toString()))
+    }
+
+    suspend fun blockUser(userIdToBlock: String) {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        rest("/rest/v1/blocked_users", "POST", JSONObject().put("blocker_id", userId).put("blocked_id", userIdToBlock))
+    }
+
+    suspend fun reportMessageUser(conversationId: String, reportedUserId: String, reason: String, note: String?) {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        rest("/rest/v1/message_reports", "POST", JSONObject().put("reporter_id", userId).put("reported_user_id", reportedUserId)
+            .put("conversation_id", conversationId).put("reason", reason).put("note", note?.takeIf(String::isNotBlank)?.let { it } ?: JSONObject.NULL))
+    }
+
     suspend fun loadNotifications(): List<NotificationItem> {
         val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
         return array(rest("/rest/v1/notifications?select=id,title,body,type,link,read,created_at&recipient_id=eq.${encode(userId)}&order=created_at.desc&limit=100"))

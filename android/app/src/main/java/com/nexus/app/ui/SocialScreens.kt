@@ -43,6 +43,7 @@ fun SocialFeedScreen(
     onLeaderboard: () -> Unit,
     onSaved: () -> Unit,
     onNotifications: () -> Unit,
+    onMessages: () -> Unit,
     onProfile: () -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
@@ -74,6 +75,7 @@ fun SocialFeedScreen(
                     }
                     IconButton(onClick = onSaved) { Icon(Icons.Outlined.Bookmarks, "المحفوظات") }
                     IconButton(onClick = onNotifications) { Icon(Icons.Outlined.NotificationsNone, "الإشعارات") }
+                    IconButton(onClick = onMessages) { Icon(Icons.Outlined.ChatBubbleOutline, "المحادثات") }
                     IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, "تحديث") }
                 }
             }
