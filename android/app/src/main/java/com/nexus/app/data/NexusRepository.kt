@@ -545,6 +545,80 @@ class NexusRepository(context: Context) {
         }.sortedByDescending { it.score }
     }
 
+
+    suspend fun uploadCourseFile(courseId: String, uri: Uri) {
+        val current = session ?: throw ApiException("جلسة غير صالحة")
+        val mime = appContext.contentResolver.getType(uri) ?: "application/octet-stream"
+        val name = runCatching {
+            appContext.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        }.getOrNull()?.takeIf(String::isNotBlank) ?: uri.lastPathSegment?.substringAfterLast('/') ?: "material.bin"
+        val isVideo = mime.startsWith("video/") || name.substringAfterLast('.', "").lowercase() in setOf("mp4", "mov", "webm", "mkv", "avi")
+        val size = runCatching {
+            appContext.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.SIZE), null, null, null)?.use { c -> if (c.moveToFirst()) c.getLong(0) else -1L } ?: -1L
+        }.getOrDefault(-1L)
+        val max = if (isVideo) 100L * 1024 * 1024 else 25L * 1024 * 1024
+        if (size > max) throw ApiException(if (isVideo) "حجم الفيديو يتجاوز 100MB" else "حجم الملف يتجاوز 25MB")
+        val safeName = name.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        val path = "$courseId/${System.currentTimeMillis()}-$safeName"
+        val body = object : RequestBody() {
+            override fun contentType() = mime.toMediaType()
+            override fun contentLength() = size
+            override fun writeTo(sink: okio.BufferedSink) {
+                val stream = appContext.contentResolver.openInputStream(uri) ?: throw java.io.IOException("تعذرت قراءة الملف")
+                stream.source().use { source ->
+                    var total = 0L
+                    val buffer = okio.Buffer()
+                    while (true) {
+                        val read = source.read(buffer, 8192)
+                        if (read == -1L) break
+                        total += read
+                        if (total > max) throw java.io.IOException(if (isVideo) "حجم الفيديو يتجاوز 100MB" else "حجم الملف يتجاوز 25MB")
+                        sink.write(buffer, read)
+                    }
+                }
+            }
+        }
+        val request = Request.Builder().url(baseUrl + "/storage/v1/object/course-files/" + Uri.encode(path, "/"))
+            .header("apikey", publishableKey).header("Authorization", "Bearer " + current.accessToken)
+            .header("Content-Type", mime).header("x-upsert", "false").post(body).build()
+        execute(request)
+        rest("/rest/v1/course_links", "POST", JSONObject().put("course_id", courseId).put("title", name).put("url", path).put("link_type", "file").put("created_by", current.userId))
+    }
+
+    suspend fun addCourseLink(courseId: String, title: String, url: String) {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        require(title.isNotBlank() && url.startsWith("https://")) { "أدخل عنواناً ورابطاً آمناً يبدأ بـ https://" }
+        rest("/rest/v1/course_links", "POST", JSONObject().put("course_id", courseId).put("title", title.trim()).put("url", url.trim()).put("created_by", userId))
+    }
+
+    suspend fun deleteCourseMaterial(material: CourseMaterial) {
+        if (material.isFile) rest("/storage/v1/object/course-files/${Uri.encode(material.url, "/")}", "DELETE")
+        rest("/rest/v1/course_links?id=eq.${encode(material.id)}", "DELETE")
+    }
+
+    suspend fun toggleCourseMaterialImportant(material: CourseMaterial) {
+        rest("/rest/v1/course_links?id=eq.${encode(material.id)}", "PATCH", JSONObject().put("is_important", !material.important))
+    }
+
+    suspend fun addCourseUpdate(courseId: String, content: String) {
+        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        require(content.isNotBlank()) { "اكتب نص الإعلان أولاً" }
+        rest("/rest/v1/course_updates", "POST", JSONObject().put("course_id", courseId).put("author_id", userId).put("content", content.trim()))
+    }
+
+    suspend fun editCourseUpdate(id: String, content: String) {
+        require(content.isNotBlank()) { "نص الإعلان لا يمكن أن يكون فارغاً" }
+        rest("/rest/v1/course_updates?id=eq.${encode(id)}", "PATCH", JSONObject().put("content", content.trim()))
+    }
+
+    suspend fun deleteCourseUpdate(id: String) { rest("/rest/v1/course_updates?id=eq.${encode(id)}", "DELETE") }
+
+    suspend fun updateCourseSchedule(courseId: String, entries: List<ScheduleEntry>) {
+        val json = JSONArray()
+        entries.forEach { json.put(JSONObject().put("day", it.day).put("start", it.start).put("end", it.end).put("room", it.room)) }
+        rest("/rest/v1/courses?id=eq.${encode(courseId)}", "PATCH", JSONObject().put("schedule", json))
+    }
+
     suspend fun loadCourseDetail(courseId: String): CourseDetail {
         val courseRow = array(rest("/rest/v1/courses?select=*&id=eq." + encode(courseId) + "&limit=1")).firstOrNull()
             ?: throw ApiException("هذا المقرر غير متاح أو تم حذفه")

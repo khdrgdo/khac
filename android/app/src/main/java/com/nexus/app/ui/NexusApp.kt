@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.text.format.DateUtils
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
@@ -87,7 +89,10 @@ fun NexusApp(viewModel: NexusViewModel) {
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
             AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::updateProfileTheme, viewModel::updateProfileBio, viewModel::showAdmin, viewModel::signOut)
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
-            AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial, viewModel::postQuestion, viewModel::addComment)
+            AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial,
+                viewModel::postQuestion, viewModel::addComment, viewModel::uploadCourseFile, viewModel::addCourseLink,
+                viewModel::deleteCourseMaterial, viewModel::toggleCourseMaterialImportant, viewModel::addCourseUpdate,
+                viewModel::editCourseUpdate, viewModel::deleteCourseUpdate, viewModel::updateCourseSchedule)
         }
     }
 }
@@ -453,10 +458,24 @@ private fun CourseDetailScreen(
     onTab: (CourseTab) -> Unit,
     onOpenMaterial: (CourseMaterial) -> Unit,
     onPostQuestion: (String, String, Boolean) -> Unit,
-    onAddComment: (String, String, String) -> Unit
+    onAddComment: (String, String, String) -> Unit,
+    onUploadFile: (String, Uri) -> Unit,
+    onAddLink: (String, String, String) -> Unit,
+    onDeleteMaterial: (CourseMaterial) -> Unit,
+    onToggleImportant: (CourseMaterial) -> Unit,
+    onAddUpdate: (String, String) -> Unit,
+    onEditUpdate: (String, String, String) -> Unit,
+    onDeleteUpdate: (String, String) -> Unit,
+    onSaveSchedule: (String, List<ScheduleEntry>) -> Unit
 ) {
     val detail = state.courseDetail
     val course = detail?.course ?: state.selectedCourse
+    val profile = state.profile
+    val canManage = profile?.roles?.contains("sub_admin") != true && (profile?.roles?.any { it == "admin" || it == "teacher" } == true || (course?.teacherId != null && course.teacherId == profile?.id))
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        val courseId = course?.id ?: return@rememberLauncherForActivityResult
+        uris.forEach { onUploadFile(courseId, it) }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -509,11 +528,13 @@ private fun CourseDetailScreen(
                 }
                 AnimatedContent(targetState = state.selectedTab, label = "course-tab") { tab ->
                     when (tab) {
-                        CourseTab.FILES -> MaterialsContent(detail.files, onOpenMaterial, "لا توجد ملفات بعد", "ستظهر هنا المحاضرات والمذكرات والملفات التي يضيفها المدرّس.")
-                        CourseTab.LINKS -> MaterialsContent(detail.links, onOpenMaterial, "لا توجد مصادر خارجية", "ستظهر هنا روابط المحاضرات والمراجع والمصادر الخارجية.")
-                        CourseTab.DISCUSSIONS -> DiscussionsContent(detail.course.id, detail.questions, state.busy, onPostQuestion, onAddComment)
-                        CourseTab.UPDATES -> UpdatesContent(detail.updates)
-                        CourseTab.SCHEDULE -> ScheduleContent(detail.course.schedule)
+                        CourseTab.FILES -> MaterialsContent(detail.files, onOpenMaterial, "لا توجد ملفات بعد", "ستظهر هنا المحاضرات والمذكرات والملفات التي يضيفها المدرّس.", canManage, detail.course.id, true,
+                            onUpload = { filePicker.launch(arrayOf("*/*")) }, onAddLink = { _, _ -> }, onDelete = onDeleteMaterial, onToggleImportant = onToggleImportant)
+                        CourseTab.LINKS -> MaterialsContent(detail.links, onOpenMaterial, "لا توجد مصادر خارجية", "ستظهر هنا روابط المحاضرات والمراجع والمصادر الخارجية.", canManage, detail.course.id, false,
+                            onUpload = {}, onAddLink = { title, url -> onAddLink(detail.course.id, title, url) }, onDelete = onDeleteMaterial, onToggleImportant = onToggleImportant)
+                        CourseTab.DISCUSSIONS -> DiscussionsContent(detail.course.id, detail.questions, state.busy, profile?.roles?.contains("sub_admin") != true, onPostQuestion, onAddComment)
+                        CourseTab.UPDATES -> UpdatesContent(detail.course.id, detail.updates, canManage, onAddUpdate, onEditUpdate, onDeleteUpdate)
+                        CourseTab.SCHEDULE -> ScheduleContent(detail.course.id, detail.course.schedule, canManage, onSaveSchedule)
                     }
                 }
                 if (!state.error.isNullOrBlank()) ErrorBanner(state.error, Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
@@ -537,11 +558,33 @@ private fun CourseDetailHeader(detail: CourseDetail) {
 }
 
 @Composable
-private fun MaterialsContent(materials: List<CourseMaterial>, onOpen: (CourseMaterial) -> Unit, emptyTitle: String, emptyBody: String) {
+private fun MaterialsContent(materials: List<CourseMaterial>, onOpen: (CourseMaterial) -> Unit, emptyTitle: String, emptyBody: String,
+    canManage: Boolean, courseId: String, isFile: Boolean, onUpload: () -> Unit, onAddLink: (String, String) -> Unit,
+    onDelete: (CourseMaterial) -> Unit, onToggleImportant: (CourseMaterial) -> Unit) {
+    var addLinkOpen by rememberSaveable(courseId) { mutableStateOf(false) }
+    var linkTitle by rememberSaveable(courseId) { mutableStateOf("") }
+    var linkUrl by rememberSaveable(courseId) { mutableStateOf("") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        if (canManage) {
+            Button(onClick = { if (isFile) onUpload() else addLinkOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                Icon(if (isFile) Icons.Outlined.UploadFile else Icons.Outlined.AddLink, null); Spacer(Modifier.width(7.dp)); Text(if (isFile) "رفع ملفات أو فيديو" else "إضافة رابط جديد")
+            }
+        }
         if (materials.isEmpty()) EmptyState(Icons.Outlined.Description, emptyTitle, emptyBody)
-        else materials.forEach { MaterialRow(it) { onOpen(it) } }
+        else materials.forEach { material ->
+            MaterialRow(material) { onOpen(material) }
+            if (canManage) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = { onToggleImportant(material) }) { Icon(Icons.Outlined.PushPin, null); Text(if (material.important) "إلغاء التثبيت" else "تثبيت كمهم") }
+                TextButton(onClick = { onDelete(material) }) { Icon(Icons.Outlined.DeleteOutline, null); Text("حذف") }
+            }
+        }
     }
+    if (addLinkOpen) AlertDialog(onDismissRequest = { addLinkOpen = false }, title = { Text("إضافة رابط للمقرر") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(linkTitle, { linkTitle = it }, label = { Text("عنوان الرابط") }, singleLine = true)
+            OutlinedTextField(linkUrl, { linkUrl = it }, label = { Text("الرابط https://") }, singleLine = true)
+        } }, confirmButton = { TextButton(onClick = { onAddLink(linkTitle, linkUrl); linkTitle = ""; linkUrl = ""; addLinkOpen = false }, enabled = linkTitle.isNotBlank() && linkUrl.startsWith("https://")) { Text("إضافة") } },
+        dismissButton = { TextButton(onClick = { addLinkOpen = false }) { Text("إلغاء") } })
 }
 
 @Composable
@@ -589,6 +632,7 @@ private fun DiscussionsContent(
     courseId: String,
     questions: List<CourseQuestion>,
     busy: Boolean,
+    canComment: Boolean,
     onPostQuestion: (String, String, Boolean) -> Unit,
     onAddComment: (String, String, String) -> Unit
 ) {
@@ -601,15 +645,15 @@ private fun DiscussionsContent(
                     Icon(Icons.Outlined.Forum, tint = MaterialTheme.colorScheme.secondary, contentDescription = null)
                     Text("لديك سؤال حول المقرر؟", style = MaterialTheme.typography.titleMedium)
                 }
-                OutlinedTextField(questionText, { questionText = it }, Modifier.fillMaxWidth(), placeholder = { Text("اكتب سؤالك بوضوح...") }, minLines = 3, maxLines = 5, shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(questionText, { questionText = it }, Modifier.fillMaxWidth(), enabled = canComment, placeholder = { Text(if (canComment) "اكتب سؤالك بوضوح..." else "حساب المشرف المساعد لا يملك صلاحية النشر") }, minLines = 3, maxLines = 5, shape = RoundedCornerShape(12.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Switch(anonymous, { anonymous = it })
+                        Switch(anonymous, { anonymous = it }, enabled = canComment)
                         Text("نشر كمجهول", style = MaterialTheme.typography.bodySmall)
                     }
                     Button(
                         onClick = { onPostQuestion(courseId, questionText, anonymous); questionText = ""; anonymous = false },
-                        enabled = !busy && questionText.isNotBlank(), shape = RoundedCornerShape(11.dp)
+                        enabled = !busy && canComment && questionText.isNotBlank(), shape = RoundedCornerShape(11.dp)
                     ) {
                         Icon(Icons.Outlined.Send, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(5.dp))
@@ -619,12 +663,12 @@ private fun DiscussionsContent(
             }
         }
         if (questions.isEmpty()) EmptyState(Icons.Outlined.Forum, "لا توجد نقاشات بعد", "ابدأ بطرح أول سؤال ليستفيد منه زملاؤك وأستاذ المقرر.")
-        else questions.forEach { QuestionCard(it, courseId, busy, onAddComment) }
+        else questions.forEach { QuestionCard(it, courseId, busy, canComment, onAddComment) }
     }
 }
 
 @Composable
-private fun QuestionCard(question: CourseQuestion, courseId: String, busy: Boolean, onAddComment: (String, String, String) -> Unit) {
+private fun QuestionCard(question: CourseQuestion, courseId: String, busy: Boolean, canComment: Boolean, onAddComment: (String, String, String) -> Unit) {
     var reply by rememberSaveable(question.id) { mutableStateOf("") }
     var expanded by rememberSaveable(question.id) { mutableStateOf(true) }
     Card(
@@ -652,9 +696,9 @@ private fun QuestionCard(question: CourseQuestion, courseId: String, busy: Boole
             if (expanded) {
                 question.replies.forEach { CommentRow(it) }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    OutlinedTextField(reply, { reply = it }, Modifier.weight(1f), placeholder = { Text("اكتب إجابة أو تعليقاً...") }, singleLine = true, shape = RoundedCornerShape(11.dp))
+                    OutlinedTextField(reply, { reply = it }, Modifier.weight(1f), enabled = canComment, placeholder = { Text("اكتب إجابة أو تعليقاً...") }, singleLine = true, shape = RoundedCornerShape(11.dp))
                     IconButton(
-                        enabled = !busy && reply.isNotBlank(),
+                        enabled = !busy && canComment && reply.isNotBlank(),
                         onClick = { onAddComment(courseId, question.id, reply); reply = "" }
                     ) { Icon(Icons.Outlined.Send, "إرسال الرد", tint = MaterialTheme.colorScheme.primary) }
                 }
@@ -681,48 +725,72 @@ private fun CommentRow(comment: CourseComment) {
 }
 
 @Composable
-private fun UpdatesContent(updates: List<CourseUpdate>) {
+private fun UpdatesContent(courseId: String, updates: List<CourseUpdate>, canManage: Boolean, onAdd: (String, String) -> Unit,
+    onEdit: (String, String, String) -> Unit, onDelete: (String, String) -> Unit) {
+    var draft by rememberSaveable(courseId) { mutableStateOf("") }
+    var editingId by rememberSaveable(courseId) { mutableStateOf<String?>(null) }
+    var editDraft by rememberSaveable(courseId) { mutableStateOf("") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (canManage) Card(shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("إعلان جديد للطلاب", fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(draft, { draft = it }, Modifier.fillMaxWidth(), placeholder = { Text("اكتب تحديثاً أو تنبيهاً...") }, minLines = 2)
+                Button(onClick = { onAdd(courseId, draft); draft = "" }, enabled = draft.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Campaign, null); Spacer(Modifier.width(6.dp)); Text("نشر الإعلان") }
+            }
+        }
         if (updates.isEmpty()) EmptyState(Icons.Outlined.Campaign, "لا توجد إعلانات", "ستظهر هنا تنبيهات أستاذ المقرر وتحديثاته.")
         else updates.forEach { update ->
             Card(shape = RoundedCornerShape(15.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
                 Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Campaign, null, tint = MaterialTheme.colorScheme.tertiary)
-                        }
-                        Spacer(Modifier.width(9.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(update.authorName, style = MaterialTheme.typography.labelLarge)
-                            Text(relativeTime(update.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Campaign, null, tint = MaterialTheme.colorScheme.tertiary) }
+                        Spacer(Modifier.width(9.dp)); Column(Modifier.weight(1f)) { Text(update.authorName, style = MaterialTheme.typography.labelLarge); Text(relativeTime(update.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                     Text(update.content, style = MaterialTheme.typography.bodyLarge)
+                    if (canManage) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { editingId = update.id; editDraft = update.content }) { Text("تعديل") }
+                        TextButton(onClick = { onDelete(courseId, update.id) }) { Text("حذف") }
+                    }
                 }
             }
         }
     }
+    if (editingId != null) AlertDialog(onDismissRequest = { editingId = null }, title = { Text("تعديل الإعلان") },
+        text = { OutlinedTextField(editDraft, { editDraft = it }, Modifier.fillMaxWidth(), minLines = 3) },
+        confirmButton = { TextButton(onClick = { editingId?.let { onEdit(courseId, it, editDraft) }; editingId = null }) { Text("حفظ") } },
+        dismissButton = { TextButton(onClick = { editingId = null }) { Text("إلغاء") } })
 }
 
 @Composable
-private fun ScheduleContent(schedule: List<ScheduleEntry>) {
+private fun ScheduleContent(courseId: String, schedule: List<ScheduleEntry>, canManage: Boolean, onSave: (String, List<ScheduleEntry>) -> Unit) {
+    var entries by remember(courseId, schedule) { mutableStateOf(schedule) }
+    var day by rememberSaveable(courseId) { mutableStateOf("") }
+    var start by rememberSaveable(courseId) { mutableStateOf("") }
+    var end by rememberSaveable(courseId) { mutableStateOf("") }
+    var room by rememberSaveable(courseId) { mutableStateOf("") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-        if (schedule.isEmpty()) EmptyState(Icons.Outlined.CalendarMonth, "لم يُضف جدول للمقرر", "عندما يحدد أستاذ المقرر مواعيده ستظهر هنا.")
-        else schedule.forEach { entry ->
+        if (canManage) Card(shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text("إدارة مواعيد المحاضرات", fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(day, { day = it }, Modifier.fillMaxWidth(), label = { Text("اليوم (مثلاً الأحد)") }, singleLine = true)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    OutlinedTextField(start, { start = it }, Modifier.weight(1f), label = { Text("من (09:00)") }, singleLine = true)
+                    OutlinedTextField(end, { end = it }, Modifier.weight(1f), label = { Text("إلى (11:00)") }, singleLine = true)
+                }
+                OutlinedTextField(room, { room = it }, Modifier.fillMaxWidth(), label = { Text("القاعة") }, singleLine = true)
+                Button(onClick = { entries = entries + ScheduleEntry(day.trim(), start.trim(), end.trim(), room.trim()); day = ""; start = ""; end = ""; room = "" },
+                    enabled = day.isNotBlank() && start.matches(Regex("\\d{2}:\\d{2}")) && end.matches(Regex("\\d{2}:\\d{2}")), modifier = Modifier.fillMaxWidth()) { Text("إضافة موعد") }
+                Button(onClick = { onSave(courseId, entries) }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Save, null); Spacer(Modifier.width(6.dp)); Text("حفظ الجدول") }
+            }
+        }
+        if (entries.isEmpty()) EmptyState(Icons.Outlined.CalendarMonth, "لم يُضف جدول للمقرر", "عندما يحدد أستاذ المقرر مواعيده ستظهر هنا.")
+        else entries.forEachIndexed { index, entry ->
             Card(shape = RoundedCornerShape(13.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)) {
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.CalendarMonth, null, tint = MaterialTheme.colorScheme.secondary)
-                    }
-                    Spacer(Modifier.width(11.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(entry.day, style = MaterialTheme.typography.titleMedium)
-                        Text(entry.room.ifBlank { "القاعة غير محددة" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(entry.start + " – " + entry.end, style = MaterialTheme.typography.labelLarge)
-                        Text("وقت المحاضرة", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.CalendarMonth, null, tint = MaterialTheme.colorScheme.secondary) }
+                    Spacer(Modifier.width(11.dp)); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { Text(entry.day, style = MaterialTheme.typography.titleMedium); Text(entry.room.ifBlank { "القاعة غير محددة" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) { Text(entry.start + " – " + entry.end, style = MaterialTheme.typography.labelLarge); Text("وقت المحاضرة", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    if (canManage) IconButton(onClick = { entries = entries.filterIndexed { i, _ -> i != index } }) { Icon(Icons.Outlined.Close, "إزالة الموعد") }
                 }
             }
         }

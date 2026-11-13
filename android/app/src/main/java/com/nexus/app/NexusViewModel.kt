@@ -300,7 +300,33 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectCourseTab(tab: CourseTab) { _state.update { it.copy(selectedTab = tab) } }
 
+
+    private fun canManageCourse(courseId: String): Boolean {
+        val profile = _state.value.profile ?: return false
+        if ("sub_admin" in profile.roles) return false
+        return "admin" in profile.roles || "teacher" in profile.roles || _state.value.courseDetail?.course?.teacherId == profile.id || _state.value.selectedCourse?.teacherId == profile.id
+    }
+
+    private fun courseMutation(courseId: String, action: suspend () -> Unit) {
+        if (!canManageCourse(courseId)) { _state.update { it.copy(error = "إدارة محتوى المقرر متاحة لأستاذ المقرر والإدارة فقط") }; return }
+        viewModelScope.launch { _state.update { it.copy(busy = true, error = null) }
+            runCatching { action(); repository.loadCourseDetail(courseId) }
+                .onSuccess { detail -> _state.update { it.copy(busy = false, courseDetail = detail, selectedCourse = detail.course, notice = "تم حفظ التغييرات") } }
+                .onFailure { e -> _state.update { it.copy(busy = false, error = e.message ?: "تعذّر حفظ التغييرات") } }
+        }
+    }
+
+    fun uploadCourseFile(courseId: String, uri: Uri) = courseMutation(courseId) { repository.uploadCourseFile(courseId, uri) }
+    fun addCourseLink(courseId: String, title: String, url: String) = courseMutation(courseId) { repository.addCourseLink(courseId, title, url) }
+    fun deleteCourseMaterial(material: CourseMaterial) = courseMutation(material.courseId) { repository.deleteCourseMaterial(material) }
+    fun toggleCourseMaterialImportant(material: CourseMaterial) = courseMutation(material.courseId) { repository.toggleCourseMaterialImportant(material) }
+    fun addCourseUpdate(courseId: String, content: String) = courseMutation(courseId) { repository.addCourseUpdate(courseId, content) }
+    fun editCourseUpdate(courseId: String, id: String, content: String) = courseMutation(courseId) { repository.editCourseUpdate(id, content) }
+    fun deleteCourseUpdate(courseId: String, id: String) = courseMutation(courseId) { repository.deleteCourseUpdate(id) }
+    fun updateCourseSchedule(courseId: String, entries: List<ScheduleEntry>) = courseMutation(courseId) { repository.updateCourseSchedule(courseId, entries) }
+
     fun postQuestion(courseId: String, content: String, anonymous: Boolean) {
+        if (_state.value.profile?.roles?.contains("sub_admin") == true) { _state.update { it.copy(error = "حساب المشرف المساعد مخصص للإشراف ولا يملك صلاحية طرح الأسئلة") }; return }
         if (content.isBlank()) return
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
@@ -315,6 +341,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addComment(courseId: String, postId: String, content: String) {
+        if (_state.value.profile?.roles?.contains("sub_admin") == true) { _state.update { it.copy(error = "حساب المشرف المساعد مخصص للإشراف ولا يملك صلاحية التعليق") }; return }
         if (content.isBlank()) return
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
