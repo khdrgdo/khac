@@ -80,11 +80,12 @@ fun MessagesScreen(state: NexusUiState, onRefresh: () -> Unit, onSearch: (String
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(state: NexusUiState, onBack: () -> Unit, onRefresh: () -> Unit, onSend: (String) -> Unit,
-    onBlock: (String) -> Unit, onReport: (String, String, String?) -> Unit) {
+    onBlock: (String) -> Unit, onReport: (String, String, String?, String?) -> Unit) {
     var draft by rememberSaveable { mutableStateOf("") }
     var blockConfirm by rememberSaveable { mutableStateOf(false) }
     var reportOpen by rememberSaveable { mutableStateOf(false) }
     var reportTarget by rememberSaveable { mutableStateOf<String?>(null) }
+    var reportMessageId by rememberSaveable { mutableStateOf<String?>(null) }
     var reportNote by rememberSaveable { mutableStateOf("") }
     var reportReason by rememberSaveable { mutableStateOf("محتوى مسيء أو تحرّش") }
     var reportConfirmed by rememberSaveable { mutableStateOf(false) }
@@ -94,7 +95,7 @@ fun ChatScreen(state: NexusUiState, onBack: () -> Unit, onRefresh: () -> Unit, o
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowForward, "رجوع") } },
         actions = { if (!active?.isGroup.orFalse() && otherId != null) {
             IconButton(onClick = { blockConfirm = true }) { Icon(Icons.Outlined.Block, "حظر") }
-            IconButton(onClick = { reportTarget = otherId; reportNote = ""; reportConfirmed = false; reportOpen = true }) { Icon(Icons.Outlined.Flag, "إبلاغ") }
+            IconButton(onClick = { reportTarget = otherId; reportMessageId = null; reportNote = ""; reportConfirmed = false; reportOpen = true }) { Icon(Icons.Outlined.Flag, "إبلاغ") }
         }; IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, "تحديث") } }) },
         bottomBar = { Surface(tonalElevation = 2.dp) { Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(draft, { draft = it }, Modifier.weight(1f), placeholder = { Text("اكتب رسالة...") }, maxLines = 4, shape = RoundedCornerShape(18.dp))
@@ -106,7 +107,7 @@ fun ChatScreen(state: NexusUiState, onBack: () -> Unit, onRefresh: () -> Unit, o
                 val mine = msg.senderId == state.profile?.id
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
                     Surface(shape = RoundedCornerShape(if (mine) 18.dp else 18.dp), color = if (mine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.widthIn(max = 320.dp).combinedClickable(onClick = {}, onLongClick = { if (!mine) { reportTarget = msg.senderId; reportNote = "معرّف الرسالة: ${msg.id}\nنص الرسالة: ${msg.content}"; reportConfirmed = false; reportOpen = true } })) {
+                        modifier = Modifier.widthIn(max = 320.dp).combinedClickable(onClick = {}, onLongClick = { if (!mine) { reportTarget = msg.senderId; reportMessageId = msg.id; reportNote = "نص الرسالة: ${msg.content}"; reportConfirmed = false; reportOpen = true } })) {
                         Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
                             Text(msg.content, style = MaterialTheme.typography.bodyLarge)
                             Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
@@ -125,14 +126,14 @@ fun ChatScreen(state: NexusUiState, onBack: () -> Unit, onRefresh: () -> Unit, o
         dismissButton = { TextButton(onClick = { blockConfirm = false }) { Text("إلغاء") } })
     if (reportOpen && reportTarget != null) AlertDialog(onDismissRequest = { reportOpen = false }, title = { Text("إرسال بلاغ") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text(if (reportNote.contains("معرّف الرسالة:")) "نوع البلاغ عن الرسالة" else "نوع البلاغ عن المستخدم", style = MaterialTheme.typography.labelMedium)
+            Text(if (reportMessageId != null) "نوع البلاغ عن الرسالة المحددة" else "نوع البلاغ عن المستخدم", style = MaterialTheme.typography.labelMedium)
             listOf("محتوى مسيء أو تحرّش", "تهديد أو عنف", "انتحال شخصية", "رسائل مزعجة أو احتيال", "مشاركة معلومات خاصة", "أخرى").forEach { reason -> Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = reportReason == reason, onClick = { reportReason = reason }); Text(reason, style = MaterialTheme.typography.bodySmall) } }
             OutlinedTextField(reportNote, { reportNote = it }, Modifier.fillMaxWidth(), minLines = 2, maxLines = 4, label = { Text("تفاصيل إضافية (اختياري)") })
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = reportConfirmed, onCheckedChange = { reportConfirmed = it })
                 Text("أؤكد أن البلاغ يصف مخالفة حقيقية", style = MaterialTheme.typography.bodySmall)
             }
-        } }, confirmButton = { TextButton(enabled = reportConfirmed, onClick = { onReport(reportTarget!!, reportReason, reportNote); reportOpen = false }) { Text("إرسال البلاغ") } },
+        } }, confirmButton = { TextButton(enabled = reportConfirmed, onClick = { onReport(reportTarget!!, reportReason, reportNote, reportMessageId); reportOpen = false }) { Text("إرسال البلاغ") } },
         dismissButton = { TextButton(onClick = { reportOpen = false }) { Text("إلغاء") } })
 }
 

@@ -275,10 +275,11 @@ class NexusRepository(context: Context) {
         rest("/rest/v1/blocked_users", "POST", JSONObject().put("blocker_id", userId).put("blocked_id", userIdToBlock))
     }
 
-    suspend fun reportMessageUser(conversationId: String, reportedUserId: String, reason: String, note: String?) {
+    suspend fun reportMessageUser(conversationId: String, reportedUserId: String, reason: String, note: String?, messageId: String? = null) {
         val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
         rest("/rest/v1/message_reports", "POST", JSONObject().put("reporter_id", userId).put("reported_user_id", reportedUserId)
-            .put("conversation_id", conversationId).put("reason", reason).put("note", note?.takeIf(String::isNotBlank)?.let { it } ?: JSONObject.NULL))
+            .put("conversation_id", conversationId).put("reason", reason).put("note", note?.takeIf(String::isNotBlank)?.let { it } ?: JSONObject.NULL)
+            .put("message_id", messageId?.let { it } ?: JSONObject.NULL))
     }
 
 
@@ -401,14 +402,14 @@ class NexusRepository(context: Context) {
     }
 
     suspend fun loadAdminUsers(): List<AdminUser> {
-        val rows = array(rest("/rest/v1/profiles?select=id,full_name,university_number,major,year,points,banned,suspended_until&order=points.desc&limit=500"))
+        val rows = array(rest("/rest/v1/profiles?select=id,full_name,university_number,major,year,points,banned,suspended_until,avatar_url&order=points.desc&limit=500"))
         if (rows.isEmpty()) return emptyList()
         val ids = rows.map { it.optString("id") }
         val roleRows = array(rest("/rest/v1/user_roles?select=user_id,role&user_id=in.(${ids.joinToString(",") { encode(it) }})"))
             .groupBy { it.optString("user_id") }
         return rows.map { row -> val id = row.optString("id"); AdminUser(id, row.optString("full_name"), row.optString("university_number"),
             row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"), row.optInt("points"), row.optBoolean("banned"),
-            row.optStringOrNull("suspended_until"), roleRows[id].orEmpty().map { it.optString("role") }) }
+            row.optStringOrNull("suspended_until"), roleRows[id].orEmpty().map { it.optString("role") }, avatarDisplayUrl(row.optStringOrNull("avatar_url"))) }
     }
 
     suspend fun loadAdminReports(): List<AdminReport> {
@@ -420,11 +421,11 @@ class NexusRepository(context: Context) {
         val postReports = reports.map { row -> val postId = row.optString("post_id"); val reporterId = row.optString("reporter_id")
             AdminReport(row.optString("id"), postId, posts[postId]?.optString("content").orEmpty(), profiles[reporterId]?.fullName ?: "مستخدم",
                 row.optString("reason"), row.optString("status", "pending"), row.optString("created_at"), "post") }
-        val messageRows = array(rest("/rest/v1/message_reports?select=id,reporter_id,reported_user_id,conversation_id,reason,note,created_at&order=created_at.desc&limit=100"))
+        val messageRows = array(rest("/rest/v1/message_reports?select=id,reporter_id,reported_user_id,conversation_id,message_id,reason,note,created_at&order=created_at.desc&limit=100"))
         val messageReporterIds = messageRows.map { it.optString("reporter_id") }.filter(String::isNotBlank).toSet()
         val messageProfiles = if (messageReporterIds.isEmpty()) emptyMap() else publicProfiles(messageReporterIds)
         val messageReports = messageRows.map { row -> AdminReport(row.optString("id"), row.optString("conversation_id"), row.optString("note").ifBlank { "بلاغ عن رسالة أو مستخدم" },
-            messageProfiles[row.optString("reporter_id")]?.fullName ?: "مستخدم", row.optString("reason"), "pending", row.optString("created_at"), "message", row.optStringOrNull("reported_user_id")) }
+            messageProfiles[row.optString("reporter_id")]?.fullName ?: "مستخدم", row.optString("reason"), "pending", row.optString("created_at"), "message", row.optStringOrNull("reported_user_id"), row.optStringOrNull("message_id")) }
         return (postReports + messageReports).sortedByDescending { it.createdAt }
     }
 
@@ -771,8 +772,7 @@ class NexusRepository(context: Context) {
             signedMarker in raw -> raw.substringAfter(signedMarker).substringBefore('?')
             raw.startsWith("http://") || raw.startsWith("https://") -> return raw
             else -> raw.trimStart('/')
-        }.trimStart('/')
-        if (path.isBlank() || path.contains("..")) return null
+        }
         return runCatching { signedStorageUrl("avatars", path) }.getOrNull()
     }
 
