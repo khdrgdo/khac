@@ -40,10 +40,9 @@ fun PublicProfileScreen(state: NexusUiState, onBack: () -> Unit, onMessage: (Str
                 Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(palette)).padding(18.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            NexusAvatar(profile?.avatarUrl, profile?.fullName.orEmpty(), 64)
-                            else Surface(shape = CircleShape, color = Color.White.copy(alpha=.18f), modifier = Modifier.size(64.dp)) { Box(contentAlignment = Alignment.Center) { Text(profile?.fullName?.take(1) ?: "N", color = Color.White, style = MaterialTheme.typography.headlineSmall) } }
+                            NexusAvatar(profile?.avatarUrl, profile?.fullName.orEmpty(), 76)
                             Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) { Text(profile?.fullName.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); if (profile?.verified == true) { Spacer(Modifier.width(5.dp)); Icon(Icons.Outlined.Verified, null, tint = Color.White, modifier = Modifier.size(18.dp)) } }
+                                Text(profile?.fullName.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                 Text(listOfNotNull(profile?.major?.uppercase(), profile?.year?.let { "السنة $it" }).joinToString(" • "), color = Color.White.copy(alpha=.85f), style = MaterialTheme.typography.bodySmall)
                                 Text("${profile?.points ?: 0} نقطة • عضو في مجتمع NEXUS", color = Color.White, style = MaterialTheme.typography.labelMedium)
                             }

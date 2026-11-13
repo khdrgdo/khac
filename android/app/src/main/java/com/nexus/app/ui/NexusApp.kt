@@ -244,7 +244,7 @@ private fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = onFeed) { Icon(Icons.Outlined.Groups, null); Spacer(Modifier.width(4.dp)); Text("المجتمع") }
                         IconButton(onClick = onRefresh, enabled = !state.loading) { Icon(Icons.Outlined.Refresh, "تحديث") }
-                        NexusAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 42.dp)
+                        NexusAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 42)
                     }
                 }
             }
@@ -834,7 +834,7 @@ private fun ProfileScreen(
                     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(Modifier.offset(y = (-30).dp), verticalAlignment = Alignment.Bottom) {
                             Box {
-                                NexusAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 88.dp)
+                                NexusAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 88)
                                 Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary, modifier = Modifier.align(Alignment.BottomEnd).size(28.dp).clickable { avatarPicker.launch("image/*") }) {
                                     Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.CameraAlt, "تغيير الصورة", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp)) }
                                 }

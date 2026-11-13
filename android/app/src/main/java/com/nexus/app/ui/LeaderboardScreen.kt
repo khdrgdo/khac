@@ -110,8 +110,7 @@ fun LeaderboardScreen(
                             Card(Modifier.weight(1f).height(height), shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp, bottomStart = 12.dp, bottomEnd = 12.dp), colors = CardDefaults.cardColors(containerColor = tint), border = BorderStroke(if (rank == 0) 2.dp else 1.dp, if (rank == 0) MaterialTheme.colorScheme.tertiary.copy(alpha=.65f) else MaterialTheme.colorScheme.outlineVariant), elevation = CardDefaults.cardElevation(defaultElevation = if (rank == 0) 5.dp else 1.dp)) {
                                 Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
                                     Text(when(rank) { 0 -> "🥇"; 1 -> "🥈"; else -> "🥉" }, style = MaterialTheme.typography.headlineSmall)
-                                    NexusAvatar(user.avatarUrl, user.fullName, if (rank == 0) 48 else 40)
-                                    else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha=.7f), modifier = Modifier.size(if (rank == 0) 48.dp else 40.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1), fontWeight = FontWeight.Bold) } }
+                                    NexusAvatar(user.avatarUrl, user.fullName, if (rank == 0) 58 else 48)
                                     Text(user.fullName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                                     Text("${user.score} نقطة", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                 }
@@ -151,7 +150,6 @@ fun LeaderboardScreen(
                         }
                         Spacer(Modifier.width(10.dp))
                         NexusAvatar(user.avatarUrl, user.fullName, 44)
-                        else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1)) } }
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(user.fullName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)

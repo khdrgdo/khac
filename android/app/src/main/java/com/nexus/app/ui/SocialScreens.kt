@@ -162,7 +162,7 @@ private fun FeedPostCard(post: FeedPost, busy: Boolean, ownPost: Boolean, onComm
     Card(shape = RoundedCornerShape(12.dp), border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f)), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                NexusAvatar(if (post.anonymous) null else post.avatarUrl, if (post.anonymous) "؟" else post.authorName, 44.dp)
+                NexusAvatar(if (post.anonymous) null else post.avatarUrl, if (post.anonymous) "؟" else post.authorName, 44)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     TextButton(onClick = onOpenProfile, contentPadding = PaddingValues(0.dp), enabled = !post.anonymous) { Text(post.authorName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface) }

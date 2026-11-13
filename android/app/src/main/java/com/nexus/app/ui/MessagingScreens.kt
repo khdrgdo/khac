@@ -50,7 +50,7 @@ fun MessagesScreen(state: NexusUiState, onRefresh: () -> Unit, onSearch: (String
                 items(state.messageSearchResults, key = { "user-" + it.id }) { user ->
                     Card(onClick = { if (groupMode) selectedIds = if (user.id in selectedIds) selectedIds - user.id else selectedIds + user.id else onStartChat(user.id) }, shape = RoundedCornerShape(14.dp)) {
                         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            NexusAvatar(user.avatarUrl, user.fullName, 42.dp)
+                            NexusAvatar(user.avatarUrl, user.fullName, 42)
                             Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(user.fullName, fontWeight = FontWeight.SemiBold); Text(user.universityNumber, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             if (groupMode) Checkbox(user.id in selectedIds, { selectedIds = if (it) selectedIds + user.id else selectedIds - user.id })
                             else Icon(Icons.Outlined.Chat, null, tint = MaterialTheme.colorScheme.primary)
@@ -64,7 +64,7 @@ fun MessagesScreen(state: NexusUiState, onRefresh: () -> Unit, onSearch: (String
             items(state.conversations, key = { it.id }) { c ->
                 Card(onClick = { onOpenChat(c.id) }, shape = RoundedCornerShape(14.dp)) {
                     Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-                        if (!c.isGroup) NexusAvatar(c.avatarUrl, c.title, 44.dp) else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Groups, null) } }
+                        if (!c.isGroup) NexusAvatar(c.avatarUrl, c.title, 44) else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Groups, null) } }
                         Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) {
                             Text(c.title, fontWeight = FontWeight.SemiBold)
                             Text(c.lastMessage.ifBlank { if (c.isGroup) "مجموعة" else "ابدأ المحادثة" }, maxLines = 1, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
