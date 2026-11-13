@@ -99,7 +99,7 @@ fun LeaderboardScreen(
             }
 
             if (visible.isNotEmpty()) item {
-                Row(verticalAlignment = Alignment.CenterVertically) { Text("منصة التتويج", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Text("أفضل 3", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Text("المراكز الأولى", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 val winners = visible.take(3)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.Bottom) {
                     listOf(1, 0, 2).forEach { rank ->
@@ -110,10 +110,9 @@ fun LeaderboardScreen(
                             Card(Modifier.weight(1f).height(height), shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 12.dp, bottomEnd = 12.dp), colors = CardDefaults.cardColors(containerColor = tint), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                                 Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
                                     Text(when(rank) { 0 -> "🥇"; 1 -> "🥈"; else -> "🥉" }, style = MaterialTheme.typography.headlineSmall)
-                                    NexusAvatar(user.avatarUrl, user.fullName, if (rank == 0) 58.dp else 48.dp)
+                                    NexusAvatar(user.avatarUrl, user.fullName, if (rank == 0) 54 else 46)
                                     Text(user.fullName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                                    Text("${user.score} نقطة", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                     Text(user.major?.uppercase()?.plus(" · السنة ${user.year ?: "—"}") ?: "مشارك", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                                    Text("${user.score} نقطة", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -141,7 +140,7 @@ fun LeaderboardScreen(
             if (!state.leaderboardLoading && visible.isEmpty()) item {
                 Text("لا توجد نتائج لهذه التصفية", Modifier.fillMaxWidth().padding(28.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (visible.size > 3) item { Row(verticalAlignment = Alignment.CenterVertically) { Text("سُلّم المتصدرين", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Text("${visible.size} مشارك", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            if (visible.size > 3) item { Text("بقية الترتيب", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
             itemsIndexed(visible.drop(3), key = { _, user -> user.id }) { offset, user ->
                 val index = offset + 3
                 Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
@@ -150,8 +149,7 @@ fun LeaderboardScreen(
                             Box(contentAlignment = Alignment.Center) { Text("${index+1}", fontWeight = FontWeight.Bold) }
                         }
                         Spacer(Modifier.width(10.dp))
-                        if (!user.avatarUrl.isNullOrBlank()) AsyncImage(user.avatarUrl, null, Modifier.size(44.dp).clip(CircleShape))
-                        else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1)) } }
+                        NexusAvatar(user.avatarUrl, user.fullName, 44)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(user.fullName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
