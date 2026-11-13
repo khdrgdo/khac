@@ -16,10 +16,13 @@ class LoginIdentifierTest {
     }
 
     @Test
-    fun unsupportedUsernameIsRejected() {
-        assertThrows(IllegalArgumentException::class.java) {
-            normalizeLoginIdentifier("student-name")
-        }
+    fun subAdminPrefixUsesTheWebsiteIdentityFormat() {
+        assertEquals("moderator@subadmin.edu", normalizeLoginIdentifier("sub_moderator"))
+    }
+
+    @Test
+    fun plainSubAdminUsernameUsesTheWebsiteIdentityFormat() {
+        assertEquals("moderator@subadmin.edu", normalizeLoginIdentifier("Moderator"))
     }
 
     @Test
