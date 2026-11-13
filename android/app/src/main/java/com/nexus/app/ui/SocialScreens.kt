@@ -40,6 +40,7 @@ fun SocialFeedScreen(
     onDelete: (String) -> Unit,
     onHome: () -> Unit,
     onCourses: () -> Unit,
+    onLeaderboard: () -> Unit,
     onProfile: () -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
@@ -53,6 +54,7 @@ fun SocialFeedScreen(
             NavigationBar {
                 NavigationBarItem(true, onHome, icon = { Icon(Icons.Outlined.Home, null) }, label = { Text("الرئيسية") })
                 NavigationBarItem(false, onCourses, icon = { Icon(Icons.Outlined.MenuBook, null) }, label = { Text("المقررات") })
+                NavigationBarItem(false, onLeaderboard, icon = { Icon(Icons.Outlined.EmojiEvents, null) }, label = { Text("الصدارة") })
                 NavigationBarItem(false, onProfile, icon = { Icon(Icons.Outlined.PersonOutline, null) }, label = { Text("حسابي") })
             }
         }, containerColor = MaterialTheme.colorScheme.background

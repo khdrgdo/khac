@@ -1,391 +1,277 @@
-package com.nexus.app.data
+package com.nexus.app
 
-import android.content.Context
+import android.app.Application
 import android.net.Uri
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.TimeUnit
-import java.util.UUID
-import android.webkit.MimeTypeMap
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.nexus.app.data.AppScreen
+import com.nexus.app.data.Course
+import com.nexus.app.data.CourseMaterial
+import com.nexus.app.data.CourseTab
+import com.nexus.app.data.NexusRepository
+import com.nexus.app.data.NexusUiState
+import com.nexus.app.data.ThemeMode
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class ApiException(message: String, val statusCode: Int = 0) : Exception(message)
+class NexusViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = NexusRepository(application)
+    private val _state = MutableStateFlow(NexusUiState(themeMode = repository.loadThemeMode()))
+    val state: StateFlow<NexusUiState> = _state.asStateFlow()
 
-class NexusRepository(context: Context) {
-    private val appContext = context.applicationContext
-    private val store = SecureSessionStore(appContext)
-    private val client = OkHttpClient.Builder().connectTimeout(20, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).writeTimeout(30, TimeUnit.SECONDS).retryOnConnectionFailure(true).build()
-    private val refreshMutex = Mutex()
-    private val baseUrl = com.nexus.app.BuildConfig.SUPABASE_URL.trimEnd('/')
-    private val publishableKey = com.nexus.app.BuildConfig.SUPABASE_PUBLISHABLE_KEY
-    private var session: UserSession? = store.read()?.let(::decodeSession)
-    private val jsonType = "application/json; charset=utf-8".toMediaType()
-
-    suspend fun signIn(identifier: String, password: String): StudentProfile {
-        val body = JSONObject().put("email", normalizeLoginIdentifier(identifier)).put("password", password)
-        val raw = execute(Request.Builder().url(baseUrl + "/auth/v1/token?grant_type=password").header("apikey", publishableKey).post(body.toString().toRequestBody(jsonType)).build())
-        session = sessionFrom(JSONObject(raw))
-        persistSession()
-        return try {
-            val profile = loadCurrentProfile()
-            verifyStudentAccess(profile)
-            profile
-        } catch (error: Exception) {
-            session = null
-            store.clear()
-            throw error
-        }
+    fun start(uri: Uri?) {
+        if (uri != null) repository.acceptDeepLink(uri)
+        if (_state.value.profile != null && uri == null) return
+        _state.update { it.copy(busy = false, loading = true, profile = null, error = null) }
+        restoreSession()
     }
 
-    suspend fun restoreSession(): StudentProfile? {
-        if (session == null) session = store.read()?.let(::decodeSession)
-        if (session == null) return null
-        ensureFreshSession()
-        val user = JSONObject(rest("/auth/v1/user"))
-        val userId = user.optString("id")
-        if (userId.isBlank()) throw ApiException("تعذّر التحقق من جلسة الدخول")
-        session = session?.copy(userId = userId)
-        persistSession()
-        val profile = loadProfile(userId)
-        verifyStudentAccess(profile)
-        return profile
-    }
+    fun handleDeepLink(uri: Uri?) = start(uri)
 
-    fun acceptDeepLink(uri: Uri?): Boolean {
-        if (uri == null || uri.scheme != "com.nexus.app" || uri.host != "login-callback") return false
-        val fragment = uri.fragment ?: return false
-        val params = Uri.parse("https://nexus.invalid/?" + fragment)
-        val access = params.getQueryParameter("access_token") ?: return false
-        val refresh = params.getQueryParameter("refresh_token") ?: return false
-        val expiresIn = params.getQueryParameter("expires_in")?.toLongOrNull() ?: 3600L
-        session = UserSession(access, refresh, System.currentTimeMillis() / 1000L + expiresIn, "")
-        persistSession()
-        return true
-    }
-
-    suspend fun loadHome(profile: StudentProfile): Pair<List<Course>, List<CourseMaterial>> {
-        val majorFilter = profile.major?.let { "&major=eq." + encode(it) } ?: ""
-        val courseRows = array(rest("/rest/v1/courses?select=id,name,description,major,year,semester,teacher_id,schedule,created_at,updated_at" + majorFilter + "&order=year.asc,semester.asc,name.asc"))
-        val teacherProfiles = publicProfiles(courseRows.mapNotNull { it.optStringOrNull("teacher_id") }.toSet())
-        val ids = courseRows.mapNotNull { it.optStringOrNull("id") }
-        if (ids.isEmpty()) return emptyList<Course>() to emptyList()
-        val inFilter = ids.joinToString(",")
-        val linkRows = array(rest("/rest/v1/course_links?select=id,course_id,link_type,created_at&course_id=in.(" + inFilter + ")&order=created_at.desc"))
-        val stats = linkRows.groupBy { it.optString("course_id") }
-        val courses = courseRows.map { row ->
-            val links = stats[row.optString("id")].orEmpty()
-            Course(
-                id = row.optString("id"), name = row.optString("name"), description = row.optStringOrNull("description"),
-                major = row.optString("major"), year = row.optInt("year"), semester = row.optInt("semester"),
-                teacherId = row.optStringOrNull("teacher_id"), teacherName = teacherProfiles[row.optStringOrNull("teacher_id")]?.fullName,
-                schedule = parseSchedule(row.optJSONArray("schedule")),
-                fileCount = links.count { it.optStringOrNull("link_type") == "file" },
-                linkCount = links.count { it.isNull("link_type") },
-                lastUpdated = links.firstOrNull()?.optStringOrNull("created_at") ?: row.optStringOrNull("updated_at")
-            )
-        }
-        val recentRows = array(rest("/rest/v1/course_links?select=id,course_id,title,url,link_type,created_at,is_important&course_id=in.(" + inFilter + ")&order=created_at.desc&limit=8"))
-        val names = courses.associate { it.id to it.name }
-        return courses to recentRows.map { materialFrom(it, names[it.optString("course_id")]) }
-    }
-
-    suspend fun loadFeed(): List<FeedPost> {
-        val rows = array(rest("/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&order=created_at.desc&limit=50"))
-        val ids = rows.mapNotNull { it.optStringOrNull("author_id") }.toSet()
-        val profiles = publicProfiles(ids)
-        val postIds = rows.mapNotNull { it.optStringOrNull("id") }
-        if (postIds.isEmpty()) return emptyList()
-        val inFilter = postIds.joinToString(",")
-        val commentCounts = array(rest("/rest/v1/comments?select=post_id&post_id=in.($inFilter)"))
-            .groupingBy { it.optString("post_id") }.eachCount()
-        val reactionsByPost = array(rest("/rest/v1/post_reactions?select=post_id,user_id,reaction&post_id=in.($inFilter)"))
-            .groupBy { it.optString("post_id") }
-        val currentUser = session?.userId.orEmpty()
-        val savedIds = if (currentUser.isBlank()) emptySet() else array(rest("/rest/v1/saved_posts?select=post_id&user_id=eq.${encode(currentUser)}&post_id=in.($inFilter)"))
-            .map { it.optString("post_id") }.toSet()
-        return rows.map { row ->
-            val authorId = row.optStringOrNull("author_id")
-            val anonymous = row.optBoolean("is_anonymous") || authorId == null
-            val author = profiles[authorId]
-            val postId = row.optString("id")
-            val reactions = reactionsByPost[postId].orEmpty().map { FeedReaction(it.optString("user_id"), it.optString("reaction")) }
-            val imagePaths = row.optJSONArray("images")?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotBlank) } }.orEmpty()
-            val signedImages = imagePaths.mapNotNull { path -> runCatching { signedStorageUrl("post-images", path) }.getOrNull() }
-            FeedPost(postId, authorId,
-                if (anonymous) "طالب مجهول" else author?.fullName ?: "طالب",
-                if (anonymous) null else author?.avatarUrl, anonymous,
-                row.optString("content"), row.optString("post_type", "general"),
-                row.optString("created_at"), commentCounts[postId] ?: 0, signedImages, reactions,
-                reactions.firstOrNull { it.userId == currentUser }?.type, postId in savedIds,
-                row.optStringOrNull("accepted_answer_id"))
-        }
-    }
-
-    suspend fun createFeedPost(content: String, anonymous: Boolean, postType: String = "general", images: List<String> = emptyList()) {
-        rest("/rest/v1/rpc/create_post_as", "POST", JSONObject()
-            .put("_content", content.trim()).put("_images", JSONArray(images)).put("_post_type", postType).put("_anonymous", anonymous))
-    }
-
-
-
-    suspend fun uploadPostImage(uri: Uri): String {
-        val current = session ?: throw ApiException("جلسة غير صالحة")
-        val mime = appContext.contentResolver.getType(uri) ?: "image/jpeg"
-        if (!mime.startsWith("image/")) throw ApiException("يسمح برفع الصور فقط")
-        val bytes = appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: throw ApiException("تعذرت قراءة الصورة")
-        if (bytes.size > 5 * 1024 * 1024) throw ApiException("حجم الصورة أكبر من 5MB")
-        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "jpg"
-        val path = current.userId + "/" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().take(6) + "." + ext
-        val request = Request.Builder().url(baseUrl + "/storage/v1/object/post-images/" + Uri.encode(path, "/"))
-            .header("apikey", publishableKey).header("Authorization", "Bearer " + current.accessToken)
-            .header("Content-Type", mime).header("x-upsert", "false")
-            .post(bytes.toRequestBody(mime.toMediaType())).build()
-        execute(request)
-        return path
-    }
-
-    suspend fun togglePostReaction(postId: String, reaction: String?) {
-        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
-        if (reaction == null) {
-            rest("/rest/v1/post_reactions?post_id=eq.${encode(postId)}&user_id=eq.${encode(userId)}", "DELETE")
-        } else {
-            rest("/rest/v1/post_reactions?on_conflict=post_id,user_id", "POST",
-                JSONObject().put("post_id", postId).put("user_id", userId).put("reaction", reaction),
-                mapOf("Prefer" to "resolution=merge-duplicates,return=minimal"))
-        }
-    }
-
-    suspend fun toggleSavedPost(postId: String, saved: Boolean) {
-        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
-        if (saved) rest("/rest/v1/saved_posts?post_id=eq.${encode(postId)}&user_id=eq.${encode(userId)}", "DELETE")
-        else rest("/rest/v1/saved_posts", "POST", JSONObject().put("post_id", postId).put("user_id", userId))
-    }
-
-    suspend fun reportPost(postId: String, reason: String) {
-        val userId = session?.userId ?: throw ApiException("جلسة غير صالحة")
-        rest("/rest/v1/post_reports", "POST", JSONObject().put("post_id", postId).put("reporter_id", userId).put("reason", reason))
-    }
-
-    suspend fun deletePost(postId: String) {
-        rest("/rest/v1/posts?id=eq.${encode(postId)}", "DELETE")
-    }
-
-    private suspend fun signedStorageUrl(bucket: String, path: String): String {
-        val encodedPath = Uri.encode(path, "/")
-        val json = JSONObject(rest("/storage/v1/object/sign/$bucket/$encodedPath", "POST", JSONObject().put("expiresIn", 3600)))
-        val signed = json.optString("signedURL").ifBlank { json.optString("signedUrl") }
-        if (signed.isBlank()) throw ApiException("تعذّر تحميل الصورة")
-        return if (signed.startsWith("http")) signed else baseUrl + "/storage/v1" + if (signed.startsWith("/")) signed else "/" + signed
-    }
-
-    suspend fun loadCourseDetail(courseId: String): CourseDetail {
-        val courseRow = array(rest("/rest/v1/courses?select=*&id=eq." + encode(courseId) + "&limit=1")).firstOrNull()
-            ?: throw ApiException("هذا المقرر غير متاح أو تم حذفه")
-        val linkRows = array(rest("/rest/v1/course_links?select=id,course_id,title,url,link_type,created_by,created_at,is_important&course_id=eq." + encode(courseId) + "&order=is_important.desc,created_at.desc"))
-        val updateRows = array(rest("/rest/v1/course_updates?select=id,course_id,author_id,content,created_at&course_id=eq." + encode(courseId) + "&order=created_at.desc"))
-        val prefix = "[course:" + courseId + "]"
-        val questionRows = array(rest("/rest/v1/posts?select=id,author_id,content,created_at,is_anonymous,post_type&content=" + encode("ilike." + prefix + "%") + "&order=created_at.desc&limit=60"))
-        val questionIds = questionRows.mapNotNull { it.optStringOrNull("id") }
-        val commentRows = if (questionIds.isEmpty()) emptyList() else array(rest("/rest/v1/comments?select=id,post_id,author_id,content,created_at,is_anonymous&post_id=in.(" + questionIds.joinToString(",") + ")&order=created_at.asc"))
-        val authorIds = buildSet {
-            courseRow.optStringOrNull("teacher_id")?.let(::add)
-            updateRows.forEach { it.optStringOrNull("author_id")?.let(::add) }
-            questionRows.forEach { it.optStringOrNull("author_id")?.let(::add) }
-            commentRows.forEach { it.optStringOrNull("author_id")?.let(::add) }
-        }
-        val profiles = publicProfiles(authorIds)
-        val teacherId = courseRow.optStringOrNull("teacher_id")
-        val course = Course(
-            id = courseId, name = courseRow.optString("name"), description = courseRow.optStringOrNull("description"),
-            major = courseRow.optString("major"), year = courseRow.optInt("year"), semester = courseRow.optInt("semester"),
-            teacherId = teacherId, teacherName = profiles[teacherId]?.fullName, schedule = parseSchedule(courseRow.optJSONArray("schedule"))
-        )
-        val materials = linkRows.map { materialFrom(it) }
-        val commentsByPost = commentRows.groupBy { it.optString("post_id") }
-        val questions = questionRows.map { row ->
-            val authorId = row.optStringOrNull("author_id")
-            val anonymous = row.optBoolean("is_anonymous") || authorId == null
-            val replies = commentsByPost[row.optString("id")].orEmpty().map { c ->
-                val cAuthor = c.optStringOrNull("author_id")
-                val cAnonymous = c.optBoolean("is_anonymous") || cAuthor == null
-                CourseComment(c.optString("id"), cAuthor, if (cAnonymous) "طالب مجهول" else profiles[cAuthor]?.fullName ?: "طالب",
-                    if (cAnonymous) null else profiles[cAuthor]?.avatarUrl, c.optString("content"), c.optString("created_at"), cAuthor != null && cAuthor == teacherId)
+    fun restoreSession() {
+        if (_state.value.busy || _state.value.profile != null) return
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, busy = true, error = null) }
+            try {
+                val profile = repository.restoreSession()
+                if (profile == null) {
+                    _state.update { it.copy(loading = false, busy = false, screen = AppScreen.LOGIN) }
+                } else {
+                    _state.update { it.copy(profile = profile, loading = false, busy = false, screen = AppScreen.FEED) }
+                    loadFeed()
+                }
+            } catch (error: Exception) {
+                runCatching { repository.signOut() }
+                _state.update {
+                    it.copy(loading = false, busy = false, screen = AppScreen.LOGIN, profile = null, error = error.message ?: "تعذّر استعادة جلسة الدخول")
+                }
             }
-            CourseQuestion(row.optString("id"), authorId, if (anonymous) "طالب مجهول" else profiles[authorId]?.fullName ?: "طالب",
-                if (anonymous) null else profiles[authorId]?.avatarUrl, !anonymous && profiles[authorId]?.verified == true,
-                row.optString("content").removePrefix(prefix).trim(), row.optString("created_at"), replies)
-        }
-        val updates = updateRows.map { row ->
-            val authorId = row.optStringOrNull("author_id")
-            CourseUpdate(row.optString("id"), row.optString("course_id"), profiles[authorId]?.fullName ?: "إدارة المقرر", row.optString("content"), row.optString("created_at"))
-        }
-        return CourseDetail(course.copy(fileCount = materials.count { it.isFile }, linkCount = materials.count { !it.isFile }),
-            materials.filter { it.isFile }, materials.filter { !it.isFile }, questions, updates)
-    }
-
-    suspend fun postQuestion(courseId: String, content: String, anonymous: Boolean) {
-        rest("/rest/v1/rpc/create_post_as", "POST", JSONObject().put("_content", "[course:" + courseId + "] " + content.trim()).put("_post_type", "question").put("_anonymous", anonymous))
-    }
-
-    suspend fun addComment(postId: String, content: String) {
-        rest("/rest/v1/rpc/create_comment_as", "POST", JSONObject().put("_post_id", postId).put("_content", content.trim()).put("_parent_id", JSONObject.NULL).put("_anonymous", false))
-    }
-
-    suspend fun resolveMaterialUrl(material: CourseMaterial): String {
-        if (!material.isFile) return material.url
-        val path = Uri.encode(material.url, "/")
-        val json = JSONObject(rest("/storage/v1/object/sign/course-files/" + path, "POST", JSONObject().put("expiresIn", 600)))
-        val signed = json.optString("signedURL").ifBlank { json.optString("signedUrl") }
-        if (signed.isBlank()) throw ApiException("تعذّر إنشاء رابط آمن للملف")
-        return if (signed.startsWith("http")) signed else baseUrl + "/storage/v1" + if (signed.startsWith("/")) signed else "/" + signed
-    }
-
-    suspend fun recoverPassword(identifier: String) {
-        val body = JSONObject().put("email", normalizeLoginIdentifier(identifier))
-        execute(Request.Builder().url(baseUrl + "/auth/v1/recover").header("apikey", publishableKey).post(body.toString().toRequestBody(jsonType)).build())
-    }
-
-    suspend fun updatePassword(password: String) {
-        rest("/auth/v1/user", "PUT", JSONObject().put("password", password))
-    }
-
-    suspend fun signOut() {
-        try { if (session != null) rest("/auth/v1/logout", "POST", JSONObject()) }
-        finally { session = null; store.clear() }
-    }
-
-    fun saveThemeMode(mode: ThemeMode) {
-        appContext.getSharedPreferences("nexus_preferences", Context.MODE_PRIVATE).edit().putString("theme_mode", mode.name).apply()
-    }
-
-    fun loadThemeMode(): ThemeMode = ThemeMode.from(
-        appContext.getSharedPreferences("nexus_preferences", Context.MODE_PRIVATE).getString("theme_mode", ThemeMode.SYSTEM.name)
-    )
-
-    private suspend fun loadCurrentProfile(): StudentProfile {
-        val userId = session?.userId?.takeIf { it.isNotBlank() } ?: JSONObject(rest("/auth/v1/user")).optString("id")
-        session = session?.copy(userId = userId)
-        persistSession()
-        return loadProfile(userId)
-    }
-
-    private suspend fun loadProfile(userId: String): StudentProfile {
-        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
-            ?: throw ApiException("لم يُعثر على ملف الطالب المرتبط بهذا الحساب")
-        return StudentProfile(row.optString("id"), row.optString("university_number"), row.optString("full_name"),
-            row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"),
-            row.optStringOrNull("avatar_url"), row.optStringOrNull("bio"), row.optBoolean("must_change_password"),
-            row.optInt("points"), row.optBoolean("banned"), row.optStringOrNull("suspended_until"))
-    }
-
-    private suspend fun verifyStudentAccess(profile: StudentProfile) {
-        if (profile.banned) throw ApiException("هذا الحساب موقوف. راجع إدارة المنصة.")
-        val suspended = profile.suspendedUntil?.let {
-            runCatching { java.time.Instant.parse(it).epochSecond > System.currentTimeMillis() / 1000L }.getOrDefault(false)
-        } ?: false
-        if (suspended) throw ApiException("هذا الحساب موقوف مؤقتاً حتى انتهاء مدة الإيقاف.")
-        val roles = array(rest("/rest/v1/user_roles?select=role&user_id=eq." + encode(session?.userId ?: profile.id))).map { it.optString("role") }
-        if (roles.isEmpty() || roles.any { it !in setOf("student", "teacher", "admin", "sub_admin") }) {
-            throw ApiException("هذا الحساب لا يملك دوراً معتمداً في NEXUS.")
         }
     }
 
-    private suspend fun publicProfiles(ids: Set<String>): Map<String, PublicProfile> {
-        if (ids.isEmpty()) return emptyMap()
-        val idArray = JSONArray()
-        ids.forEach { idArray.put(it) }
-        val rows = array(rest("/rest/v1/rpc/get_public_profiles", "POST", JSONObject().put("_ids", idArray)))
-        return rows.associate { row ->
-            val id = row.optString("id")
-            id to PublicProfile(id, row.optString("full_name", "مستخدم"), row.optStringOrNull("avatar_url"), row.optBoolean("verified"))
+    fun signIn(identifier: String, password: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                val profile = repository.signIn(identifier, password)
+                _state.update { it.copy(busy = false, loading = false, profile = profile, screen = AppScreen.FEED, notice = "مرحباً بعودتك، " + profile.fullName) }
+                loadFeed()
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, loading = false, error = error.message ?: "تعذّر تسجيل الدخول") }
+            }
         }
     }
 
-    private suspend fun ensureFreshSession() {
-        val current = session ?: throw ApiException("انتهت جلسة الدخول. سجّل الدخول مرة أخرى.")
-        if (current.expiresAt > System.currentTimeMillis() / 1000L + 90L) return
-        refreshMutex.withLock {
-            val latest = session ?: throw ApiException("انتهت جلسة الدخول. سجّل الدخول مرة أخرى.")
-            if (latest.expiresAt > System.currentTimeMillis() / 1000L + 90L) return
-            val body = JSONObject().put("refresh_token", latest.refreshToken)
-            val raw = execute(Request.Builder().url(baseUrl + "/auth/v1/token?grant_type=refresh_token").header("apikey", publishableKey).post(body.toString().toRequestBody(jsonType)).build())
-            session = sessionFrom(JSONObject(raw)).copy(userId = latest.userId)
-            persistSession()
+    fun loadHome() {
+        val profile = _state.value.profile ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, error = null) }
+            try {
+                val result = repository.loadHome(profile)
+                _state.update { it.copy(loading = false, courses = result.first, recentMaterials = result.second) }
+            } catch (error: Exception) {
+                _state.update { it.copy(loading = false, error = error.message ?: "تعذّر تحميل المقررات") }
+            }
         }
     }
 
-    private suspend fun rest(path: String, method: String = "GET", body: JSONObject? = null, extraHeaders: Map<String, String> = emptyMap()): String {
-        ensureFreshSession()
-        val current = session ?: throw ApiException("انتهت جلسة الدخول")
-        val builder = Request.Builder().url(baseUrl + path).header("apikey", publishableKey).header("Authorization", "Bearer " + current.accessToken)
-        extraHeaders.forEach { (key, value) -> builder.header(key, value) }
-        if (method == "GET") builder.get() else builder.method(method, (body ?: JSONObject()).toString().toRequestBody(jsonType))
-        return execute(builder.build())
+    fun refreshHome() = loadHome()
+
+    fun showFeed() {
+        _state.update { it.copy(screen = AppScreen.FEED, error = null) }
+        loadFeed()
     }
 
-    private suspend fun execute(request: Request): String = withContext(Dispatchers.IO) {
-        client.newCall(request).execute().use { response ->
-            val raw = response.body?.string().orEmpty()
-            if (!response.isSuccessful) throw ApiException(errorMessage(raw, response.code), response.code)
-            raw
+    fun loadFeed() {
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, error = null) }
+            try {
+                val posts = repository.loadFeed()
+                _state.update { it.copy(loading = false, feedPosts = posts) }
+            } catch (error: Exception) {
+                _state.update { it.copy(loading = false, error = error.message ?: "تعذّر تحميل المنشورات") }
+            }
         }
     }
 
-    private fun sessionFrom(json: JSONObject): UserSession {
-        val expiresIn = json.optLong("expires_in", 3600L)
-        return UserSession(json.optString("access_token"), json.optString("refresh_token"),
-            json.optLong("expires_at", System.currentTimeMillis() / 1000L + expiresIn),
-            json.optJSONObject("user")?.optString("id").orEmpty())
-    }
-
-    private fun persistSession() {
-        session?.let { s ->
-            store.save(JSONObject().put("access_token", s.accessToken).put("refresh_token", s.refreshToken).put("expires_at", s.expiresAt).put("user_id", s.userId).toString())
+    fun publishPost(content: String, anonymous: Boolean, postType: String = "general") {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.createFeedPost(content, anonymous, postType, _state.value.draftImagePaths)
+                val posts = repository.loadFeed()
+                _state.update { it.copy(busy = false, feedPosts = posts, draftImagePaths = emptyList(), notice = "تم نشر مساهمتك") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر نشر المساهمة") }
+            }
         }
     }
 
-    private fun decodeSession(raw: String): UserSession? = runCatching {
-        val j = JSONObject(raw)
-        UserSession(j.optString("access_token"), j.optString("refresh_token"), j.optLong("expires_at"), j.optString("user_id"))
-    }.getOrNull()
 
-    private fun array(raw: String): List<JSONObject> {
-        val j = JSONArray(raw)
-        return (0 until j.length()).mapNotNull { j.optJSONObject(it) }
-    }
-
-    private fun parseSchedule(json: JSONArray?): List<ScheduleEntry> {
-        if (json == null) return emptyList()
-        return (0 until json.length()).mapNotNull { index ->
-            val item = json.optJSONObject(index) ?: return@mapNotNull null
-            ScheduleEntry(item.optString("day"), item.optString("start"), item.optString("end"), item.optString("room"))
+    fun uploadPostImage(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                if (_state.value.draftImagePaths.size >= 4) throw ApiException("الحد الأقصى أربع صور")
+                val path = repository.uploadPostImage(uri)
+                _state.update { it.copy(draftImagePaths = (it.draftImagePaths + path).take(4), notice = "تم إرفاق الصورة") }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر رفع الصورة") }
+            }
         }
     }
 
-    private fun materialFrom(row: JSONObject, courseName: String? = null): CourseMaterial {
-        val split = row.optString("title").split("|||", limit = 2)
-        return CourseMaterial(row.optString("id"), row.optString("course_id"), split.firstOrNull()?.trim().orEmpty(),
-            split.getOrNull(1)?.trim()?.takeIf { it.isNotBlank() }, row.optString("url"), row.optStringOrNull("link_type"),
-            row.optString("created_at"), row.optBoolean("is_important"), courseName)
+    fun removeDraftImage(path: String) { _state.update { it.copy(draftImagePaths = it.draftImagePaths - path) } }
+
+    fun reactToPost(postId: String, reaction: String?) {
+        viewModelScope.launch { runCatching { repository.togglePostReaction(postId, reaction); repository.loadFeed() }
+            .onSuccess { posts -> _state.update { it.copy(feedPosts = posts) } }
+            .onFailure { error -> _state.update { it.copy(error = error.message ?: "تعذّر تسجيل التفاعل") } } }
     }
 
-    private fun errorMessage(raw: String, code: Int): String = runCatching {
-        val j = JSONObject(raw)
-        j.optString("msg").ifBlank { j.optString("message").ifBlank { j.optString("error_description").ifBlank { "تعذّر إكمال الطلب ($code)" } } }
-    }.getOrDefault("تعذّر الاتصال بالخادم ($code)")
+    fun savePost(postId: String, saved: Boolean) {
+        viewModelScope.launch { runCatching { repository.toggleSavedPost(postId, saved); repository.loadFeed() }
+            .onSuccess { posts -> _state.update { it.copy(feedPosts = posts, notice = if (saved) "أُزيل من المحفوظات" else "أُضيف إلى المحفوظات") } }
+            .onFailure { error -> _state.update { it.copy(error = error.message ?: "تعذّر حفظ المنشور") } } }
+    }
 
-    private fun encode(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8.toString())
-    private fun JSONObject.optStringOrNull(key: String): String? {
-        if (isNull(key)) return null
-        return optString(key).takeIf { it.isNotBlank() && it != "null" }
+    fun reportPost(postId: String, reason: String) {
+        viewModelScope.launch { runCatching { repository.reportPost(postId, reason) }
+            .onSuccess { _state.update { it.copy(notice = "تم إرسال البلاغ للمراجعة") } }
+            .onFailure { error -> _state.update { it.copy(error = error.message ?: "تعذّر إرسال البلاغ") } } }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch { runCatching { repository.deletePost(postId); repository.loadFeed() }
+            .onSuccess { posts -> _state.update { it.copy(feedPosts = posts, notice = "تم حذف المنشور") } }
+            .onFailure { error -> _state.update { it.copy(error = error.message ?: "تعذّر حذف المنشور") } } }
+    }
+
+    fun addFeedComment(postId: String, content: String) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.addComment(postId, content)
+                val posts = repository.loadFeed()
+                _state.update { it.copy(busy = false, feedPosts = posts, notice = "تم إرسال تعليقك") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال التعليق") }
+            }
+        }
+    }
+    fun showLeaderboard() { _state.update { it.copy(screen = AppScreen.LEADERBOARD, error = null) }; loadLeaderboard() }
+
+    fun loadLeaderboard(timeframe: String = "all", major: String? = null, year: Int? = null) {
+        viewModelScope.launch {
+            _state.update { it.copy(leaderboardLoading = true, error = null) }
+            runCatching { repository.loadLeaderboard(timeframe, major, year) }
+                .onSuccess { rows -> _state.update { it.copy(leaderboard = rows, leaderboardLoading = false) } }
+                .onFailure { error -> _state.update { it.copy(leaderboardLoading = false, error = error.message ?: "تعذّر تحميل لوحة الصدارة") } }
+        }
+    }
+
+    fun showCourses() { _state.update { it.copy(screen = AppScreen.COURSES, error = null) }; loadHome() }
+    fun showHome() { showFeed() }
+    fun showProfile() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }
+
+    fun openCourse(course: Course) {
+        _state.update { it.copy(previousScreen = it.screen, screen = AppScreen.COURSE_DETAIL, selectedCourse = course, courseDetail = null, selectedTab = CourseTab.FILES, detailLoading = true, error = null) }
+        viewModelScope.launch {
+            try {
+                val detail = repository.loadCourseDetail(course.id)
+                _state.update { it.copy(courseDetail = detail, selectedCourse = detail.course, detailLoading = false) }
+            } catch (error: Exception) {
+                _state.update { it.copy(detailLoading = false, error = error.message ?: "تعذّر تحميل المقرر") }
+            }
+        }
+    }
+
+    fun backFromCourse() {
+        _state.update { it.copy(screen = it.previousScreen, selectedCourse = null, courseDetail = null, error = null) }
+    }
+
+    fun selectCourseTab(tab: CourseTab) { _state.update { it.copy(selectedTab = tab) } }
+
+    fun postQuestion(courseId: String, content: String, anonymous: Boolean) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.postQuestion(courseId, content, anonymous)
+                val detail = repository.loadCourseDetail(courseId)
+                _state.update { it.copy(busy = false, courseDetail = detail, notice = "تم نشر سؤالك") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر نشر السؤال") }
+            }
+        }
+    }
+
+    fun addComment(courseId: String, postId: String, content: String) {
+        if (content.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.addComment(postId, content)
+                val detail = repository.loadCourseDetail(courseId)
+                _state.update { it.copy(busy = false, courseDetail = detail, notice = "تم إرسال الرد") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال الرد") }
+            }
+        }
+    }
+
+    fun openMaterial(material: CourseMaterial) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                val url = repository.resolveMaterialUrl(material)
+                _state.update { it.copy(busy = false, pendingUrl = url) }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر فتح المادة") }
+            }
+        }
+    }
+
+    fun clearPendingUrl() { _state.update { it.copy(pendingUrl = null) } }
+
+    fun recoverPassword(identifier: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null, notice = null) }
+            try {
+                repository.recoverPassword(identifier)
+                _state.update { it.copy(busy = false, notice = "إذا كان الحساب مسجلاً، فسيصلك رابط استعادة كلمة المرور.") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال رابط الاستعادة") }
+            }
+        }
+    }
+
+    fun changePassword(password: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.updatePassword(password)
+                _state.update { it.copy(busy = false, screen = AppScreen.PROFILE, notice = "تم تحديث كلمة المرور") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر تحديث كلمة المرور") }
+            }
+        }
+    }
+
+    fun showChangePassword() { _state.update { it.copy(screen = AppScreen.CHANGE_PASSWORD, error = null) } }
+    fun backFromPassword() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }
+    fun setThemeMode(mode: ThemeMode) { repository.saveThemeMode(mode); _state.update { it.copy(themeMode = mode) } }
+    fun clearMessages() { _state.update { it.copy(error = null, notice = null) } }
+
+    fun signOut() {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true) }
+            runCatching { repository.signOut() }
+            _state.value = NexusUiState(themeMode = repository.loadThemeMode(), loading = false)
+        }
     }
 }
