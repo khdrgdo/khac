@@ -27,6 +27,7 @@ fun AdminDashboardScreen(state: NexusUiState, onRefresh: () -> Unit, onBack: () 
     var query by rememberSaveable { mutableStateOf("") }
     var reportFilter by rememberSaveable { mutableStateOf("all") }
     var expandedUser by rememberSaveable { mutableStateOf<String?>(null) }
+    var expandedReport by rememberSaveable { mutableStateOf<String?>(null) }
     val profile = state.profile
     val isMainAdmin = profile?.roles?.contains("admin") == true
     val users = state.adminUsers
@@ -48,10 +49,17 @@ fun AdminDashboardScreen(state: NexusUiState, onRefresh: () -> Unit, onBack: () 
                         val cards = listOf(Triple("إجمالي الحسابات", users.size.toString(), Icons.Outlined.Groups), Triple("الطلاب", users.count { "student" in it.roles }.toString(), Icons.Outlined.School), Triple("الأعضاء المحظورون", users.count { it.banned }.toString(), Icons.Outlined.Block), Triple("البلاغات المعلقة", state.adminReports.count { it.status == "pending" }.toString(), Icons.Outlined.Flag))
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { cards.chunked(2).forEach { row -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { (label,value,icon) -> Card(Modifier.weight(1f), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary); Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold); Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } } } } } }
                     }
+                    item {
+                        Text("مؤشرات الإدارة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AssistChip(onClick = { tab = "users" }, label = { Text("عرض المستخدمين (${users.size})") }, leadingIcon = { Icon(Icons.Outlined.Groups, null) })
+                            if (isMainAdmin) AssistChip(onClick = { tab = "reports" }, label = { Text("مراجعة البلاغات (${state.adminReports.count { it.status == "pending" }})") }, leadingIcon = { Icon(Icons.Outlined.Flag, null) })
+                        }
+                    }
                     item { Text("توزيع الأدوار", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                     item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { listOf("student" to "طلاب", "teacher" to "أساتذة", "admin" to "مديرو النظام", "sub_admin" to "مشرفون مساعدون").forEach { (role,label) -> val count = users.count { role in it.roles }; Row(verticalAlignment = Alignment.CenterVertically) { Text(label, Modifier.width(120.dp), style = MaterialTheme.typography.bodyMedium); LinearProgressIndicator(progress = if (users.isEmpty()) 0f else count.toFloat()/users.size, Modifier.weight(1f)); Text("$count", Modifier.width(38.dp), textAlign = androidx.compose.ui.text.style.TextAlign.End, style = MaterialTheme.typography.labelMedium) } } } }
                     item { Text("آخر البلاغات", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                    items(state.adminReports.take(5), key = { it.id }) { report -> AdminReportRow(report) }
+                    items(state.adminReports.take(5), key = { it.id }) { report -> AdminReportRow(report, expandedReport == report.id) { expandedReport = if (expandedReport == report.id) null else report.id } }
                     item { Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp)) { Text("الإجراءات التي تغيّر حسابات المستخدمين أو حالة البلاغات غير مفعّلة في هذه النسخة؛ لن تظهر كأنها تعمل قبل اعتماد صلاحيات قاعدة البيانات واختبارها.", Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                 }
                 "users" -> Column(Modifier.fillMaxSize()) {
@@ -61,7 +69,7 @@ fun AdminDashboardScreen(state: NexusUiState, onRefresh: () -> Unit, onBack: () 
                         items(filteredUsers, key = { it.id }) { user ->
                             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                                 Column(Modifier.fillMaxWidth().clickable { expandedUser = if(expandedUser == user.id) null else user.id }.padding(13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) { NexusAvatar(user.avatarUrl, user.fullName, 44.dp); Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(user.fullName, fontWeight = FontWeight.SemiBold); Text(user.universityNumber, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Text("${user.points} نقطة", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
+                                    Row(verticalAlignment = Alignment.CenterVertically) { ProfileAvatar(user.avatarUrl, user.fullName, 42); Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(user.fullName, fontWeight = FontWeight.SemiBold); Text(user.universityNumber, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }; Text("${user.points} نقطة", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
                                     Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) { user.roles.forEach { AssistChip(onClick = {}, label = { Text(when(it) { "admin" -> "مدير"; "sub_admin" -> "مشرف"; "teacher" -> "أستاذ"; else -> "طالب" }) }) }; if(user.banned) AssistChip(onClick = {}, label = { Text("محظور") }); if(!user.suspendedUntil.isNullOrBlank()) AssistChip(onClick = {}, label = { Text("إيقاف مؤقت") }) }
                                     if(expandedUser == user.id) { HorizontalDivider(); Text("التخصص: ${user.major?.uppercase() ?: "غير محدد"}"); Text("السنة الدراسية: ${user.year?.toString() ?: "غير محددة"}"); Text("معرّف الحساب: ${user.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant); Text("الحالة: ${if(user.banned) "محظور" else if(!user.suspendedUntil.isNullOrBlank()) "موقوف مؤقتاً" else "نشط حسب البيانات المتاحة"}", style = MaterialTheme.typography.labelMedium) }
                                 }
@@ -73,7 +81,7 @@ fun AdminDashboardScreen(state: NexusUiState, onRefresh: () -> Unit, onBack: () 
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) { listOf("all" to "الكل", "post" to "المنشورات", "message" to "الرسائل").forEach { (key,label) -> FilterChip(reportFilter == key, { reportFilter = key }, label = { Text(label) }) } }
                     LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         if(reports.isEmpty()) item { Text("لا توجد بلاغات ضمن هذا التصنيف", Modifier.fillMaxWidth().padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        items(reports, key = { it.id }) { report -> AdminReportRow(report) }
+                        items(reports, key = { it.id }) { report -> AdminReportRow(report, expandedReport == report.id) { expandedReport = if (expandedReport == report.id) null else report.id } }
                     }
                 }
             }
@@ -82,14 +90,21 @@ fun AdminDashboardScreen(state: NexusUiState, onRefresh: () -> Unit, onBack: () 
 }
 
 @Composable
-private fun AdminReportRow(report: AdminReport) {
-    Card(shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+private fun AdminReportRow(report: AdminReport, expanded: Boolean, onToggle: () -> Unit) {
+    Card(onClick = onToggle, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.fillMaxWidth().padding(13.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) { Text(if(report.reportType == "message") "بلاغ رسالة / مستخدم" else "بلاغ منشور", Modifier.weight(1f), fontWeight = FontWeight.SemiBold); AssistChip(onClick = {}, label = { Text(if(report.status == "pending") "قيد المراجعة" else report.status) }) }
-            Text(report.content.ifBlank { "لا يوجد نص مرفق بالبلاغ" }, style = MaterialTheme.typography.bodyMedium, maxLines = 5)
+            Text(report.content.ifBlank { "لا يوجد نص مرفق بالبلاغ" }, style = MaterialTheme.typography.bodyMedium, maxLines = if (expanded) Int.MAX_VALUE else 3)
             Text("السبب: ${report.reason}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             Text("المبلّغ: ${report.reporterName}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if(report.reportType == "message") Text("المستخدم المبلّغ عنه: ${report.reportedUserId.orEmpty()}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (expanded) {
+                HorizontalDivider()
+                Text("معرّف البلاغ: ${report.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("معرّف المحتوى / المحادثة: ${report.postId}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("حالة البلاغ: ${if (report.status == "pending") "بانتظار المراجعة" else report.status}", style = MaterialTheme.typography.labelMedium)
+            }
+            Text(if (expanded) "اضغط لطي التفاصيل" else "اضغط لعرض تفاصيل البلاغ", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             Text(report.createdAt.take(16).replace('T',' '), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
