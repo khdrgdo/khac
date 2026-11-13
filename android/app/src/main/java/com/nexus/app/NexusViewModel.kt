@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.nexus.app.data.ApiException
 import com.nexus.app.data.AppScreen
 import com.nexus.app.data.Course
 import com.nexus.app.data.CourseMaterial
