@@ -51,7 +51,7 @@ fun LeaderboardScreen(
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text("لوحة الصدارة", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                        Text("تنافس بالنقاط والمساهمات الأكاديمية", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("إنجازات زملائك وترتيبك في المجتمع", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = { onLoad(timeframe, major.takeIf { it != "all" }, year.takeIf { it > 0 }, courseId.takeIf { it != "all" }) }) { Icon(Icons.Outlined.Refresh, "تحديث") }
@@ -99,7 +99,7 @@ fun LeaderboardScreen(
             }
 
             if (visible.isNotEmpty()) item {
-                Text("المراكز الأولى", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) { Text("منصة التتويج", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold); Spacer(Modifier.weight(1f)); Text("أفضل 3", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 val winners = visible.take(3)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.Bottom) {
                     listOf(1, 0, 2).forEach { rank ->
@@ -107,10 +107,11 @@ fun LeaderboardScreen(
                         if (user != null) {
                             val height = when(rank) { 0 -> 154.dp; 1 -> 132.dp; else -> 118.dp }
                             val tint = when(rank) { 0 -> MaterialTheme.colorScheme.tertiaryContainer; 1 -> MaterialTheme.colorScheme.secondaryContainer; else -> MaterialTheme.colorScheme.surfaceVariant }
-                            Card(Modifier.weight(1f).height(height), shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 12.dp, bottomEnd = 12.dp), colors = CardDefaults.cardColors(containerColor = tint), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                            Card(Modifier.weight(1f).height(height), shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp, bottomStart = 12.dp, bottomEnd = 12.dp), colors = CardDefaults.cardColors(containerColor = tint), border = BorderStroke(if (rank == 0) 2.dp else 1.dp, if (rank == 0) MaterialTheme.colorScheme.tertiary.copy(alpha=.65f) else MaterialTheme.colorScheme.outlineVariant), elevation = CardDefaults.cardElevation(defaultElevation = if (rank == 0) 5.dp else 1.dp)) {
                                 Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
                                     Text(when(rank) { 0 -> "🥇"; 1 -> "🥈"; else -> "🥉" }, style = MaterialTheme.typography.headlineSmall)
-                                    NexusAvatar(user.avatarUrl, user.fullName, if (rank == 0) 54 else 46)
+                                    NexusAvatar(user.avatarUrl, user.fullName, if (rank == 0) 48 else 40)
+                                    else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface.copy(alpha=.7f), modifier = Modifier.size(if (rank == 0) 48.dp else 40.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1), fontWeight = FontWeight.Bold) } }
                                     Text(user.fullName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                                     Text("${user.score} نقطة", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                 }
@@ -125,7 +126,7 @@ fun LeaderboardScreen(
                 val points = state.profile?.points ?: 0
                 val next = tiers.firstOrNull { it.first > points }
                 val previous = tiers.lastOrNull { it.first <= points }?.first ?: 0
-                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha=.18f))) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) { Text("ترتيبك الحالي", Modifier.weight(1f), fontWeight = FontWeight.SemiBold); Text(if (myRank > 0) "#${myRank}" else "غير مصنف", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
                         Text("${points} نقطة • ${tiers.last { it.first <= points }.second}", style = MaterialTheme.typography.labelMedium)
@@ -140,16 +141,17 @@ fun LeaderboardScreen(
             if (!state.leaderboardLoading && visible.isEmpty()) item {
                 Text("لا توجد نتائج لهذه التصفية", Modifier.fillMaxWidth().padding(28.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (visible.size > 3) item { Text("بقية الترتيب", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            if (visible.size > 3) item { Text("ترتيب بقية الطلاب", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
             itemsIndexed(visible.drop(3), key = { _, user -> user.id }) { offset, user ->
                 val index = offset + 3
-                Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Card(shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)) {
                     Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                         Surface(shape = CircleShape, color = when(index) { 0 -> MaterialTheme.colorScheme.tertiaryContainer; 1 -> MaterialTheme.colorScheme.secondaryContainer; 2 -> MaterialTheme.colorScheme.primaryContainer; else -> MaterialTheme.colorScheme.surfaceVariant }, modifier = Modifier.size(34.dp)) {
                             Box(contentAlignment = Alignment.Center) { Text("${index+1}", fontWeight = FontWeight.Bold) }
                         }
                         Spacer(Modifier.width(10.dp))
                         NexusAvatar(user.avatarUrl, user.fullName, 44)
+                        else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1)) } }
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(user.fullName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)

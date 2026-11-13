@@ -186,7 +186,7 @@ class NexusRepository(context: Context) {
 
     private suspend fun signedStorageUrl(bucket: String, path: String): String {
         val encodedPath = Uri.encode(path, "/")
-        val json = JSONObject(rest("/storage/v1/object/sign/$bucket/$encodedPath", "POST", JSONObject().put("expiresIn", 604800)))
+        val json = JSONObject(rest("/storage/v1/object/sign/$bucket/$encodedPath", "POST", JSONObject().put("expiresIn", 3600)))
         val signed = json.optString("signedURL").ifBlank { json.optString("signedUrl") }
         if (signed.isBlank()) throw ApiException("تعذّر تحميل الصورة")
         return if (signed.startsWith("http")) signed else baseUrl + "/storage/v1" + if (signed.startsWith("/")) signed else "/" + signed
@@ -771,7 +771,8 @@ class NexusRepository(context: Context) {
             signedMarker in raw -> raw.substringAfter(signedMarker).substringBefore('?')
             raw.startsWith("http://") || raw.startsWith("https://") -> return raw
             else -> raw.trimStart('/')
-        }
+        }.trimStart('/')
+        if (path.isBlank() || path.contains("..")) return null
         return runCatching { signedStorageUrl("avatars", path) }.getOrNull()
     }
 
