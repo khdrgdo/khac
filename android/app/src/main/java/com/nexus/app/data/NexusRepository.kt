@@ -283,6 +283,41 @@ class NexusRepository(context: Context) {
 
 
 
+
+    suspend fun loadPublicProfile(profileId: String): PublicProfileDetail {
+        val currentId = session?.userId ?: throw ApiException("جلسة غير صالحة")
+        val row = array(rest("/rest/v1/rpc/get_public_profiles", "POST", JSONObject().put("_ids", JSONArray().put(profileId)))).firstOrNull()
+            ?: throw ApiException("الملف الشخصي غير متاح")
+        val roles = array(rest("/rest/v1/user_roles?select=role&user_id=eq.${encode(profileId)}")).map { it.optString("role") }
+        val universityNumber = row.optString("university_number")
+        val isSubAdmin = "sub_admin" in roles || universityNumber.startsWith("sub_") || universityNumber.startsWith("SUBADMIN_")
+        val currentRoles = array(rest("/rest/v1/user_roles?select=role&user_id=eq.${encode(currentId)}")).map { it.optString("role") }
+        if (isSubAdmin && profileId != currentId && "admin" !in currentRoles) throw ApiException("هذا الملف غير متاح للطلاب")
+        val avatarPath = row.optStringOrNull("avatar_url")
+        val avatar = if (avatarPath.isNullOrBlank() || avatarPath.startsWith("http")) avatarPath else runCatching { signedStorageUrl("avatars", avatarPath) }.getOrNull()
+        val theme = if (profileId == currentId) row.optString("theme", "stars") else runCatching {
+            array(rest("/rest/v1/profiles?select=theme&id=eq.${encode(profileId)}&limit=1")).firstOrNull()?.optString("theme", "stars") ?: "stars"
+        }.getOrDefault("stars")
+        val profile = StudentProfile(profileId, universityNumber, row.optString("full_name", "طالب"), row.optStringOrNull("major"),
+            if (row.isNull("year")) null else row.optInt("year"), avatar, row.optStringOrNull("bio"), false, row.optInt("points"),
+            false, null, theme, roles, emptySet())
+        val postRows = array(rest("/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&author_id=eq.${encode(profileId)}&order=created_at.desc&limit=50"))
+        val postIds = postRows.map { it.optString("id") }.filter(String::isNotBlank)
+        val counts = if (postIds.isEmpty()) emptyMap() else array(rest("/rest/v1/comments?select=post_id&post_id=in.(${postIds.joinToString(",") { encode(it) }})")).groupingBy { it.optString("post_id") }.eachCount()
+        val posts = postRows.map { p ->
+            val paths = p.optJSONArray("images")?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotBlank) } }.orEmpty()
+            val images = paths.mapNotNull { path -> runCatching { signedStorageUrl("post-images", path) }.getOrNull() }
+            FeedPost(p.optString("id"), profileId, profile.fullName, profile.avatarUrl, p.optBoolean("is_anonymous"), p.optString("content"),
+                p.optString("post_type", "general"), p.optString("created_at"), counts[p.optString("id")] ?: 0, images, emptyList(), null, false, p.optStringOrNull("accepted_answer_id"))
+        }
+        val commentsCount = array(rest("/rest/v1/comments?select=id&author_id=eq.${encode(profileId)}&limit=1000")).size
+        val acceptedAnswers = if (postIds.isEmpty()) 0 else array(rest("/rest/v1/comments?select=id&author_id=eq.${encode(profileId)}&limit=1000")).let { comments ->
+            val commentIds = comments.map { it.optString("id") }.filter(String::isNotBlank)
+            if (commentIds.isEmpty()) 0 else array(rest("/rest/v1/posts?select=id&accepted_answer_id=in.(${commentIds.joinToString(",") { encode(it) }})")).size
+        }
+        return PublicProfileDetail(profile, posts, postRows.size, commentsCount, acceptedAnswers)
+    }
+
     suspend fun searchGlobal(query: String): SearchBundle {
         val q = query.trim()
         if (q.length < 2) return SearchBundle(emptyList(), emptyList(), emptyList())

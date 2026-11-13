@@ -19,7 +19,7 @@ import com.nexus.app.data.*
 
 @Composable
 fun GlobalSearchScreen(state: NexusUiState, onSearch: (String) -> Unit, onBack: () -> Unit,
-    onOpenPost: (String) -> Unit, onOpenCourse: (String) -> Unit, onStartChat: (String) -> Unit) {
+    onOpenPost: (String) -> Unit, onOpenCourse: (String) -> Unit, onStartChat: (String) -> Unit, onOpenProfile: (String) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     var tab by rememberSaveable { mutableStateOf("posts") }
     val results = state.searchResults
@@ -55,9 +55,9 @@ fun GlobalSearchScreen(state: NexusUiState, onSearch: (String) -> Unit, onBack: 
                     else -> {
                         val rows = results?.users.orEmpty()
                         if (rows.isEmpty() && !state.searchLoading) item { Text("لا يوجد طلاب مطابقون", Modifier.padding(20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        items(rows, key = { it.id }) { user -> Card(onClick = { onStartChat(user.id) }, shape = RoundedCornerShape(13.dp)) { Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        items(rows, key = { it.id }) { user -> Card(shape = RoundedCornerShape(13.dp)) { Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (!user.avatarUrl.isNullOrBlank()) AsyncImage(user.avatarUrl, null, Modifier.size(40.dp).then(Modifier)) else Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(40.dp)) { Box(contentAlignment = Alignment.Center) { Text(user.fullName.take(1)) } }
-                            Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(user.fullName, fontWeight = FontWeight.SemiBold); Text(user.universityNumber, style = MaterialTheme.typography.labelSmall) }; Icon(Icons.Outlined.Chat, null)
+                            Spacer(Modifier.width(10.dp)); Column(Modifier.weight(1f)) { Text(user.fullName, fontWeight = FontWeight.SemiBold); Text(user.universityNumber, style = MaterialTheme.typography.labelSmall) }; IconButton(onClick = { onOpenProfile(user.id) }) { Icon(Icons.Outlined.Person, "الملف الشخصي") }; IconButton(onClick = { onStartChat(user.id) }) { Icon(Icons.Outlined.Chat, "مراسلة") }
                         } } }
                     }
                 }

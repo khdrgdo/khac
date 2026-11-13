@@ -49,6 +49,8 @@ fun SocialFeedScreen(
     onParticipatePinnedCard: () -> Unit,
     onOpenPinnedAction: (String) -> Unit,
     onOpenPost: (String) -> Unit,
+    onOpenProfile: (String) -> Unit,
+    onShare: (String) -> Unit,
     onProfile: () -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
@@ -136,7 +138,7 @@ fun SocialFeedScreen(
             items(state.feedPosts, key = { it.id }) { post ->
                 FeedPostCard(post = post, busy = state.busy, ownPost = post.authorId == state.profile?.id,
                     onComment = { text -> onComment(post.id, text) }, onReact = { onReact(post.id, it) },
-                    onSave = { onSave(post.id, post.saved) }, onReport = { onReport(post.id, it) }, onDelete = { onDelete(post.id) }, onOpenPost = { onOpenPost(post.id) })
+                    onSave = { onSave(post.id, post.saved) }, onReport = { onReport(post.id, it) }, onDelete = { onDelete(post.id) }, onOpenPost = { onOpenPost(post.id) }, onOpenProfile = { post.authorId?.let(onOpenProfile) }, onShare = { onShare(post.content) })
             }
         }
     }
@@ -144,7 +146,7 @@ fun SocialFeedScreen(
 
 @Composable
 private fun FeedPostCard(post: FeedPost, busy: Boolean, ownPost: Boolean, onComment: (String) -> Unit,
-    onReact: (String?) -> Unit, onSave: () -> Unit, onReport: (String) -> Unit, onDelete: () -> Unit, onOpenPost: () -> Unit) {
+    onReact: (String?) -> Unit, onSave: () -> Unit, onReport: (String) -> Unit, onDelete: () -> Unit, onOpenPost: () -> Unit, onOpenProfile: () -> Unit, onShare: () -> Unit) {
     var reply by rememberSaveable(post.id) { mutableStateOf("") }
     var reportOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     var reportReason by rememberSaveable(post.id) { mutableStateOf("محتوى غير لائق أو مسيء") }
@@ -160,7 +162,7 @@ private fun FeedPostCard(post: FeedPost, busy: Boolean, ownPost: Boolean, onComm
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(post.authorName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    TextButton(onClick = onOpenProfile, contentPadding = PaddingValues(0.dp)) { Text(post.authorName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) }
                     Text(if (post.anonymous) "منشور مجهول" else post.createdAt.take(10), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (post.postType == "question") AssistChip(onClick = {}, label = { Text("سؤال") })
@@ -182,6 +184,7 @@ private fun FeedPostCard(post: FeedPost, busy: Boolean, ownPost: Boolean, onComm
                         label = { Text(if (count > 0) "$emoji $count" else emoji) },
                         leadingIcon = if (post.myReaction == type) ({ Icon(Icons.Outlined.Check, null) }) else null)
                 }
+                AssistChip(onClick = onShare, label = { Text("مشاركة") }, leadingIcon = { Icon(Icons.Outlined.Share, null) })
                 AssistChip(onClick = onSave, label = { Text(if (post.saved) "محفوظ" else "حفظ") },
                     leadingIcon = { Icon(if (post.saved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, null) })
                 if (!ownPost) AssistChip(onClick = { reportOpen = true }, label = { Text("بلاغ") }, leadingIcon = { Icon(Icons.Outlined.Flag, null) })

@@ -206,6 +206,13 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
 
 
 
+
+    fun openPublicProfile(profileId: String) { _state.update { it.copy(screen = AppScreen.PUBLIC_PROFILE, publicProfile = null, publicProfileLoading = true) }; viewModelScope.launch {
+        runCatching { repository.loadPublicProfile(profileId) }.onSuccess { p -> _state.update { it.copy(publicProfile = p, publicProfileLoading = false) } }
+            .onFailure { e -> _state.update { it.copy(publicProfileLoading = false, error = e.message ?: "تعذّر فتح الملف الشخصي") } }
+    } }
+    fun backFromPublicProfile() { _state.update { it.copy(screen = AppScreen.FEED, publicProfile = null) } }
+
     fun showSearch() { _state.update { it.copy(screen = AppScreen.SEARCH, searchResults = null, error = null) } }
     fun runGlobalSearch(query: String) { viewModelScope.launch { _state.update { it.copy(searchLoading = true, error = null) }
         runCatching { repository.searchGlobal(query) }.onSuccess { results -> _state.update { it.copy(searchResults = results, searchLoading = false) } }
