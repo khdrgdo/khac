@@ -256,6 +256,28 @@ class NexusRepository(context: Context) {
 
 
 
+
+    suspend fun searchGlobal(query: String): SearchBundle {
+        val q = query.trim()
+        if (q.length < 2) return SearchBundle(emptyList(), emptyList(), emptyList())
+        val filter = encode(q)
+        val postRows = array(rest("/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&content=ilike.*$filter*&order=created_at.desc&limit=30"))
+        val ids = postRows.mapNotNull { it.optStringOrNull("author_id") }.toSet()
+        val profiles = publicProfiles(ids)
+        val posts = postRows.map { row ->
+            val authorId = row.optStringOrNull("author_id"); val anon = row.optBoolean("is_anonymous") || authorId == null
+            val paths = row.optJSONArray("images")?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotBlank) } }.orEmpty()
+            val images = paths.mapNotNull { path -> runCatching { signedStorageUrl("post-images", path) }.getOrNull() }
+            FeedPost(row.optString("id"), authorId, if (anon) "طالب مجهول" else profiles[authorId]?.fullName ?: "طالب",
+                if (anon) null else profiles[authorId]?.avatarUrl, anon, row.optString("content"), row.optString("post_type", "general"),
+                row.optString("created_at"), 0, images, emptyList(), null, false, row.optStringOrNull("accepted_answer_id"))
+        }
+        val courseRows = array(rest("/rest/v1/courses?select=id,name,description,major,year,semester,teacher_id&or=(name.ilike.*$filter*,description.ilike.*$filter*,major.ilike.*$filter*)&limit=30"))
+        val courses = courseRows.map { row -> Course(row.optString("id"), row.optString("name"), row.optStringOrNull("description"), row.optString("major"), row.optInt("year"), row.optInt("semester"), row.optStringOrNull("teacher_id"), null, emptyList()) }
+        val users = searchPublicUsers(q)
+        return SearchBundle(posts, courses, users)
+    }
+
     suspend fun loadPostDetail(postId: String): PostDetail {
         val row = array(rest("/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&id=eq.${encode(postId)}&limit=1")).firstOrNull()
             ?: throw ApiException("المنشور غير موجود")

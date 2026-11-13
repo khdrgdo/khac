@@ -44,6 +44,7 @@ fun SocialFeedScreen(
     onSaved: () -> Unit,
     onNotifications: () -> Unit,
     onMessages: () -> Unit,
+    onSearch: () -> Unit,
     onVotePinnedCard: (String) -> Unit,
     onParticipatePinnedCard: () -> Unit,
     onOpenPinnedAction: (String) -> Unit,
@@ -77,6 +78,7 @@ fun SocialFeedScreen(
                         Text("الرئيسية", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Text("شارك المعرفة وناقش أفكارك مع زملائك", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, "بحث") }
                     IconButton(onClick = onSaved) { Icon(Icons.Outlined.Bookmarks, "المحفوظات") }
                     IconButton(onClick = onNotifications) { Icon(Icons.Outlined.NotificationsNone, "الإشعارات") }
                     IconButton(onClick = onMessages) { Icon(Icons.Outlined.ChatBubbleOutline, "المحادثات") }

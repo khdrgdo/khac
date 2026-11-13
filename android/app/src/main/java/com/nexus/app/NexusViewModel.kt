@@ -204,6 +204,12 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun backToMessages() { _state.update { it.copy(screen = AppScreen.MESSAGES, activeConversationId = null) }; loadConversations() }
 
 
+
+    fun showSearch() { _state.update { it.copy(screen = AppScreen.SEARCH, searchResults = null, error = null) } }
+    fun runGlobalSearch(query: String) { viewModelScope.launch { _state.update { it.copy(searchLoading = true, error = null) }
+        runCatching { repository.searchGlobal(query) }.onSuccess { results -> _state.update { it.copy(searchResults = results, searchLoading = false) } }
+            .onFailure { e -> _state.update { it.copy(searchLoading = false, error = e.message ?: "تعذّر البحث") } } } }
+
     fun openPostDetail(postId: String) { _state.update { it.copy(screen = AppScreen.POST_DETAIL, postDetail = null, postDetailLoading = true) }; loadPostDetail(postId) }
     fun loadPostDetail(postId: String) { viewModelScope.launch { runCatching { repository.loadPostDetail(postId) }.onSuccess { detail -> _state.update { it.copy(postDetail = detail, postDetailLoading = false) } }.onFailure { e -> _state.update { it.copy(postDetailLoading = false, error = e.message) } } }
     fun addPostComment(content: String, anonymous: Boolean, parentId: String?) {
