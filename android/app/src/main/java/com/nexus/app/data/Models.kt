@@ -48,7 +48,9 @@ data class PublicProfile(
     val id: String,
     val fullName: String,
     val avatarUrl: String?,
-    val verified: Boolean
+    val verified: Boolean,
+    val major: String? = null,
+    val points: Int = 0
 )
 
 data class ScheduleEntry(
@@ -88,6 +90,11 @@ data class CourseMaterial(
     val extension: String get() = url.substringAfterLast('.', "").substringBefore('?').lowercase()
 }
 
+data class FeedReaction(
+    val userId: String,
+    val reaction: String
+)
+
 data class FeedPost(
     val id: String,
     val authorId: String?,
@@ -97,7 +104,15 @@ data class FeedPost(
     val content: String,
     val postType: String,
     val createdAt: String,
-    val commentsCount: Int
+    val commentsCount: Int,
+    val images: List<String> = emptyList(),
+    val acceptedAnswerId: String? = null,
+    val authorMajor: String? = null,
+    val authorPoints: Int = 0,
+    val authorVerified: Boolean = false,
+    val reactions: List<FeedReaction> = emptyList(),
+    val myReaction: String? = null,
+    val saved: Boolean = false
 )
 
 data class CourseUpdate(
@@ -147,6 +162,8 @@ data class NexusUiState(
     val courses: List<Course> = emptyList(),
     val recentMaterials: List<CourseMaterial> = emptyList(),
     val feedPosts: List<FeedPost> = emptyList(),
+    val feedFilter: String = "all",
+    val feedTag: String? = null,
     val selectedCourse: Course? = null,
     val courseDetail: CourseDetail? = null,
     val selectedTab: CourseTab = CourseTab.FILES,

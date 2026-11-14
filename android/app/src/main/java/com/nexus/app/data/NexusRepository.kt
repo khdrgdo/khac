@@ -3,6 +3,8 @@ package com.nexus.app.data
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -14,6 +16,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class ApiException(message: String, val statusCode: Int = 0) : Exception(message)
@@ -96,30 +99,155 @@ class NexusRepository(context: Context) {
         return courses to recentRows.map { materialFrom(it, names[it.optString("course_id")]) }
     }
 
-    suspend fun loadFeed(): List<FeedPost> {
-        val rows = array(rest("/rest/v1/posts?select=id,author_id,content,created_at,is_anonymous,post_type&order=created_at.desc&limit=50"))
-        val ids = rows.mapNotNull { it.optStringOrNull("author_id") }.toSet()
-        val profiles = publicProfiles(ids)
-        val postIds = rows.mapNotNull { it.optStringOrNull("id") }
-        val commentCounts = if (postIds.isEmpty()) emptyMap() else {
-            array(rest("/rest/v1/comments?select=post_id&post_id=in.(" + postIds.joinToString(",") + ")"))
-                .groupingBy { it.optString("post_id") }.eachCount()
+    suspend fun loadFeed(filter: String = "all", tag: String? = null): List<FeedPost> {
+        ensureFreshSession()
+        val cleanTag = tag?.replace(Regex("[^\\p{L}\\p{N}_-]"), "")?.take(40)?.takeIf { it.isNotBlank() }
+        var query = "/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&order=created_at.desc&limit=50"
+        query += "&content=" + encode("not.ilike.[course:%")
+        when (filter) {
+            "open_questions" -> query += "&post_type=eq.question&accepted_answer_id=is.null"
+            "solved_questions" -> query += "&post_type=eq.question&accepted_answer_id=not.is.null"
         }
-        return rows.map { row ->
-            val authorId = row.optStringOrNull("author_id")
-            val anonymous = row.optBoolean("is_anonymous") || authorId == null
-            val author = profiles[authorId]
-            FeedPost(row.optString("id"), authorId,
-                if (anonymous) "طالب مجهول" else author?.fullName ?: "طالب",
-                if (anonymous) null else author?.avatarUrl, anonymous,
-                row.optString("content"), row.optString("post_type", "post"),
-                row.optString("created_at"), commentCounts[row.optString("id")] ?: 0)
+        if (cleanTag != null) query += "&content=" + encode("ilike.%#${cleanTag}%")
+        val rows = array(rest(query))
+        if (rows.isEmpty()) return emptyList()
+
+        val postIds = rows.mapNotNull { it.optStringOrNull("id") }
+        val authorIds = rows.mapNotNull { it.optStringOrNull("author_id") }.toSet()
+        val currentUserId = session?.userId.orEmpty()
+
+        return coroutineScope {
+            val profilesTask = async { publicProfiles(authorIds) }
+            val reactionsTask = async {
+                array(rest("/rest/v1/post_reactions?select=post_id,user_id,reaction&post_id=in.(" + postIds.joinToString(",") + ")&limit=5000"))
+            }
+            val commentsTask = async {
+                array(rest("/rest/v1/comments?select=post_id&post_id=in.(" + postIds.joinToString(",") + ")&limit=5000"))
+            }
+            val savedTask = async {
+                if (currentUserId.isBlank()) emptySet<String>()
+                else array(rest("/rest/v1/saved_posts?select=post_id&user_id=eq." + encode(currentUserId) + "&post_id=in.(" + postIds.joinToString(",") + ")"))
+                    .mapNotNull { it.optStringOrNull("post_id") }.toSet()
+            }
+            val profiles = profilesTask.await()
+            val reactionRows = reactionsTask.await()
+            val commentCounts = commentsTask.await().groupingBy { it.optString("post_id") }.eachCount()
+            val savedIds = savedTask.await()
+            val reactionsByPost = reactionRows.groupBy { it.optString("post_id") }
+
+            rows.map { row ->
+                val id = row.optString("id")
+                val authorId = row.optStringOrNull("author_id")
+                val anonymous = row.optBoolean("is_anonymous") || authorId == null
+                val author = profiles[authorId]
+                val postReactions = reactionsByPost[id].orEmpty().map {
+                    FeedReaction(it.optString("user_id"), it.optString("reaction"))
+                }
+                val imageArray = row.optJSONArray("images")
+                val imagePaths = if (imageArray == null) emptyList() else
+                    (0 until imageArray.length()).mapNotNull { index ->
+                        imageArray.optString(index).takeIf { it.isNotBlank() && it != "null" }
+                    }
+                FeedPost(
+                    id = id,
+                    authorId = authorId,
+                    authorName = if (anonymous) "طالب مجهول" else author?.fullName ?: "طالب",
+                    avatarUrl = if (anonymous) null else author?.avatarUrl,
+                    anonymous = anonymous,
+                    content = row.optString("content"),
+                    postType = row.optString("post_type", "general"),
+                    createdAt = row.optString("created_at"),
+                    commentsCount = commentCounts[id] ?: 0,
+                    images = imagePaths,
+                    acceptedAnswerId = row.optStringOrNull("accepted_answer_id"),
+                    authorMajor = if (anonymous) null else author?.major,
+                    authorPoints = if (anonymous) 0 else author?.points ?: 0,
+                    authorVerified = !anonymous && author?.verified == true,
+                    reactions = postReactions,
+                    myReaction = postReactions.firstOrNull { it.userId == currentUserId }?.reaction,
+                    saved = savedIds.contains(id)
+                )
+            }
         }
     }
 
-    suspend fun createFeedPost(content: String, anonymous: Boolean) {
+    suspend fun createFeedPost(content: String, anonymous: Boolean, question: Boolean = false, images: List<String> = emptyList()) {
         rest("/rest/v1/rpc/create_post_as", "POST", JSONObject()
-            .put("_content", content.trim()).put("_post_type", "general").put("_anonymous", anonymous))
+            .put("_content", content.trim())
+            .put("_images", JSONArray(images))
+            .put("_post_type", if (question) "question" else "general")
+            .put("_anonymous", anonymous))
+    }
+
+    suspend fun uploadPostImage(uri: Uri): String {
+        ensureFreshSession()
+        val current = session ?: throw ApiException("انتهت جلسة الدخول")
+        val mime = appContext.contentResolver.getType(uri) ?: "image/jpeg"
+        if (!mime.startsWith("image/")) throw ApiException("الملف المحدد ليس صورة")
+        val bytes = withContext(Dispatchers.IO) {
+            appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } ?: throw ApiException("تعذّر قراءة الصورة")
+        if (bytes.size > 8 * 1024 * 1024) throw ApiException("حجم الصورة يتجاوز 8 ميغابايت")
+        val extension = when (mime.lowercase()) {
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            "image/gif" -> "gif"
+            "image/heic", "image/heif" -> "heic"
+            else -> "jpg"
+        }
+        val path = current.userId + "/" + UUID.randomUUID() + "." + extension
+        val request = Request.Builder()
+            .url(baseUrl + "/storage/v1/object/post-images/" + Uri.encode(path, "/"))
+            .header("apikey", publishableKey)
+            .header("Authorization", "Bearer " + current.accessToken)
+            .header("Content-Type", mime)
+            .header("x-upsert", "false")
+            .post(bytes.toRequestBody(mime.toMediaType()))
+            .build()
+        execute(request)
+        return path
+    }
+
+    suspend fun removePostImage(path: String) {
+        rest("/storage/v1/object/post-images/" + Uri.encode(path, "/"), "DELETE")
+    }
+
+    suspend fun resolvePostImageUrl(path: String): String {
+        val json = JSONObject(rest("/storage/v1/object/sign/post-images/" + Uri.encode(path, "/"), "POST", JSONObject().put("expiresIn", 600)))
+        val signed = json.optString("signedURL").ifBlank { json.optString("signedUrl") }
+        if (signed.isBlank()) throw ApiException("تعذّر تحميل صورة المنشور")
+        return if (signed.startsWith("http")) signed else baseUrl + "/storage/v1" + if (signed.startsWith("/")) signed else "/" + signed
+    }
+
+    suspend fun setPostReaction(postId: String, reaction: String?) {
+        val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        val filter = "?post_id=eq." + encode(postId) + "&user_id=eq." + encode(userId)
+        if (reaction == null) {
+            rest("/rest/v1/post_reactions" + filter, "DELETE")
+        } else {
+            rest("/rest/v1/post_reactions?on_conflict=post_id,user_id", "POST",
+                JSONObject().put("post_id", postId).put("user_id", userId).put("reaction", reaction),
+                "resolution=merge-duplicates,return=minimal")
+        }
+    }
+
+    suspend fun toggleSavedPost(postId: String, saved: Boolean) {
+        val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        if (saved) {
+            rest("/rest/v1/saved_posts", "POST", JSONObject().put("post_id", postId).put("user_id", userId))
+        } else {
+            rest("/rest/v1/saved_posts?post_id=eq." + encode(postId) + "&user_id=eq." + encode(userId), "DELETE")
+        }
+    }
+
+    suspend fun deletePost(postId: String) {
+        rest("/rest/v1/posts?id=eq." + encode(postId), "DELETE")
+    }
+
+    suspend fun reportPost(postId: String, reason: String) {
+        val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        rest("/rest/v1/post_reports", "POST",
+            JSONObject().put("post_id", postId).put("reporter_id", userId).put("reason", reason))
     }
 
     suspend fun loadCourseDetail(courseId: String): CourseDetail {
@@ -253,7 +381,7 @@ class NexusRepository(context: Context) {
         val rows = array(rest("/rest/v1/rpc/get_public_profiles", "POST", JSONObject().put("_ids", idArray)))
         return rows.associate { row ->
             val id = row.optString("id")
-            id to PublicProfile(id, row.optString("full_name", "مستخدم"), row.optStringOrNull("avatar_url"), row.optBoolean("verified"))
+            id to PublicProfile(id, row.optString("full_name", "مستخدم"), row.optStringOrNull("avatar_url"), row.optBoolean("verified"), row.optStringOrNull("major"), row.optInt("points"))
         }
     }
 
@@ -270,10 +398,11 @@ class NexusRepository(context: Context) {
         }
     }
 
-    private suspend fun rest(path: String, method: String = "GET", body: JSONObject? = null): String {
+    private suspend fun rest(path: String, method: String = "GET", body: JSONObject? = null, prefer: String? = null): String {
         ensureFreshSession()
         val current = session ?: throw ApiException("انتهت جلسة الدخول")
         val builder = Request.Builder().url(baseUrl + path).header("apikey", publishableKey).header("Authorization", "Bearer " + current.accessToken)
+        if (prefer != null) builder.header("Prefer", prefer)
         if (method == "GET") builder.get() else builder.method(method, (body ?: JSONObject()).toString().toRequestBody(jsonType))
         return execute(builder.build())
     }
