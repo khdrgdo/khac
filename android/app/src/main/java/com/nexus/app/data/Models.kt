@@ -42,7 +42,7 @@ data class StudentProfile(
     val banned: Boolean,
     val suspendedUntil: String?,
     val cardThemeId: String? = null
-
+)
 
 data class PublicProfile(
     val id: String,
