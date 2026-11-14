@@ -19,6 +19,10 @@ class NexusPaletteContrastTest {
     }
 
     private val textPairs = listOf(
+        "OnSecondary" to "Secondary",
+        "Secondary" to "Surface",
+        "Secondary" to "Bg",
+        "OnSecondaryContainer" to "SecondaryContainer",
         "Text" to "Bg",
         "Text" to "Surface",
         "Text" to "SurfaceVariant",

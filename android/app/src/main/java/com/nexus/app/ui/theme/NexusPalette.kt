@@ -6,6 +6,10 @@ package com.nexus.app.ui.theme
  */
 object NexusPalette {
     object Light {
+        const val Secondary = 0xFF5A4E8CL
+        const val OnSecondary = 0xFFFFFFFFL
+        const val SecondaryContainer = 0xFFE6E1F5L
+        const val OnSecondaryContainer = 0xFF231A4AL
         const val Bg = 0xFFF7F5FBL
         const val Surface = 0xFFFFFFFFL
         const val SurfaceLow = 0xFFFBFAFEL
@@ -37,6 +41,10 @@ object NexusPalette {
     }
 
     object Dark {
+        const val Secondary = 0xFFC9BEF0L
+        const val OnSecondary = 0xFF2B2150L
+        const val SecondaryContainer = 0xFF3A3160L
+        const val OnSecondaryContainer = 0xFFE6E1F5L
         const val Bg = 0xFF0F0B1AL
         const val Surface = 0xFF181226L
         const val SurfaceLow = 0xFF130E20L
