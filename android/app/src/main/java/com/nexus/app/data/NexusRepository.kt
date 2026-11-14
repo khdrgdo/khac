@@ -384,7 +384,7 @@ class NexusRepository(context: Context) {
     }
 
     suspend fun updateProfileBio(userId: String, bio: String?) {
-        rest("/rest/v1/profiles?id=eq." + encode(userId), "PATCH", JSONObject().put("bio", bio?.trim()?.takeIf { it.isNotBlank() }))
+        rest("/rest/v1/profiles?id=eq." + encode(userId), "PATCH", JSONObject().put("bio", bio?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL))
     }
 
     suspend fun updateProfileName(userId: String, name: String) {

@@ -28,7 +28,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun start(uri: Uri?) {
         if (uri != null) repository.acceptDeepLink(uri)
         if (_state.value.profile != null && uri == null) return
-        _state.update { it.copy(busy = false, loading = true, profile = null, error = null) }
+        _state.update { it.copy(busy = false, loading = true, profile = null, profileStats = null, error = null) }
         restoreSession()
     }
 
@@ -44,6 +44,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                     _state.update { it.copy(loading = false, busy = false, screen = AppScreen.LOGIN) }
                 } else {
                     _state.update { it.copy(profile = profile, loading = false, busy = false, screen = AppScreen.FEED) }
+                    refreshProfileStats(profile.id)
                     loadFeed()
                 }
             } catch (error: Exception) {
@@ -61,6 +62,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val profile = repository.signIn(identifier, password)
                 _state.update { it.copy(busy = false, loading = false, profile = profile, screen = AppScreen.FEED, notice = "مرحباً بعودتك، " + profile.fullName) }
+                refreshProfileStats(profile.id)
                 loadFeed()
             } catch (error: Exception) {
                 _state.update { it.copy(busy = false, loading = false, error = error.message ?: "تعذّر تسجيل الدخول") }
@@ -290,6 +292,91 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                 _state.update { it.copy(busy = false, screen = AppScreen.PROFILE, notice = "تم تحديث كلمة المرور") }
             } catch (error: Exception) {
                 _state.update { it.copy(busy = false, error = error.message ?: "تعذّر تحديث كلمة المرور") }
+            }
+        }
+    }
+
+    private fun refreshProfileStats(userId: String) {
+        viewModelScope.launch {
+            val stats = runCatching { repository.loadProfileStats(userId) }.getOrNull()
+            _state.update { it.copy(profileStats = stats) }
+        }
+    }
+
+    fun refreshProfile() {
+        val userId = _state.value.profile?.id ?: return
+        viewModelScope.launch {
+            try {
+                val profile = repository.restoreSession() ?: return@launch
+                val stats = runCatching { repository.loadProfileStats(userId) }.getOrNull()
+                _state.update { it.copy(profile = profile, profileStats = stats, error = null) }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر تحديث الملف الشخصي") }
+            }
+        }
+    }
+
+    fun updateProfileBio(bio: String) {
+        val profile = _state.value.profile ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.updateProfileBio(profile.id, bio)
+                val updated = repository.restoreSession() ?: profile
+                _state.update { it.copy(profile = updated, busy = false, notice = "تم تحديث النبذة") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر تحديث النبذة") }
+            }
+        }
+    }
+
+    fun changeProfileName(name: String, reason: String, contactInfo: String) {
+        val profile = _state.value.profile ?: return
+        val trimmed = name.trim()
+        if (trimmed.length < 2) {
+            _state.update { it.copy(error = "الاسم يجب أن يتكون من حرفين على الأقل") }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                if (!profile.hasUsedDirectNameChange) {
+                    repository.updateProfileName(profile.id, trimmed)
+                    val updated = repository.restoreSession() ?: profile.copy(fullName = trimmed, hasUsedDirectNameChange = true)
+                    _state.update { it.copy(profile = updated, busy = false, notice = "تم تغيير الاسم. التغييرات التالية تتطلب مراجعة الإدارة.") }
+                } else {
+                    if (reason.isBlank() || contactInfo.isBlank()) throw IllegalArgumentException("أدخل سبب الطلب ومعلومات التواصل")
+                    repository.submitNameChangeRequest(profile.id, profile.fullName, trimmed, reason, contactInfo, profile.universityNumber)
+                    _state.update { it.copy(busy = false, notice = "تم إرسال طلب تغيير الاسم إلى الإدارة") }
+                }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر تغيير الاسم") }
+            }
+        }
+    }
+
+    fun toggleUniversityNumberPrivacy(hidden: Boolean) {
+        val profile = _state.value.profile ?: return
+        viewModelScope.launch {
+            try {
+                repository.toggleUniversityNumberPrivacy(profile.id, hidden)
+                _state.update { it.copy(profile = it.profile?.copy(hideUniversityNumber = hidden), notice = if (hidden) "تم إخفاء الرقم الجامعي" else "تم إظهار الرقم الجامعي") }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر تحديث الخصوصية") }
+            }
+        }
+    }
+
+    fun uploadProfileAvatar(uri: Uri) {
+        val profile = _state.value.profile ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, error = null) }
+            try {
+                repository.uploadProfileAvatar(uri, profile.id)
+                val updated = repository.restoreSession() ?: profile
+                _state.update { it.copy(profile = updated, busy = false, notice = "تم تحديث الصورة الشخصية") }
+            } catch (error: Exception) {
+                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر تحديث الصورة") }
             }
         }
     }
