@@ -186,7 +186,13 @@ class NexusRepository(context: Context) {
 
     suspend fun recoverPassword(identifier: String) {
         val body = JSONObject().put("email", normalizeLoginIdentifier(identifier))
-        execute(Request.Builder().url(baseUrl + "/auth/v1/recover").header("apikey", publishableKey).post(body.toString().toRequestBody(jsonType)).build())
+        val redirect = Uri.parse(com.nexus.app.BuildConfig.WEB_AUTH_URL.trimEnd('/') + "/reset-password")
+            .buildUpon()
+            .appendQueryParameter("redirect_to", "com.nexus.app://login-callback")
+            .build()
+            .toString()
+        val requestUrl = baseUrl + "/auth/v1/recover?redirect_to=" + encode(redirect)
+        execute(Request.Builder().url(requestUrl).header("apikey", publishableKey).post(body.toString().toRequestBody(jsonType)).build())
     }
 
     suspend fun updatePassword(password: String) {

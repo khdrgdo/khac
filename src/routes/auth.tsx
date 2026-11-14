@@ -390,8 +390,11 @@ function ForgotPasswordDialog({ onClose }: { onClose: () => void }) {
       return;
     }
     setLoading(true);
+    const resetRedirect = new URL("/reset-password", window.location.origin);
+    const mobileRedirect = getMobileRedirect();
+    if (mobileRedirect) resetRedirect.searchParams.set("redirect_to", mobileRedirect);
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: resetRedirect.toString(),
     });
     setLoading(false);
     if (error) {
@@ -501,11 +504,14 @@ function SignupForm({
 
     setLoading(true);
     try {
+      const emailRedirect = new URL("/auth", window.location.origin);
+      const mobileRedirect = getMobileRedirect();
+      if (mobileRedirect) emailRedirect.searchParams.set("redirect_to", mobileRedirect);
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password: password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: emailRedirect.toString(),
           data: {
             university_number: cleanedUniv,
             full_name: name.trim(),

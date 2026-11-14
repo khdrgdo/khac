@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { buildMobileSessionLink, clearMobileRedirect, getMobileRedirect, rememberMobileRedirect } from "@/lib/mobileAuthBridge";
 import { KeyRound, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/reset-password")({
@@ -20,6 +21,8 @@ function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    rememberMobileRedirect(params.get("redirect_to"));
     // Supabase will place the recovery session automatically. Verify we have one.
     supabase.auth
       .getSession()
@@ -57,6 +60,16 @@ function ResetPasswordPage() {
       return;
     }
     toast.success("تم تحديث كلمة السر");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const mobileRedirect = getMobileRedirect();
+    if (sessionData.session && mobileRedirect) {
+      const mobileLink = buildMobileSessionLink(sessionData.session, mobileRedirect);
+      if (mobileLink) {
+        clearMobileRedirect();
+        window.location.href = mobileLink;
+        return;
+      }
+    }
     navigate({ to: "/feed", replace: true });
   }
 
