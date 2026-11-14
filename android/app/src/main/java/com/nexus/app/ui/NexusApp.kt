@@ -76,7 +76,20 @@ fun NexusApp(viewModel: NexusViewModel) {
         when (state.screen) {
             AppScreen.LOGIN -> if (state.loading) SplashScreen() else NexusLoginScreen(state, viewModel::signIn, viewModel::recoverPassword)
             AppScreen.HOME -> HomeScreen(state, viewModel::openCourse, viewModel::openMaterial, viewModel::refreshHome, viewModel::showCourses, viewModel::showProfile, viewModel::showFeed)
-            AppScreen.FEED -> SocialFeedScreen(state, viewModel::loadFeed, viewModel::publishPost, viewModel::addFeedComment, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
+            AppScreen.FEED -> SocialFeedScreen(
+                state = state,
+                onRefresh = viewModel::loadFeed,
+                onPublish = viewModel::publishPost,
+                onComment = viewModel::addFeedComment,
+                onReact = viewModel::reactToPost,
+                onSave = viewModel::toggleSavedPost,
+                onDelete = viewModel::deletePost,
+                onReport = viewModel::reportPost,
+                onResolveImage = viewModel::resolvePostImage,
+                onHome = viewModel::showHome,
+                onCourses = viewModel::showCourses,
+                onProfile = viewModel::showProfile
+            )
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
             AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::saveProfileCardTheme, viewModel::signOut)
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
