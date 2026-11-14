@@ -74,7 +74,7 @@ fun NexusApp(viewModel: NexusViewModel) {
 
     NexusTheme(state.themeMode) {
         when (state.screen) {
-            AppScreen.LOGIN -> if (state.loading) SplashScreen() else LoginScreen(state, viewModel::signIn, viewModel::recoverPassword)
+            AppScreen.LOGIN -> if (state.loading) SplashScreen() else NexusLoginScreen(state, viewModel::signIn, viewModel::recoverPassword)
             AppScreen.HOME -> HomeScreen(state, viewModel::openCourse, viewModel::openMaterial, viewModel::refreshHome, viewModel::showCourses, viewModel::showProfile, viewModel::showFeed)
             AppScreen.FEED -> SocialFeedScreen(state, viewModel::loadFeed, viewModel::publishPost, viewModel::addFeedComment, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
@@ -118,12 +118,10 @@ private fun SplashScreen() {
             Text("NEXUS", style = MaterialTheme.typography.headlineMedium, color = Color.White, letterSpacing = 4.sp, fontWeight = FontWeight.Bold)
             Text("مساحتك الأكاديمية", style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.82f), letterSpacing = 1.2.sp)
             Spacer(Modifier.height(10.dp))
-            LinearProgressIndicator(modifier = Modifier.width(76.dp).height(2.dp).clip(RoundedCornerShape(4.dp)), color = Color(0xFFE08B61), trackColor = Color.White.copy(alpha = 0.14f))
+            LinearProgressIndicator(modifier = Modifier.width(76.dp).height(2.dp).clip(RoundedCornerShape(4.dp)), color = Color(0xFF34D399), trackColor = Color.White.copy(alpha = 0.14f))
         }
     }
 }
-
-@Composable
 
 @Composable
 private fun HomeScreen(
