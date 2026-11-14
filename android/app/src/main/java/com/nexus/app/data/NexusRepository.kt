@@ -353,12 +353,87 @@ class NexusRepository(context: Context) {
     }
 
     private suspend fun loadProfile(userId: String): StudentProfile {
-        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,card_theme_id&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
+        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,card_theme_id,hide_university_number,has_used_direct_name_change&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
             ?: throw ApiException("لم يُعثر على ملف الطالب المرتبط بهذا الحساب")
-        return StudentProfile(row.optString("id"), row.optString("university_number"), row.optString("full_name"),
-            row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"),
-            row.optStringOrNull("avatar_url"), row.optStringOrNull("bio"), row.optBoolean("must_change_password"),
-            row.optInt("points"), row.optBoolean("banned"), row.optStringOrNull("suspended_until"), row.optStringOrNull("card_theme_id"))
+        val rawAvatar = row.optStringOrNull("avatar_url")
+        val avatar = if (rawAvatar.isNullOrBlank() || rawAvatar.startsWith("http")) rawAvatar
+            else resolveStorageUrls("avatars", listOf(rawAvatar))[rawAvatar] ?: rawAvatar
+        return StudentProfile(
+            row.optString("id"),
+            row.optString("university_number"),
+            row.optString("full_name"),
+            row.optStringOrNull("major"),
+            if (row.isNull("year")) null else row.optInt("year"),
+            avatar,
+            row.optStringOrNull("bio"),
+            row.optBoolean("must_change_password"),
+            row.optInt("points"),
+            row.optBoolean("banned"),
+            row.optStringOrNull("suspended_until"),
+            row.optStringOrNull("card_theme_id"),
+            row.optBoolean("hide_university_number"),
+            row.optBoolean("has_used_direct_name_change")
+        )
+    }
+
+    suspend fun loadProfileStats(userId: String): ProfileStats = coroutineScope {
+        val postsTask = async { array(rest("/rest/v1/posts?select=id&author_id=eq." + encode(userId) + "&limit=5000")).size }
+        val commentsTask = async { array(rest("/rest/v1/comments?select=id&author_id=eq." + encode(userId) + "&limit=5000")).size }
+        val savedTask = async { array(rest("/rest/v1/saved_posts?select=id&user_id=eq." + encode(userId) + "&limit=5000")).size }
+        ProfileStats(postsTask.await(), commentsTask.await(), savedTask.await())
+    }
+
+    suspend fun updateProfileBio(userId: String, bio: String?) {
+        rest("/rest/v1/profiles?id=eq." + encode(userId), "PATCH", JSONObject().put("bio", bio?.trim()?.takeIf { it.isNotBlank() }))
+    }
+
+    suspend fun updateProfileName(userId: String, name: String) {
+        rest("/rest/v1/profiles?id=eq." + encode(userId), "PATCH",
+            JSONObject().put("full_name", name.trim()).put("has_used_direct_name_change", true))
+    }
+
+    suspend fun submitNameChangeRequest(userId: String, currentName: String, requestedName: String, reason: String, contactInfo: String, universityNumber: String) {
+        rest("/rest/v1/name_change_requests", "POST", JSONObject()
+            .put("user_id", userId)
+            .put("current_name", currentName)
+            .put("requested_name", requestedName.trim())
+            .put("reason", reason.trim())
+            .put("contact_info", contactInfo.trim())
+            .put("university_number", universityNumber)
+            .put("status", "pending"))
+    }
+
+    suspend fun toggleUniversityNumberPrivacy(userId: String, hidden: Boolean) {
+        rest("/rest/v1/profiles?id=eq." + encode(userId), "PATCH", JSONObject().put("hide_university_number", hidden))
+    }
+
+    suspend fun uploadProfileAvatar(uri: Uri, userId: String) {
+        ensureFreshSession()
+        val current = session ?: throw ApiException("انتهت جلسة الدخول")
+        val mime = appContext.contentResolver.getType(uri) ?: "image/jpeg"
+        if (!mime.startsWith("image/")) throw ApiException("الملف المحدد ليس صورة")
+        val bytes = withContext(Dispatchers.IO) {
+            appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } ?: throw ApiException("تعذّر قراءة الصورة")
+        if (bytes.size > 8 * 1024 * 1024) throw ApiException("حجم الصورة يتجاوز 8 ميغابايت")
+        val extension = when (mime.lowercase()) {
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            "image/gif" -> "gif"
+            "image/heic", "image/heif" -> "heic"
+            else -> "jpg"
+        }
+        val path = userId + "/avatar-" + UUID.randomUUID() + "." + extension
+        val request = Request.Builder()
+            .url(baseUrl + "/storage/v1/object/avatars/" + Uri.encode(path, "/"))
+            .header("apikey", publishableKey)
+            .header("Authorization", "Bearer " + current.accessToken)
+            .header("Content-Type", mime)
+            .header("x-upsert", "false")
+            .post(bytes.toRequestBody(mime.toMediaType()))
+            .build()
+        execute(request)
+        rest("/rest/v1/profiles?id=eq." + encode(userId), "PATCH", JSONObject().put("avatar_url", path))
     }
 
     private suspend fun verifyStudentAccess(profile: StudentProfile) {
@@ -378,10 +453,27 @@ class NexusRepository(context: Context) {
         val idArray = JSONArray()
         ids.forEach { idArray.put(it) }
         val rows = array(rest("/rest/v1/rpc/get_public_profiles", "POST", JSONObject().put("_ids", idArray)))
+        val avatarPaths = rows.mapNotNull { it.optStringOrNull("avatar_url")?.takeIf { path -> !path.startsWith("http") } }.distinct()
+        val signedAvatars = if (avatarPaths.isEmpty()) emptyMap() else resolveStorageUrls("avatars", avatarPaths)
         return rows.associate { row ->
             val id = row.optString("id")
-            id to PublicProfile(id, row.optString("full_name", "مستخدم"), row.optStringOrNull("avatar_url"), row.optBoolean("verified"), row.optStringOrNull("major"), row.optInt("points"))
+            val rawAvatar = row.optStringOrNull("avatar_url")
+            val avatar = if (rawAvatar.isNullOrBlank() || rawAvatar.startsWith("http")) rawAvatar else signedAvatars[rawAvatar] ?: rawAvatar
+            id to PublicProfile(id, row.optString("full_name", "مستخدم"), avatar, row.optBoolean("verified"), row.optStringOrNull("major"), row.optInt("points"))
         }
+    }
+
+    private suspend fun resolveStorageUrls(bucket: String, paths: List<String>): Map<String, String> {
+        val unique = paths.filter { it.isNotBlank() && !it.startsWith("http") }.distinct()
+        if (unique.isEmpty()) return emptyMap()
+        val response = array(rest("/storage/v1/object/sign/" + bucket, "POST",
+            JSONObject().put("expiresIn", 3600).put("paths", JSONArray(unique))))
+        return response.mapNotNull { row ->
+            val path = row.optString("path")
+            val signed = row.optString("signedURL").ifBlank { row.optString("signedUrl") }
+            if (path.isBlank() || signed.isBlank()) null
+            else path to if (signed.startsWith("http")) signed else baseUrl + "/storage/v1" + if (signed.startsWith("/")) signed else "/" + signed
+        }.toMap()
     }
 
     private suspend fun ensureFreshSession() {

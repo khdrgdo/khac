@@ -41,7 +41,9 @@ data class StudentProfile(
     val points: Int,
     val banned: Boolean,
     val suspendedUntil: String?,
-    val cardThemeId: String? = null
+    val cardThemeId: String? = null,
+    val hideUniversityNumber: Boolean = false,
+    val hasUsedDirectNameChange: Boolean = false
 )
 
 data class PublicProfile(
@@ -51,6 +53,12 @@ data class PublicProfile(
     val verified: Boolean,
     val major: String? = null,
     val points: Int = 0
+)
+
+data class ProfileStats(
+    val posts: Int = 0,
+    val comments: Int = 0,
+    val saved: Int = 0
 )
 
 data class ScheduleEntry(
@@ -164,6 +172,7 @@ data class NexusUiState(
     val feedPosts: List<FeedPost> = emptyList(),
     val feedFilter: String = "all",
     val feedTag: String? = null,
+    val profileStats: ProfileStats? = null,
     val selectedCourse: Course? = null,
     val courseDetail: CourseDetail? = null,
     val selectedTab: CourseTab = CourseTab.FILES,
