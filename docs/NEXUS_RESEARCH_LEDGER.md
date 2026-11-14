@@ -65,7 +65,7 @@ These photographs load asynchronously and are layered with rank-specific overlay
    - Maps 87 papers reporting undesirable effects; points, badges, competition, and leaderboards can cause motivational, performance, relevance, and fairness problems when poorly designed.
 24. Reward strategies in gamified learning (2026) — Effects of reward strategies in gamified learning on academic performance: a systematic review. https://doi.org/10.1016/j.edurev.2026.100766
    - Synthesises 16 studies and 18 interventions; low-stakes rewards and learner autonomy in reward choice are promising.
-25. Gamification in education and training (2024) — Literature review. https://doi.org/10.1007/s11159-024-10111-8
+25. Triantafyllou, Sapounidis & Georgiadis (2025) — Gamification in education and training: A literature review. https://doi.org/10.1007/s11159-024-10111-8
    - Emphasises meaningful instructional alignment, feedback, collaboration, and matching gamification to learner needs.
 
 ## NEXUS gamification rules derived from the evidence
@@ -89,3 +89,14 @@ These photographs load asynchronously and are layered with rank-specific overlay
    - Useful chapters: permission rules (3:23:14), GitHub Actions and remote control (7:59:11), security review (8:42:36), code review (9:07:42), persistent context and rules (9:15:12), agent skills (9:56:27), MCP and sub-agents (10:27:06–11:32:50).
 
 These are practitioner demonstrations, not substitutes for primary technical documentation or controlled testing. The NEXUS implementation will use the applicable practices and verify them in CI and on an emulator.
+
+
+30. Almeida, Kalinowski, Uchôa & Feijó (2025 conference proceedings / 2026 publication record) — Exploring the Negative Effects of Gamification on Students: A PRISMA-Based Systematic Literature Review. https://doi.org/10.1109/ICCA66035.2025.11431021
+   - Identified 206 studies and selected 20; reports performance pressure, superficial learning, motivational decline, and emotional strain as risks when gamification weakens autonomy, competence, or relatedness.
+31. Dichev & Dicheva (2017) — Gamifying education: what is known, what is believed and what remains uncertain: a critical review. https://doi.org/10.1186/s41239-017-0042-5
+   - Critical review that cautions against treating gamification as universally effective and stresses the need for evidence-based instructional design.
+
+## Important qualification for NEXUS rankings
+- The leaderboard systematic review's evidence base consisted entirely of higher-education studies, with many short interventions. Its recommendations are useful but not proof of long-term effects in NEXUS; measure outcomes after launch.
+- Keep academic performance rankings distinct from community-engagement rankings. Do not blend grades, post volume, comments, and peer-help into one opaque score.
+- If NEXUS uses a combined score, publish the formula, show its components, and validate that it rewards useful learning behavior rather than popularity or spam.

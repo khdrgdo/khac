@@ -95,3 +95,12 @@ Do not send a one-shot prompt to rewrite the entire app. Keep work small enough 
 - Do not award points solely for post volume, repetitive comments, or other easy-to-game activity.
 - Allow a student to choose any unlocked theme without falsifying their earned rank; selected appearance and actual rank are separate concepts.
 - Do not claim the system is cheat-resistant until the server validates awards and theme unlocks.
+
+
+## Ranking measurement caution
+The 2024 systematic review of leaderboards found mixed effects and a design-dependent relationship with learning. Its evidence base was higher education and many interventions were short. NEXUS should therefore:
+- separate academic achievement rankings from community-contribution rankings;
+- keep a personal progress view and attainable micro-rankings;
+- show the criteria and time window used for every leaderboard;
+- consider anonymity for lower positions on public absolute rankings;
+- measure whether rankings improve meaningful participation rather than assume that more competition is better.
