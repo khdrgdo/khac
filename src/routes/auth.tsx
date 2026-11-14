@@ -87,6 +87,7 @@ function AuthPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "signup") setTab("signup");
     rememberMobileRedirect(params.get("redirect_to"));
     supabase.auth
       .getSession()
