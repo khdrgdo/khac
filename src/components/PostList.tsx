@@ -7,11 +7,13 @@ interface Props {
   authorId?: string;
   savedByUserId?: string;
   filter?: "all" | "open_questions" | "solved_questions";
+  tag?: string;
 }
 
-export function PostList({ authorId, savedByUserId, filter = "all" }: Props) {
+export function PostList({ authorId, savedByUserId, filter = "all", tag }: Props) {
+  const cleanTag = tag?.replace(/[^\\p{L}\\p{N}_-]/gu, "").slice(0, 40) || undefined;
   const { data: posts, isLoading } = useQuery({
-    queryKey: ["posts", { authorId, savedByUserId, filter }],
+    queryKey: ["posts", { authorId, savedByUserId, filter, tag: cleanTag }],
     queryFn: async (): Promise<PostWithMeta[]> => {
       let postIds: string[] | null = null;
 
@@ -34,6 +36,7 @@ export function PostList({ authorId, savedByUserId, filter = "all" }: Props) {
         .limit(50);
 
       if (authorId) q = q.eq("author_id", authorId);
+      if (cleanTag) q = q.ilike("content", `%#${cleanTag}%`);
       if (postIds) q = q.in("id", postIds);
       if (filter === "open_questions")
         q = q.eq("post_type", "question").is("accepted_answer_id", null);

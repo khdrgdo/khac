@@ -35,12 +35,12 @@ export function ExpandableText({
       <div
         className={cn(
           "overflow-hidden transition-all duration-300 relative",
-          !isExpanded && "max-h-[120px]",
+          !isExpanded && "max-h-[7.2em]",
         )}
       >
         <MarkdownViewer content={text} />
         {!isExpanded && (
-          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-card to-transparent pointer-events-none" />
         )}
       </div>
 

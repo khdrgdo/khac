@@ -99,7 +99,9 @@ export function PostCard({ post }: { post: PostWithMeta }) {
   const anonymous = !!post.is_anonymous || !post.author_id;
   const { canReveal, reveal } = useAnonymousReveal("post", anonymous ? [post.id] : []);
   const isMyAnon = useMyAnonymousIds("post");
-
+  const hashtags = Array.from(new Set(
+    Array.from(post.content.matchAll(/(?:^|\\s)#([\\p{L}\\p{N}_-]{2,40})/gu), (match) => match[1])
+  )).slice(0, 8);
 
   const deletePostMut = useMutation({
     mutationFn: async () => {
@@ -352,6 +354,21 @@ export function PostCard({ post }: { post: PostWithMeta }) {
             </div>
           )}
         </Link>
+
+        {hashtags.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5" aria-label="وسوم المنشور">
+            {hashtags.map((tag) => (
+              <Link
+                key={tag}
+                to="/feed"
+                search={{ tag }}
+                className="rounded-full border border-accent/20 bg-accent/8 px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/15 transition-colors"
+              >
+                #{tag}
+              </Link>
+            ))}
+          </div>
+        )}
 
         {totalReactions > 0 || post.commentCount > 0 ? (
           <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">

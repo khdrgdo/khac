@@ -42,7 +42,7 @@ export function RichTextEditor({
           items: async ({ query }) => {
             const { data, error } = await supabase.rpc("search_public_profiles", { _q: query });
             if (error || !data) return [];
-            return data;
+            return data.slice(0, 8);
           },
           render: () => {
             let component: any;
@@ -61,25 +61,27 @@ export function RichTextEditor({
                   showOnCreate: true,
                   interactive: true,
                   trigger: "manual",
-                  placement: "bottom-start",
+                  placement: "bottom-end",
+                  offset: [0, 8],
+                  maxWidth: 340,
                 });
               },
               onUpdate(props) {
                 component.updateProps(props);
-                popup[0].setProps({
+                popup?.[0]?.setProps({
                   getReferenceClientRect: props.clientRect as any,
                 });
               },
               onKeyDown(props) {
                 if (props.event.key === "Escape") {
-                  popup[0].hide();
+                  popup?.[0]?.hide();
                   return true;
                 }
                 return component.ref?.onKeyDown(props);
               },
               onExit() {
-                popup[0].destroy();
-                component.destroy();
+                popup?.[0]?.destroy();
+                component?.destroy();
               },
             };
           },

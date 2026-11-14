@@ -225,6 +225,9 @@ export function CreatePost() {
                         : "شارك نصيحة، موضوع مفيد، أو منشور عام..."
                     }
                   />
+                  <p className="text-[11px] text-muted-foreground px-1">
+                    استخدم <b dir="ltr">#وسم</b> لإضافة وسم قابل للبحث، أو <b dir="ltr">@</b> للإشارة إلى زميل.
+                  </p>
                   {imagePaths.length > 0 && (
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       {imagePaths.map((p) => (

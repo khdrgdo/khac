@@ -13,12 +13,18 @@ import { RANKS, nextRankProgress } from "@/lib/ranks";
 import { Trophy } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/feed")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tag: typeof search.tag === "string"
+      ? search.tag.replace(/[^\\p{L}\\p{N}_-]/gu, "").slice(0, 40) || undefined
+      : undefined,
+  }),
   component: FeedPage,
 });
 
 function FeedPage() {
   const { profile, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const { tag } = Route.useSearch();
   const [filter, setFilter] = useState<"all" | "open_questions" | "solved_questions">("all");
 
   useEffect(() => {
@@ -43,7 +49,13 @@ function FeedPage() {
             <TabsTrigger value="solved_questions">أسئلة محلولة</TabsTrigger>
           </TabsList>
         </Tabs>
-        <PostList filter={filter} />
+        {tag && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-accent/20 bg-accent/5 px-3.5 py-2.5 text-sm">
+            <span>المنشورات الموسومة بـ <b dir="ltr">#{tag}</b></span>
+            <button onClick={() => navigate({ to: "/feed", search: {} })} className="text-xs font-semibold text-accent hover:underline">إزالة الوسم</button>
+          </div>
+        )}
+        <PostList filter={filter} tag={tag} />
       </div>
       <aside className="hidden md:block space-y-4">
         {profile && (
