@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -119,42 +120,7 @@ fun NexusApp(viewModel: NexusViewModel) {
 }
 
 @Composable
-private fun SplashScreen() {
-    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "nexus-splash")
-    val orbit by transition.animateFloat(0f, 360f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(animation = androidx.compose.animation.core.tween(7200, easing = androidx.compose.animation.core.LinearEasing)), label = "orbit")
-    val pulse by transition.animateFloat(0.97f, 1.025f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(animation = androidx.compose.animation.core.tween(1800, easing = androidx.compose.animation.core.FastOutSlowInEasing), repeatMode = androidx.compose.animation.core.RepeatMode.Reverse), label = "brand-pulse")
-    Box(
-        Modifier.fillMaxSize().background(Color(0xFF0A1514)),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.46f)
-            val radius = size.minDimension * 0.255f
-            drawCircle(Color.White.copy(alpha = 0.035f), radius * 1.42f, center)
-            drawCircle(Color.White.copy(alpha = 0.08f), radius, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
-            drawArc(
-                brush = androidx.compose.ui.graphics.Brush.sweepGradient(listOf(Color.Transparent, Color(0xFF34D399), Color(0xFFA7F3D0), Color.Transparent), center),
-                startAngle = orbit, sweepAngle = 82f, useCenter = false,
-                topLeft = androidx.compose.ui.geometry.Offset(center.x - radius, center.y - radius),
-                size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(2.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-            )
-            drawCircle(Color(0xFF34D399).copy(alpha = 0.9f), 3.dp.toPx(), androidx.compose.ui.geometry.Offset(center.x + radius * 0.98f, center.y - radius * 0.18f))
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(13.dp), modifier = Modifier.offset(y = (-8).dp)) {
-            AsyncImage(
-                model = R.drawable.nexus_legacy_emblem,
-                contentDescription = "شعار NEXUS",
-                modifier = Modifier.size(132.dp).graphicsLayer { scaleX = pulse; scaleY = pulse },
-                contentScale = ContentScale.Fit
-            )
-            Text("NEXUS", style = MaterialTheme.typography.headlineMedium, color = Color.White, letterSpacing = 4.sp, fontWeight = FontWeight.Bold)
-            Text("مساحتك الأكاديمية", style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.82f), letterSpacing = 1.2.sp)
-            Spacer(Modifier.height(10.dp))
-            LinearProgressIndicator(modifier = Modifier.width(76.dp).height(2.dp).clip(RoundedCornerShape(4.dp)), color = Color(0xFF34D399), trackColor = Color.White.copy(alpha = 0.14f))
-        }
-    }
-}
+private fun SplashScreen() = NexusSplashScreen()
 
 @Composable
 private fun HomeScreen(
@@ -529,7 +495,7 @@ private fun ResourceGlyph(material: CourseMaterial) {
         material.extension in listOf("doc", "docx") -> Triple(Icons.Outlined.Description, Color(0xFF426D9A), Color(0xFFE8EEF5))
         else -> Triple(Icons.Outlined.InsertDriveFile, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.secondaryContainer)
     }
-    val dark = MaterialTheme.colorScheme.background == Color(0xFF151F2D)
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     Box(Modifier.size(43.dp).clip(RoundedCornerShape(12.dp)).background(if (dark) MaterialTheme.colorScheme.secondaryContainer else lightBg), contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = if (dark) MaterialTheme.colorScheme.tertiary else tint, modifier = Modifier.size(22.dp))
     }

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/nexus-redesign-v1.3.0
+      - feature/nexus-android-rebuild
     paths:
       - "android/**"
       - ".github/workflows/android-redesign-preview.yml"
