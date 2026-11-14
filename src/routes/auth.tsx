@@ -17,9 +17,12 @@ import {
 import { toast } from "sonner";
 import { MAJORS, YEARS, universityNumberToEmail } from "@/lib/college";
 import { bindAccountToDevice, isSignupAllowedOnDevice } from "@/lib/deviceGuard";
-import { NexusLogo } from "@/components/NexusLogo";
 import {
   GraduationCap,
+  BookOpen,
+  Users,
+  Trophy,
+  MessageCircle,
   Loader2,
   Mail,
   CheckCircle2,
@@ -147,85 +150,119 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center p-5 sm:p-8">
-      <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-      <div className="absolute top-0 end-0 h-full w-px bg-border/60" />
-      <div className="w-full max-w-md relative z-10">
-        {/* Header */}
-        <div className="text-center mb-8 flex flex-col items-center justify-center">
-          <NexusLogo
-            size="lg"
-            showTagline={true}
-            taglineText="NEXUS الأكاديمية الذكية"
-            className="mb-3"
-          />
-          <p className="text-xs sm:text-sm text-muted-foreground mt-2">
-            البوابة الأكاديمية والتواصل الاجتماعي للطلاب والأساتذة
-          </p>
-        </div>
+    <main className="min-h-screen bg-background px-4 py-6 sm:px-6 sm:py-8 lg:px-10 flex items-center justify-center">
+      <div className="w-full max-w-6xl grid lg:grid-cols-[0.92fr_1.08fr] gap-5 lg:gap-9 items-stretch">
+        <section className="hidden lg:flex flex-col justify-between rounded-2xl bg-primary text-primary-foreground p-10 min-h-[720px]">
+          <div className="flex items-center gap-4">
+            <img src="/nexus-legacy-emblem.webp" alt="NEXUS" className="w-16 h-16 rounded-xl object-cover" />
+            <div>
+              <p className="text-xl font-extrabold tracking-[0.28em]">NEXUS</p>
+              <p className="text-xs text-primary-foreground/65 mt-1">المنصة الأكاديمية</p>
+            </div>
+          </div>
 
-        <Card className="border-t-4 border-t-accent shadow-xl shadow-primary/10">
-          <CardHeader className="pb-4 text-right p-7 sm:p-9">
-            <CardTitle className="text-2xl" data-display>مرحبًا بك</CardTitle>
-            <CardDescription className="text-xs">
-              اختر طريقة المتابعة المباشرة عبر غوغل أو التسجيل اليدوي
-            </CardDescription>
-          </CardHeader>
+          <div className="max-w-md space-y-5">
+            <p className="text-[11px] tracking-[0.28em] font-semibold text-primary-foreground/60">YOUR ACADEMIC SPACE</p>
+            <h1 className="font-display text-5xl leading-[1.35]">
+              مساحتك الأكاديمية،
+              <span className="block text-primary-foreground/70">في مكان واحد.</span>
+            </h1>
+            <p className="text-sm leading-8 text-primary-foreground/75">
+              تابع مقرراتك وموادك الدراسية، وشارك المعرفة مع زملائك، واحتفظ بإنجازاتك الأكاديمية في مساحة واحدة.
+            </p>
+          </div>
 
-          <CardContent className="space-y-5 text-right px-7 pb-8 sm:px-9 sm:pb-9">
-            {/* Quick Google Login */}
-            <div className="space-y-1.5">
-              <Button
-                variant="outline"
-                className="w-full gap-2.5 h-11 text-foreground font-medium text-xs sm:text-sm"
-                onClick={googleSignIn}
-                disabled={loadingGoogle}
-              >
-                {loadingGoogle ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleIcon />}
-                <span>المتابعة السريعة عبر غوغل</span>
-              </Button>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
-                <span>✨ بدون كلمة سر</span>
-                <span>دخول أسرع لحسابك</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-primary-foreground/15 p-4">
+              <BookOpen className="w-5 h-5 mb-3 text-primary-foreground/75" />
+              <p className="font-semibold text-sm">المقررات والمواد</p>
+              <p className="text-xs leading-6 text-primary-foreground/60 mt-1">ملفاتك ومصادرك الدراسية</p>
+            </div>
+            <div className="rounded-xl border border-primary-foreground/15 p-4">
+              <Users className="w-5 h-5 mb-3 text-primary-foreground/75" />
+              <p className="font-semibold text-sm">المجتمع الأكاديمي</p>
+              <p className="text-xs leading-6 text-primary-foreground/60 mt-1">نقاشات ومشاركة المعرفة</p>
+            </div>
+            <div className="rounded-xl border border-primary-foreground/15 p-4">
+              <Trophy className="w-5 h-5 mb-3 text-primary-foreground/75" />
+              <p className="font-semibold text-sm">الإنجازات والنقاط</p>
+              <p className="text-xs leading-6 text-primary-foreground/60 mt-1">تقدمك ومساهماتك</p>
+            </div>
+            <div className="rounded-xl border border-primary-foreground/15 p-4">
+              <MessageCircle className="w-5 h-5 mb-3 text-primary-foreground/75" />
+              <p className="font-semibold text-sm">التواصل</p>
+              <p className="text-xs leading-6 text-primary-foreground/60 mt-1">رسائل وتنبيهات مهمة</p>
+            </div>
+          </div>
+          <p className="text-[10px] tracking-[0.18em] text-primary-foreground/45">NEXUS · ACADEMIC NETWORK</p>
+        </section>
+
+        <section className="w-full max-w-xl mx-auto flex flex-col justify-center">
+          <div className="lg:hidden flex items-center gap-3 mb-7">
+            <img src="/nexus-legacy-emblem.webp" alt="NEXUS" className="w-12 h-12 rounded-lg object-cover" />
+            <div>
+              <p className="text-lg font-extrabold tracking-[0.24em]">NEXUS</p>
+              <p className="text-xs text-muted-foreground">المنصة الأكاديمية</p>
+            </div>
+          </div>
+
+          <div className="mb-5 text-right">
+            <p className="text-xs font-semibold tracking-[0.16em] text-accent mb-2">بوابة NEXUS</p>
+            <h2 className="font-display text-3xl sm:text-4xl">مرحبًا بك</h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-7">
+              اختر طريقة المتابعة: حساب Google أو تسجيل الدخول وإنشاء حساب جديد.
+            </p>
+          </div>
+
+          <Card className="border border-border/80 shadow-none rounded-2xl bg-card">
+            <CardContent className="space-y-5 text-right p-5 sm:p-7">
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full gap-2.5 h-12 text-foreground font-medium text-sm rounded-xl"
+                  onClick={googleSignIn}
+                  disabled={loadingGoogle}
+                >
+                  {loadingGoogle ? <Loader2 className="w-4 h-4 animate-spin" /> : <GoogleIcon />}
+                  <span>المتابعة عبر Google</span>
+                </Button>
+                <p className="text-[11px] text-muted-foreground text-center">
+                  دخول سريع دون الحاجة إلى كلمة مرور NEXUS
+                </p>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-px bg-border/80" />
-              <span className="text-xs text-muted-foreground font-medium px-1">
-                أو عبر النموذج اليدوي
-              </span>
-              <div className="flex-1 h-px bg-border/80" />
-            </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[11px] text-muted-foreground">أو باستخدام حسابك</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
 
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="grid grid-cols-2 w-full mb-5">
-                <TabsTrigger value="login" className="text-xs sm:text-sm">
-                  تسجيل الدخول
-                </TabsTrigger>
-                <TabsTrigger value="signup" className="text-xs sm:text-sm">
-                  حساب جديد
-                </TabsTrigger>
-              </TabsList>
+              <Tabs value={tab} onValueChange={setTab}>
+                <TabsList className="grid grid-cols-2 w-full h-11 rounded-xl mb-5">
+                  <TabsTrigger value="login" className="text-sm rounded-lg">تسجيل الدخول</TabsTrigger>
+                  <TabsTrigger value="signup" className="text-sm rounded-lg">حساب جديد</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="login">
-                <LoginForm initialId={prefilledEmail} onAuthenticated={finishAuthentication} />
-              </TabsContent>
+                <TabsContent value="login">
+                  <LoginForm initialId={prefilledEmail} onAuthenticated={finishAuthentication} />
+                </TabsContent>
+                <TabsContent value="signup">
+                  <SignupForm
+                    onCreated={(email) => setPrefilledEmail(email)}
+                    onGoToLogin={() => setTab("login")}
+                    onAuthenticated={finishAuthentication}
+                  />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
 
-              <TabsContent value="signup">
-                <SignupForm
-                  onCreated={(email) => {
-                    setPrefilledEmail(email);
-                  }}
-                  onGoToLogin={() => setTab("login")}
-                  onAuthenticated={finishAuthentication}
-                />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+          <p className="text-[11px] text-muted-foreground text-center mt-5 leading-6">
+            عند الدخول من التطبيق، ستعود إليه تلقائيًا بعد إكمال التحقق.
+          </p>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
 
