@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -32,6 +32,17 @@ jobs:
           cache: npm
       - name: Reconcile stale npm lockfile
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Commit reconciled lockfile
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json is already in sync"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore(deps): reconcile NEXUS package lock"
+            git push
+          fi
       - name: Install dependencies
         run: npm ci
       - name: Build production bundle
