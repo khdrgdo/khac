@@ -60,8 +60,9 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
     val defaultId = ProfileThemeRules.defaultForPoints(profile.points)
     val selectedTheme = NexusProfileThemes.firstOrNull { it.id == profile.cardThemeId && ProfileThemeRules.isUnlocked(profile.points, it.id) }
         ?: NexusProfileThemes.first { it.id == defaultId }
+    val earnedTheme = NexusProfileThemes.last { it.minPoints <= profile.points }
     val nextTheme = NexusProfileThemes.firstOrNull { it.minPoints > profile.points }
-    val progress = if (nextTheme == null) 1f else ((profile.points - selectedTheme.minPoints).toFloat() / (nextTheme.minPoints - selectedTheme.minPoints).toFloat()).coerceIn(0f, 1f)
+    val progress = if (nextTheme == null) 1f else ((profile.points - earnedTheme.minPoints).toFloat() / (nextTheme.minPoints - earnedTheme.minPoints).toFloat()).coerceIn(0f, 1f)
 
     Card(modifier = Modifier.fillMaxWidth().height(282.dp), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF14212D)), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Box(Modifier.fillMaxSize()) {
@@ -75,7 +76,7 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
                         Text(selectedTheme.name, color = Color.White, style = MaterialTheme.typography.titleMedium)
                     }
                     Surface(color = selectedTheme.accent.copy(alpha = 0.18f), shape = RoundedCornerShape(20.dp)) {
-                        Text(selectedTheme.rank, color = Color.White, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
+                        Text(earnedTheme.rank, color = Color.White, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium)
                     }
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -94,7 +95,7 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
                         Text("${profile.points} نقطة", color = Color.White, style = MaterialTheme.typography.titleMedium)
                         Text(nextTheme?.let { "المستوى التالي: ${it.name} · ${it.minPoints} نقطة" } ?: "أعلى مستوى", color = Color.White.copy(alpha = 0.72f), style = MaterialTheme.typography.labelSmall)
                     }
-                    LinearProgressIndicator(progress = progress, modifier = Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(10.dp)), color = selectedTheme.accent, trackColor = Color.White.copy(alpha = 0.22f))
+                    LinearProgressIndicator(progress = progress, modifier = Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(10.dp)), color = earnedTheme.accent, trackColor = Color.White.copy(alpha = 0.22f))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = { pickerOpen = true }) { Text("تخصيص بطاقة المستوى", color = Color.White, style = MaterialTheme.typography.labelLarge) }
                     }
