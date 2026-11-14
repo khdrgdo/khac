@@ -117,3 +117,21 @@ These are practitioner demonstrations, not substitutes for primary technical doc
 - Verify the Android custom scheme `com.nexus.app://login-callback` is present in the Supabase Auth redirect allowlist.
 - Verify hosted Supabase email templates use the supplied `RedirectTo` value; code-level redirect parameters alone do not prove the dashboard configuration is correct.
 - Do not call Google OAuth or email-confirmation flows fully verified until an actual end-to-end round trip is tested with the provider and SMTP configuration.
+
+
+## Social-feed, navigation, and accessibility references
+37. Nielsen Norman Group — Social Media UX: User-Centered Social Strategies, 3rd Edition. https://www.nngroup.com/reports/social-media-user-experience/
+   - 174-page report based on three rounds of research with 96 users; includes 50 design guidelines and 166 screenshot illustrations across major social platforms.
+38. Apple Human Interface Guidelines — Lists and Tables. https://developer.apple.com/design/human-interface-guidelines/lists-and-tables
+   - Recommends scannable rows, concise content, clear hierarchy, appropriate selection feedback, and using detail views when rows would become too dense.
+39. Apple Human Interface Guidelines — Search Fields. https://developer.apple.com/design/human-interface-guidelines/search-fields
+   - Covers search placement, immediate refinement, suggestions, scope bars, and filterable results.
+40. W3C — Web Content Accessibility Guidelines (WCAG) 2.2. https://www.w3.org/TR/WCAG22/
+   - Includes focus visibility, focus not obscured, target size, accessible authentication, and other interaction requirements.
+
+## Feed and navigation implications
+- Feed cards should support scanning: identity and time first, content second, media third, then a compact engagement summary and action row.
+- Long content must have a predictable collapsed state and an explicit expand action; the fade must match the actual card surface.
+- Replies need a visible parent-child hierarchy without turning every comment into a separate floating card.
+- Searchable tags should behave as filters, not decorative text; mentions should have keyboard-accessible suggestions and a clear selected state.
+- Keep primary navigation stable and limit the number of top-level destinations; use contextual search and secondary navigation for the rest.
