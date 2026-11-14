@@ -8,6 +8,10 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
+import com.nexus.app.R
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -87,25 +91,31 @@ private fun SplashScreen() {
     val orbit by transition.animateFloat(0f, 360f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(animation = androidx.compose.animation.core.tween(7200, easing = androidx.compose.animation.core.LinearEasing)), label = "orbit")
     val pulse by transition.animateFloat(0.97f, 1.025f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(animation = androidx.compose.animation.core.tween(1800, easing = androidx.compose.animation.core.FastOutSlowInEasing), repeatMode = androidx.compose.animation.core.RepeatMode.Reverse), label = "brand-pulse")
     Box(
-        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF101820), Color(0xFF1C2B39), Color(0xFF101820)))),
+        Modifier.fillMaxSize().background(Color(0xFF0A1514)),
         contentAlignment = Alignment.Center
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.39f)
+            val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.46f)
             val radius = size.minDimension * 0.255f
             drawCircle(Color.White.copy(alpha = 0.035f), radius * 1.42f, center)
             drawCircle(Color.White.copy(alpha = 0.08f), radius, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
             drawArc(
-                brush = androidx.compose.ui.graphics.Brush.sweepGradient(listOf(Color.Transparent, Color(0xFF7896FF), Color(0xFFE08B61), Color.Transparent), center),
+                brush = androidx.compose.ui.graphics.Brush.sweepGradient(listOf(Color.Transparent, Color(0xFF34D399), Color(0xFFA7F3D0), Color.Transparent), center),
                 startAngle = orbit, sweepAngle = 82f, useCenter = false,
                 topLeft = androidx.compose.ui.geometry.Offset(center.x - radius, center.y - radius),
                 size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f),
                 style = androidx.compose.ui.graphics.drawscope.Stroke(2.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
             )
-            drawCircle(Color(0xFFE7A27D).copy(alpha = 0.9f), 3.dp.toPx(), androidx.compose.ui.geometry.Offset(center.x + radius * 0.98f, center.y - radius * 0.18f))
+            drawCircle(Color(0xFF34D399).copy(alpha = 0.9f), 3.dp.toPx(), androidx.compose.ui.geometry.Offset(center.x + radius * 0.98f, center.y - radius * 0.18f))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(13.dp), modifier = Modifier.offset(y = (-8).dp)) {
-            Box(Modifier.graphicsLayer { scaleX = pulse; scaleY = pulse }) { NexusBrand(true, true) }
+            Image(
+                painter = painterResource(id = R.drawable.nexus_legacy_emblem),
+                contentDescription = "شعار NEXUS",
+                modifier = Modifier.size(132.dp).graphicsLayer { scaleX = pulse; scaleY = pulse },
+                contentScale = ContentScale.Fit
+            )
+            Text("NEXUS", style = MaterialTheme.typography.headlineMedium, color = Color.White, letterSpacing = 4.sp, fontWeight = FontWeight.Bold)
             Text("مساحتك الأكاديمية", style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.82f), letterSpacing = 1.2.sp)
             Spacer(Modifier.height(10.dp))
             LinearProgressIndicator(modifier = Modifier.width(76.dp).height(2.dp).clip(RoundedCornerShape(4.dp)), color = Color(0xFFE08B61), trackColor = Color.White.copy(alpha = 0.14f))

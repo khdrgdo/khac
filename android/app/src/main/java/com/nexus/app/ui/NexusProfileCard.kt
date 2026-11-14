@@ -63,7 +63,7 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
     val nextTheme = NexusProfileThemes.firstOrNull { it.minPoints > profile.points }
     val progress = if (nextTheme == null) 1f else ((profile.points - selectedTheme.minPoints).toFloat() / (nextTheme.minPoints - selectedTheme.minPoints).toFloat()).coerceIn(0f, 1f)
 
-    Card(modifier = Modifier.fillMaxWidth().height(282.dp), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF14212D)), elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)) {
+    Card(modifier = Modifier.fillMaxWidth().height(282.dp), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF14212D)), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Box(Modifier.fillMaxSize()) {
             AsyncImage(model = selectedTheme.imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x440B1420), 0.42f to Color(0x7A0B1420), 1f to Color(0xF20B1420))))

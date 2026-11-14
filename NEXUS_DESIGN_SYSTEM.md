@@ -1,80 +1,55 @@
-# NEXUS — Native Android Design System 1.0
+# NEXUS Design System — 1.3
 
-## Product direction
-NEXUS is an academic platform. The Android app is a native student client for the existing web product, not a WebView wrapper and not a second backend.
+## Product character
+NEXUS is an Arabic-first academic social product. Its visual language should feel editorial, confident, human, and built by a mature product team—not like a generic AI dashboard or a collection of template cards.
 
-The visual identity is inherited from the current website:
-- Geometric N lettermark and exact NEXUS wordmark.
-- Deep ink/navy as the structural color.
-- Warm ivory as the light canvas.
-- Muted green as a secondary functional color.
-- Restrained brass/gold for emphasis.
-- Android system sans family for robust Arabic shaping.
+## Brand mark
+- The legacy emerald geometric K mark extracted from the user-provided Kryptonite APK is the inherited brand mark for the animated launch sequence.
+- The splash uses a solid deep-ink background, the authentic mark, and one restrained orbit/reveal motion. No generic spinner as the brand moment and no artificial minimum display delay.
+- In-product wordmark is NEXUS. Do not reintroduce the old Kryptonite text label unless the product owner explicitly requests it.
 
-## Design principles
-1. Content first: course names, resources and announcements dominate decorative chrome.
-2. Editorial hierarchy: one clear page title, concise supporting metadata, then content.
-3. Cards are semantic containers, not a universal wrapper. Use compact rows for files, larger cards for courses and a distinct announcement treatment.
-4. No decorative gradients, glassmorphism, glowing shadows, random blobs, emoji icons or repetitive statistic grids.
-5. Use one icon family with restrained 18–24dp sizes.
-6. Preserve natural Arabic RTL. Keep URLs and the NEXUS wordmark LTR where appropriate.
-7. Respect system appearance by default; expose explicit light and dark overrides.
-8. Animation must explain a state change or preserve spatial continuity.
+## Core color tokens
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| Ink | #172635 | #101820 | Primary text, navigation, structure |
+| Paper | #F5F2EC | #101820 | App canvas |
+| Surface | #FFFEFB | #1B2935 | Cards and sheets |
+| Terracotta | #B85E42 | #F0A080 | Human accent, actions |
+| Teal | #39736E | #9CC2B9 | Supporting accent, success |
+| Cobalt | #365DD8 | #91A8FF | Focus and selected states |
+| Muted | #66717B | #B8C0C7 | Secondary text |
+| Border | #E1DDD4 | #35434F | Dividers and outlines |
 
-## Light color tokens
-- Ink: #24354B
-- Deep ink: #182638
-- Canvas: #F6F4EF
-- Surface: #FFFEFB
-- Gold: #C49A58
-- Muted green: #66847F
-- Muted text: #6C7480
-- Border: #E4E0D8
-- Danger: #B64242
-
-## Dark color tokens
-- Canvas: #151F2D
-- Surface: #202D3E
-- Primary: #D6B878
-- Secondary: #9AB8B0
-- Border: #354354
-
-Gold is an accent, not a background for large text areas. Color never carries status alone.
+Use semantic tokens in components. Do not scatter raw hex values across screens. Color is not a substitute for hierarchy.
 
 ## Typography
-- Android Arabic-capable system sans family.
-- Page title: 24–28sp, bold.
-- Section title: 18sp, semibold.
-- Body: 13–15sp with comfortable line height.
-- Metadata: 11–12sp; never use low-contrast tiny text for important information.
-- Keep English course names readable inside RTL layouts.
+- Arabic-first layout and typography; preserve correct shaping, diacritics, line-height, and mixed Arabic/Latin direction.
+- Use the platform sans family until a properly licensed Arabic font is packaged and verified across supported Android versions.
+- Establish a compact type scale: display, page title, section title, body, metadata, and numeric emphasis.
+- Points, dates, counts, and university identifiers must remain legible and consistently formatted.
 
-## Shape and spacing
-- 4dp base spacing scale; common increments 8, 12, 16, 20, 24.
-- Course cards: 16dp corners, 1dp outline, no heavy elevation.
-- Resource rows: 13–14dp corners.
-- Inputs and primary buttons: 12–14dp corners.
-- Minimum touch target: 48dp.
-- Do not apply the same radius and padding to every component.
+## Layout and shape
+- Use a 4dp spacing base and a small, deliberate spacing scale.
+- Standard cards: 12–16dp radius. Large profile/rank hero cards may use 20–22dp when their content warrants it.
+- Use elevation sparingly. Avoid glowing shadows, glassmorphism, decorative blobs, and excessive rounded capsules.
+- Prefer structured lists, editorial grouping, and clear alignment over repeated identical card grids.
 
-## Component rules
-- Course card: course identity, year/semester, teacher and resource counts.
-- Resource row: file-type icon, title, optional instructor note, timestamp and open/download affordance.
-- Announcement: author/time hierarchy with readable body copy.
-- Discussion: author identity, question content, reply count and a focused reply composer.
-- Empty state: explain what belongs here and why it may be empty.
-- Error state: explain the failure and provide a retry path.
+## Profile and rank themes
+- Keep the five shared theme IDs and point thresholds consistent on web and Android: stars 0, clouds 100, moon 300, sun 700, galaxy 1500.
+- A rank theme must change its art direction and content treatment, not only its accent color.
+- Use real licensed photography as the background layer, with a restrained overlay only where required for text contrast. Add rank label, points, progress, avatar treatment, and clear unlock state.
+- Do not use emoji as the primary badge, rank mark, or theme artwork.
+- Persist the selected theme in the shared `profiles.card_theme_id` field. Do not silently fall back to localStorage as the source of truth.
+- Cosmetic unlock rules are currently checked client-side; server-side enforcement must be separately reviewed before claiming tamper-proof unlocks.
 
-## Interaction and motion
-- Use ripple and subtle haptic feedback for primary touch interactions.
-- Use animateContentSize for expanding content and AnimatedContent for course-tab changes.
-- Loading states preserve layout; no blank screens.
-- Private course files open through short-lived signed URLs.
-- Do not show success before the server confirms an operation.
+## Motion
+- Motion must communicate hierarchy, reveal, or state. Use short, restrained transitions and respect reduced-motion preferences.
+- Do not animate large surfaces continuously without a product reason.
+- No artificial splash delay; restore the session in parallel and leave the splash as soon as the app is ready.
 
-## Accessibility
-- 48dp minimum interactive target.
-- Content descriptions for icon-only controls.
-- Support Android font scaling and system light/dark preference.
-- Maintain readable contrast; do not rely on color alone for pinned or error states.
-- Keep long Arabic and English titles from clipping.
+## Accessibility and performance
+- WCAG 2.2 AA contrast as the target for web text and controls.
+- Android touch targets at least 48dp; meaningful semantics for icons and images.
+- Every image needs an appropriate loading placeholder and error fallback. Bundle optimized assets where practical; remote photos must not block the rest of the profile screen.
+- Use pagination, bounded queries, caching where safe, and per-screen loading states.
+- Verify both light and dark modes and Arabic RTL on real device sizes.
