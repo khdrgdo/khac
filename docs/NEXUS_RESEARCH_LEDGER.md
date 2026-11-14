@@ -76,3 +76,16 @@ These photographs load asynchronously and are layered with rank-specific overlay
 - Provide privacy options and consider anonymising low-ranked positions in public absolute leaderboards.
 - Keep rewards low-stakes and allow choice among unlocked profile themes; a student may keep a preferred earlier theme while their earned rank continues to reflect actual points.
 - Measure participation, retention, and learning-related outcomes; do not assume a larger point total means better learning.
+
+
+## Practitioner video references reviewed
+26. UI Collective (2026-09-09) — Learn Design Systems: Figma Variables, Components, AI, and More: https://www.youtube.com/watch?v=lsgVRCJ4fko
+   - Relevant chapters: design tokens (1:00), variables vs tokens (2:41), semantic roles (25:58–40:11), text and icon tokens (46:54–51:25), dark mode (50:15), type scale (59:39), AI support (1:02:27), mobile design systems (3:26:00), component boundaries (3:36:15), developer handoff (3:50:26).
+27. Android Developers (Google I/O 2022) — Performance best practices for Jetpack Compose: https://www.youtube.com/watch?v=EOQB8PTLkpY
+   - Covers common Compose performance mistakes, profiling, phases, and Baseline Profiles; paired with the current Android performance documentation and codelab.
+28. Claude (2026-05-17) — The Explore → Plan → Code → Commit workflow in Claude Code: https://www.youtube.com/watch?v=xJQuF02NAK8
+   - Emphasises researching the codebase before editing, defining success criteria, and using independent reviewers before pushing.
+29. freeCodeCamp (2026-03-23) — Claude Code Essentials: https://www.youtube.com/watch?v=brLhhkUqcn4
+   - Useful chapters: permission rules (3:23:14), GitHub Actions and remote control (7:59:11), security review (8:42:36), code review (9:07:42), persistent context and rules (9:15:12), agent skills (9:56:27), MCP and sub-agents (10:27:06–11:32:50).
+
+These are practitioner demonstrations, not substitutes for primary technical documentation or controlled testing. The NEXUS implementation will use the applicable practices and verify them in CI and on an emulator.
