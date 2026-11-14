@@ -109,8 +109,8 @@ private fun SplashScreen() {
             drawCircle(Color(0xFF34D399).copy(alpha = 0.9f), 3.dp.toPx(), androidx.compose.ui.geometry.Offset(center.x + radius * 0.98f, center.y - radius * 0.18f))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(13.dp), modifier = Modifier.offset(y = (-8).dp)) {
-            Image(
-                painter = painterResource(id = R.drawable.nexus_legacy_emblem),
+            AsyncImage(
+                model = R.drawable.nexus_legacy_emblem,
                 contentDescription = "شعار NEXUS",
                 modifier = Modifier.size(132.dp).graphicsLayer { scaleX = pulse; scaleY = pulse },
                 contentScale = ContentScale.Fit

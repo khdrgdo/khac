@@ -3,7 +3,6 @@ package com.nexus.app.ui
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,7 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -95,8 +94,8 @@ fun NexusLoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            Image(
-                painter = painterResource(R.drawable.nexus_legacy_emblem),
+            AsyncImage(
+                model = R.drawable.nexus_legacy_emblem,
                 contentDescription = "شعار NEXUS",
                 modifier = Modifier.size(46.dp).clip(CircleShape),
                 contentScale = ContentScale.Crop
