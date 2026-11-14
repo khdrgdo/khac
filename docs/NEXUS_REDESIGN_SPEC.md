@@ -104,3 +104,12 @@ The 2024 systematic review of leaderboards found mixed effects and a design-depe
 - show the criteria and time window used for every leaderboard;
 - consider anonymity for lower positions on public absolute rankings;
 - measure whether rankings improve meaningful participation rather than assume that more competition is better.
+
+
+## Authentication flow requirements
+- Native login and web login share the same Supabase identity.
+- The Android login screen exposes direct password login plus clear links to the website's Google sign-in and signup tabs.
+- The website auth route accepts `tab=login|signup` and `redirect_to` query parameters.
+- Signup confirmation from Android must return to `/auth?redirect_to=com.nexus.app://login-callback`, then exchange the session and return to the app.
+- Password recovery from Android must return to the web reset-password page with the mobile redirect preserved, then return to the app after the password is updated.
+- Supabase Auth dashboard redirect allowlist, OAuth provider credentials, and email-template `RedirectTo` usage are external configuration dependencies and require real end-to-end verification.

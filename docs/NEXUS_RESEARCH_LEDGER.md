@@ -100,3 +100,20 @@ These are practitioner demonstrations, not substitutes for primary technical doc
 - The leaderboard systematic review's evidence base consisted entirely of higher-education studies, with many short interventions. Its recommendations are useful but not proof of long-term effects in NEXUS; measure outcomes after launch.
 - Keep academic performance rankings distinct from community-engagement rankings. Do not blend grades, post volume, comments, and peer-help into one opaque score.
 - If NEXUS uses a combined score, publish the formula, show its components, and validate that it rewards useful learning behavior rather than popularity or spam.
+
+
+## Authentication and mobile deep-link references
+32. Supabase — Native Mobile Deep Linking: https://supabase.com/docs/guides/auth/native-mobile-deep-linking
+33. Supabase — Password-based Auth: https://supabase.com/docs/guides/auth/passwords
+34. Supabase — Redirect URLs: https://supabase.com/docs/guides/auth/redirect-urls
+35. Supabase — Email Templates: https://supabase.com/docs/guides/auth/auth-email-templates
+36. Supabase JavaScript reference — auth.signUp: https://supabase.com/docs/reference/javascript/auth-signup
+
+## NEXUS authentication acceptance checks
+- The same user identity must work on web and Android.
+- Android password login accepts the supported university-number/email identifier mapping.
+- Google OAuth and manual login/signup must both preserve the mobile redirect when launched from Android.
+- Email confirmation and password-reset links must return to the web callback page and then open the Android app when a mobile redirect was requested.
+- Verify the Android custom scheme `com.nexus.app://login-callback` is present in the Supabase Auth redirect allowlist.
+- Verify hosted Supabase email templates use the supplied `RedirectTo` value; code-level redirect parameters alone do not prove the dashboard configuration is correct.
+- Do not call Google OAuth or email-confirmation flows fully verified until an actual end-to-end round trip is tested with the provider and SMTP configuration.
