@@ -667,5 +667,4 @@ function ChildCommentItem({
       </div>
     </div>
   );
-  );
 }
