@@ -30,7 +30,15 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+      - name: Reconcile stale npm lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Install dependencies
         run: npm ci
       - name: Build production bundle
         run: npm run build
+      - name: Upload reconciled lockfile for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEXUS-web-preview-lockfile
+          path: package-lock.json
+          retention-days: 7
