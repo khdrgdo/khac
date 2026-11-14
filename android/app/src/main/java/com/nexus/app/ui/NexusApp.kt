@@ -6,6 +6,8 @@ import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -71,7 +73,7 @@ fun NexusApp(viewModel: NexusViewModel) {
             AppScreen.HOME -> HomeScreen(state, viewModel::openCourse, viewModel::openMaterial, viewModel::refreshHome, viewModel::showCourses, viewModel::showProfile, viewModel::showFeed)
             AppScreen.FEED -> SocialFeedScreen(state, viewModel::loadFeed, viewModel::publishPost, viewModel::addFeedComment, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
-            AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::signOut)
+            AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::saveProfileCardTheme, viewModel::signOut)
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
             AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial, viewModel::postQuestion, viewModel::addComment)
         }
@@ -80,10 +82,32 @@ fun NexusApp(viewModel: NexusViewModel) {
 
 @Composable
 private fun SplashScreen() {
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            NexusBrand(true, true)
-            CircularProgressIndicator(Modifier.size(22.dp), color = MaterialTheme.colorScheme.tertiary, strokeWidth = 2.dp)
+    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "nexus-splash")
+    val orbit by transition.animateFloat(0f, 360f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(animation = androidx.compose.animation.core.tween(7200, easing = androidx.compose.animation.core.LinearEasing)), label = "orbit")
+    val pulse by transition.animateFloat(0.97f, 1.025f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(animation = androidx.compose.animation.core.tween(1800, easing = androidx.compose.animation.core.FastOutSlowInEasing), repeatMode = androidx.compose.animation.core.RepeatMode.Reverse), label = "brand-pulse")
+    Box(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF101820), Color(0xFF1C2B39), Color(0xFF101820)))),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height * 0.39f)
+            val radius = size.minDimension * 0.255f
+            drawCircle(Color.White.copy(alpha = 0.035f), radius * 1.42f, center)
+            drawCircle(Color.White.copy(alpha = 0.08f), radius, center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+            drawArc(
+                brush = androidx.compose.ui.graphics.Brush.sweepGradient(listOf(Color.Transparent, Color(0xFF7896FF), Color(0xFFE08B61), Color.Transparent), center),
+                startAngle = orbit, sweepAngle = 82f, useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset(center.x - radius, center.y - radius),
+                size = androidx.compose.ui.geometry.Size(radius * 2f, radius * 2f),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(2.5.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+            )
+            drawCircle(Color(0xFFE7A27D).copy(alpha = 0.9f), 3.dp.toPx(), androidx.compose.ui.geometry.Offset(center.x + radius * 0.98f, center.y - radius * 0.18f))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(13.dp), modifier = Modifier.offset(y = (-8).dp)) {
+            Box(Modifier.graphicsLayer { scaleX = pulse; scaleY = pulse }) { NexusBrand(true, true) }
+            Text("مساحتك الأكاديمية", style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.82f), letterSpacing = 1.2.sp)
+            Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(modifier = Modifier.width(76.dp).height(2.dp).clip(RoundedCornerShape(4.dp)), color = Color(0xFFE08B61), trackColor = Color.White.copy(alpha = 0.14f))
         }
     }
 }
@@ -722,23 +746,14 @@ private fun ProfileScreen(
     onCourses: () -> Unit,
     onChangePassword: () -> Unit,
     onTheme: (ThemeMode) -> Unit,
+    onCardTheme: (String) -> Unit,
     onSignOut: () -> Unit
 ) {
     val profile = state.profile
     Scaffold(bottomBar = { NexusBottomBar(AppScreen.PROFILE, onHome, onCourses, {}) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("حسابي", style = MaterialTheme.typography.headlineLarge)
-            Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
-                Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-                    ProfileAvatar(profile?.avatarUrl, profile?.fullName ?: "N", 58)
-                    Spacer(Modifier.width(13.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(profile?.fullName ?: "طالب NEXUS", style = MaterialTheme.typography.titleLarge)
-                        Text(profile?.universityNumber ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(listOfNotNull(profile?.major?.let(::majorLabel), profile?.year?.let { "السنة " + it }).joinToString(" • "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                    }
-                }
-            }
+            if (profile != null) NexusProfileCard(profile, onCardTheme)
             SectionTitle("إعدادات التطبيق")
             Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -776,7 +791,7 @@ private fun ProfileScreen(
                 Spacer(Modifier.width(8.dp))
                 Text("تسجيل الخروج")
             }
-            Text("NEXUS  •  الإصدار 1.2.0", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+            Text("NEXUS  •  الإصدار " + BuildConfig.VERSION_NAME, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
         }
     }
 }

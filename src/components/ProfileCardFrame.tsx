@@ -60,6 +60,7 @@ interface ProfileCardFrameProps {
     major: "it" | "is" | "se" | null;
     year: number | null;
     points: number;
+    card_theme_id?: string | null;
     bio: string | null;
     banned?: boolean;
     suspended_until?: string | null;
@@ -86,7 +87,7 @@ export function ProfileCardFrame({
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const defaultTheme = getDefaultThemeForPoints(profile.points ?? 0);
-  const profileTheme = (profile as any).theme as CardThemeId | undefined;
+  const profileTheme = profile.card_theme_id as CardThemeId | undefined;
 
   // Storage key for user's selected frame theme
   const [selectedThemeId, setSelectedThemeId] = useState<CardThemeId>(profileTheme || defaultTheme);
@@ -102,23 +103,8 @@ export function ProfileCardFrame({
   const saveThemeMutation = useMutation({
     mutationFn: async (themeId: CardThemeId) => {
       // 1. Update Supabase DB profiles table
-      const { error } = await supabase
-        .from("profiles")
-        .update({ theme: themeId } as any)
-        .eq("id", profile.id);
-
-      if (error) {
-        console.warn("Error updating profile theme:", error);
-      }
-
-      // 2. Also record in local theme map so all client queries immediately reflect the choice
-      try {
-        const themeMap = JSON.parse(localStorage.getItem("unihub_profile_themes_v1") || "{}");
-        themeMap[profile.id] = themeId;
-        localStorage.setItem("unihub_profile_themes_v1", JSON.stringify(themeMap));
-      } catch (e) {
-        /* ignore */
-      }
+      const { error } = await supabase.from("profiles").update({ card_theme_id: themeId }).eq("id", profile.id);
+      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["profile", profile.id] });
@@ -265,54 +251,19 @@ export function ProfileCardFrame({
       <div
         className={`relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br ${activeTheme.cardBg} text-white border-2 ${activeTheme.accentBorder} ${activeTheme.glowEffect} transition-all duration-500`}
       >
-        {/* Decorative Celestial Elements */}
-        {activeTheme.id === "stars" && (
-          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
-            <div className="absolute top-2 left-10 text-amber-300 text-xs animate-pulse">★</div>
-            <div className="absolute top-12 right-16 text-amber-200 text-sm animate-ping">✨</div>
-            <div className="absolute bottom-6 left-24 text-amber-300 text-xs">✦</div>
-            <div className="absolute bottom-12 right-8 text-amber-100 text-[10px]">★</div>
-            <div className="absolute top-1/2 right-1/4 text-indigo-300/40 text-lg">✦</div>
-          </div>
-        )}
-
-        {activeTheme.id === "clouds" && (
-          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-25">
-            <Cloud className="absolute -top-4 -right-4 w-24 h-24 text-cyan-200/40" />
-            <Cloud className="absolute -bottom-6 -left-6 w-32 h-32 text-sky-300/30" />
-            <div className="absolute top-1/3 left-1/2 w-48 h-12 bg-cyan-300/10 blur-xl rounded-full" />
-          </div>
-        )}
-
-        {activeTheme.id === "moon" && (
-          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
-            <Moon className="absolute top-3 left-4 w-12 h-12 text-purple-200/50 filter drop-shadow-[0_0_10px_rgba(216,180,254,0.8)]" />
-            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-purple-500/20 blur-2xl rounded-full" />
-            <Sparkles className="absolute top-8 right-12 w-5 h-5 text-purple-300 animate-pulse" />
-          </div>
-        )}
-
-        {activeTheme.id === "sun" && (
-          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-35">
-            <Sun className="absolute -top-8 -right-8 w-28 h-28 text-amber-400/40 animate-spin-slow filter drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]" />
-            <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-orange-500/20 blur-2xl rounded-full" />
-            <div className="absolute top-1/2 left-10 w-2 h-2 bg-amber-300 rounded-full animate-ping" />
-          </div>
-        )}
-
-        {activeTheme.id === "galaxy" && (
-          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40">
-            <div className="absolute -top-20 -left-20 w-60 h-60 bg-fuchsia-600/30 blur-3xl rounded-full animate-pulse" />
-            <div className="absolute -bottom-20 -right-20 w-60 h-60 bg-purple-600/30 blur-3xl rounded-full animate-pulse" />
-            <Zap className="absolute top-4 right-6 w-6 h-6 text-fuchsia-300 animate-bounce" />
-            <Sparkles className="absolute bottom-6 left-12 w-6 h-6 text-cyan-300 animate-spin-slow" />
-          </div>
-        )}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <motion.img src={activeTheme.imageUrl} alt="" aria-hidden="true" loading="eager" decoding="async"
+            className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: activeTheme.imagePosition }}
+            initial={{ scale: 1.04 }} animate={{ scale: 1.085 }}
+            transition={{ duration: 22, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }} />
+          <div className={`absolute inset-0 bg-gradient-to-b ${activeTheme.overlay}`} />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/25 via-transparent to-slate-950/35" />
+        </div>
 
         {/* Theme Badge & Customizer Trigger */}
         <div className="relative z-10 flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-lg">{activeTheme.icon}</span>
+            <span className="font-mono text-[10px] tracking-[0.32em] text-white/80">NEXUS / {activeTheme.icon}</span>
             <Badge
               variant="outline"
               className={`text-xs px-2.5 py-0.5 font-medium border ${activeTheme.badgeBg} backdrop-blur-md shadow-sm`}
@@ -531,7 +482,7 @@ export function ProfileCardFrame({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg font-bold">
               <Palette className="w-5 h-5 text-amber-500" />
-              تحديد مظهر بطاقة الملف الشخصي (Mobile Legends Style)
+              اختيار مظهر بطاقة المستوى
             </DialogTitle>
           </DialogHeader>
 
@@ -559,7 +510,7 @@ export function ProfileCardFrame({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="text-3xl p-2 rounded-xl bg-muted shrink-0">{theme.icon}</div>
+                      <div className="relative w-24 h-16 rounded-lg overflow-hidden shrink-0"><img src={theme.imageUrl} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" style={{ objectPosition: theme.imagePosition }} /><div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 to-transparent" /><span className="absolute bottom-1 left-2 text-[9px] font-mono tracking-widest text-white">NEXUS / {theme.icon}</span></div>
                       <div>
                         <div className="font-bold text-sm flex items-center gap-2">
                           {theme.name}

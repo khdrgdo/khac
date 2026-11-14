@@ -1,87 +1,16 @@
 export type CardThemeId = "stars" | "clouds" | "moon" | "sun" | "galaxy";
-
 export interface CardThemeConfig {
-  id: CardThemeId;
-  name: string;
-  icon: string;
-  minPoints: number;
-  rankName: string;
-  desc: string;
-  badgeBg: string;
-  accentBorder: string;
-  cardBg: string;
-  glowEffect: string;
-  avatarRing: string;
+  id: CardThemeId; name: string; icon: string; minPoints: number; rankName: string; desc: string;
+  imageUrl: string; imagePosition: string; overlay: string; badgeBg: string; accentBorder: string;
+  cardBg: string; glowEffect: string; avatarRing: string;
 }
-
 export const CARD_THEMES: CardThemeConfig[] = [
-  {
-    id: "stars",
-    name: "النجوم المضيئة",
-    icon: "🌟",
-    minPoints: 0,
-    rankName: "المبتدئ (0+ نقطة)",
-    desc: "سماء ليلية مرصعة بالنجوم المضيئة والأبراج اللامعة",
-    badgeBg: "bg-amber-500/20 text-amber-300 border-amber-400/40",
-    accentBorder: "border-amber-400/50",
-    cardBg: "from-slate-950 via-indigo-950 to-slate-900",
-    glowEffect: "shadow-[0_0_20px_rgba(251,191,36,0.25)]",
-    avatarRing: "ring-4 ring-amber-400/80 shadow-[0_0_15px_rgba(251,191,36,0.5)]",
-  },
-  {
-    id: "clouds",
-    name: "السحاب الهادئ",
-    icon: "☁️",
-    minPoints: 100,
-    rankName: "الفضي (100+ نقطة)",
-    desc: "أمواج سحابية فضية مع إطار سماوي أثيري ناعم",
-    badgeBg: "bg-sky-500/20 text-sky-300 border-sky-400/40",
-    accentBorder: "border-sky-400/50",
-    cardBg: "from-sky-950 via-cyan-950 to-slate-900",
-    glowEffect: "shadow-[0_0_25px_rgba(56,189,248,0.3)]",
-    avatarRing: "ring-4 ring-cyan-300 shadow-[0_0_20px_rgba(103,232,249,0.5)]",
-  },
-  {
-    id: "moon",
-    name: "القمر والكسوف",
-    icon: "🌙",
-    minPoints: 300,
-    rankName: "الذهبي (300+ نقطة)",
-    desc: "هالة قمرية ساحرة وتوهج فضي أرجواني ساطع",
-    badgeBg: "bg-purple-500/20 text-purple-300 border-purple-400/40",
-    accentBorder: "border-purple-400/60",
-    cardBg: "from-slate-950 via-purple-950 to-indigo-950",
-    glowEffect: "shadow-[0_0_30px_rgba(192,132,252,0.35)]",
-    avatarRing: "ring-4 ring-purple-300 shadow-[0_0_25px_rgba(192,132,252,0.6)]",
-  },
-  {
-    id: "sun",
-    name: "الشمس والوهج الشمسي",
-    icon: "☀️",
-    minPoints: 700,
-    rankName: "البلاتيني (700+ نقطة)",
-    desc: "إشعاع شمسي ووهج ناري ذهبي ملكي يمنح هيبة فائقة",
-    badgeBg: "bg-orange-500/20 text-orange-300 border-orange-400/40",
-    accentBorder: "border-amber-500/70",
-    cardBg: "from-amber-950 via-orange-950 to-slate-950",
-    glowEffect: "shadow-[0_0_35px_rgba(245,158,11,0.4)]",
-    avatarRing: "ring-4 ring-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.7)]",
-  },
-  {
-    id: "galaxy",
-    name: "السديم الفضائي والأسطورة",
-    icon: "🌌",
-    minPoints: 1500,
-    rankName: "الماسي (1500+ نقطة)",
-    desc: "سديم مجرة أسطوري مع صواعق فضائية وهالة نجمية متحركة",
-    badgeBg: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-400/50",
-    accentBorder: "border-fuchsia-500/80",
-    cardBg: "from-purple-950 via-fuchsia-950 to-slate-950",
-    glowEffect: "shadow-[0_0_40px_rgba(217,70,239,0.5)]",
-    avatarRing: "ring-4 ring-fuchsia-400 shadow-[0_0_35px_rgba(217,70,239,0.8)]",
-  },
+  { id:"stars", name:"المدار الليلي", icon:"01", minPoints:0, rankName:"المبتدئ", desc:"سماء ليلية حقيقية فوق سلسلة جبلية", imageUrl:"https://images.unsplash.com/photo-1522124624696-7ea32eb9592c?auto=format&fit=crop&w=1400&q=82", imagePosition:"center 52%", overlay:"from-slate-950/20 via-slate-950/45 to-slate-950/95", badgeBg:"bg-white/10 text-white border-white/25", accentBorder:"border-white/25", cardBg:"from-slate-950 to-slate-900", glowEffect:"shadow-[0_16px_44px_rgba(8,15,28,0.28)]", avatarRing:"ring-2 ring-amber-100/80 shadow-[0_0_18px_rgba(245,215,160,0.35)]" },
+  { id:"clouds", name:"السحب الفضية", icon:"02", minPoints:100, rankName:"الفضي", desc:"سحب غروب كثيفة بطبقات ضوئية", imageUrl:"https://images.unsplash.com/photo-1627668354740-85b334441b5e?auto=format&fit=crop&w=1400&q=82", imagePosition:"center 48%", overlay:"from-slate-950/15 via-slate-900/45 to-slate-950/95", badgeBg:"bg-sky-200/15 text-sky-100 border-sky-100/30", accentBorder:"border-sky-100/30", cardBg:"from-sky-950 to-slate-950", glowEffect:"shadow-[0_16px_44px_rgba(8,25,45,0.32)]", avatarRing:"ring-2 ring-sky-100/80 shadow-[0_0_18px_rgba(186,230,253,0.35)]" },
+  { id:"moon", name:"الخسوف", icon:"03", minPoints:300, rankName:"الذهبي", desc:"قمر مكتمل فوق الأفق", imageUrl:"https://images.unsplash.com/photo-1606373924807-8a1d7bf1bf31?auto=format&fit=crop&w=1400&q=82", imagePosition:"center 46%", overlay:"from-slate-950/15 via-slate-950/35 to-slate-950/95", badgeBg:"bg-orange-100/15 text-orange-100 border-orange-100/30", accentBorder:"border-orange-100/30", cardBg:"from-slate-950 to-indigo-950", glowEffect:"shadow-[0_16px_44px_rgba(25,20,50,0.34)]", avatarRing:"ring-2 ring-orange-100/80 shadow-[0_0_18px_rgba(253,186,116,0.35)]" },
+  { id:"sun", name:"الشروق", icon:"04", minPoints:700, rankName:"البلاتيني", desc:"كثبان ذهبية عند أول ضوء", imageUrl:"https://images.unsplash.com/photo-1647289491458-2803fbc4499c?auto=format&fit=crop&w=1400&q=82", imagePosition:"center 55%", overlay:"from-amber-950/10 via-amber-950/35 to-slate-950/95", badgeBg:"bg-amber-100/15 text-amber-100 border-amber-100/30", accentBorder:"border-amber-100/35", cardBg:"from-amber-950 to-slate-950", glowEffect:"shadow-[0_16px_44px_rgba(70,42,14,0.32)]", avatarRing:"ring-2 ring-amber-100/80 shadow-[0_0_18px_rgba(253,230,138,0.38)]" },
+  { id:"galaxy", name:"السديم", icon:"05", minPoints:1500, rankName:"الماسي", desc:"سماء درب التبانة فوق خط جبلي", imageUrl:"https://images.unsplash.com/photo-1659413151520-bbc015ee3472?auto=format&fit=crop&w=1400&q=82", imagePosition:"center 50%", overlay:"from-slate-950/10 via-indigo-950/45 to-slate-950/95", badgeBg:"bg-indigo-100/15 text-indigo-100 border-indigo-100/30", accentBorder:"border-indigo-100/35", cardBg:"from-indigo-950 to-slate-950", glowEffect:"shadow-[0_18px_48px_rgba(35,24,75,0.38)]", avatarRing:"ring-2 ring-indigo-100/80 shadow-[0_0_20px_rgba(199,210,254,0.4)]" },
 ];
-
 export function getDefaultThemeForPoints(points: number): CardThemeId {
   if (points >= 1500) return "galaxy";
   if (points >= 700) return "sun";

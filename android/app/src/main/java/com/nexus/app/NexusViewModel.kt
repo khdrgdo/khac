@@ -11,6 +11,7 @@ import com.nexus.app.data.CourseTab
 import com.nexus.app.data.NexusRepository
 import com.nexus.app.data.NexusUiState
 import com.nexus.app.data.ThemeMode
+import com.nexus.app.data.ProfileThemeRules
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -215,6 +216,22 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun showChangePassword() { _state.update { it.copy(screen = AppScreen.CHANGE_PASSWORD, error = null) } }
     fun backFromPassword() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }
     fun setThemeMode(mode: ThemeMode) { repository.saveThemeMode(mode); _state.update { it.copy(themeMode = mode) } }
+
+    fun saveProfileCardTheme(themeId: String) {
+        val profile = _state.value.profile ?: return
+        if (!ProfileThemeRules.isUnlocked(profile.points, themeId)) {
+            _state.update { it.copy(error = "لم تصل بعد إلى النقاط المطلوبة لهذا المظهر") }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                repository.saveProfileCardTheme(themeId)
+                _state.update { it.copy(profile = it.profile?.copy(cardThemeId = themeId), notice = "تم تحديث مظهر بطاقتك") }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر حفظ مظهر البطاقة") }
+            }
+        }
+    }
     fun clearMessages() { _state.update { it.copy(error = null, notice = null) } }
 
     fun signOut() {

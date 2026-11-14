@@ -58,26 +58,16 @@ function ProfilePage() {
           try {
             const { data: directProfile } = await supabase
               .from("profiles")
-              .select("theme")
+              .select("card_theme_id")
               .eq("id", id)
               .maybeSingle();
-            if (directProfile && (directProfile as any).theme) {
-              data.theme = (directProfile as any).theme;
+            if (directProfile && (directProfile as any).card_theme_id) {
+              data.card_theme_id = (directProfile as any).card_theme_id;
             }
           } catch (err) { /* ignore */ }
         }
       }
 
-      if (data && !data.theme) {
-        try {
-          const themeMap = JSON.parse(localStorage.getItem("unihub_profile_themes_v1") || "{}");
-          if (themeMap[id]) {
-            data.theme = themeMap[id];
-          }
-        } catch (e) {
-          /* ignore */
-        }
-      }
       const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", id);
       if (!data) return null;
 

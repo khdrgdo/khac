@@ -41,3 +41,13 @@ This is an initial curated source set, not a claim that 1,000 independent source
 
 ## Research expansion policy
 For every feature being changed, add feature-specific primary documentation, research, implementation examples, and a testable acceptance checklist. Prefer official documentation, peer-reviewed or established UX research, and maintainers' implementation guides. Do not count duplicate search results, copied articles, screenshots, or AI-generated summaries as independent sources.
+
+
+## Profile-theme photographic assets
+- Night mountain: https://unsplash.com/photos/le-ciel-nocturne-avec-des-etoiles-et-une-montagne-au-premier-plan-kSsBfk3O3Fo
+- Clouded sunset: https://unsplash.com/photos/dramatic-clouds-fill-the-sky-at-dusk-ANWy03Jt02Q
+- Full moon over ridge: https://unsplash.com/photos/full-moon-over-the-silhouette-of-mountain-Kg0M8jdqIyQ
+- Golden desert dunes: https://unsplash.com/photos/golden-sunlight-bathes-the-vast-desert-sand-dunes-BhtjXDK_4V8
+- Milky Way mountain: https://unsplash.com/photos/a-mountain-with-a-starry-sky-above-it-Oztfs3ky4Xk
+
+These photographs load asynchronously and are layered with rank-specific overlays, typography, points/progress, and restrained motion. Before release, bundle optimized local WebP/AVIF variants or verify cache behavior so photo loading does not regress perceived performance.

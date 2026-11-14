@@ -40,8 +40,9 @@ data class StudentProfile(
     val mustChangePassword: Boolean,
     val points: Int,
     val banned: Boolean,
-    val suspendedUntil: String?
-)
+    val suspendedUntil: String?,
+    val cardThemeId: String? = null
+
 
 data class PublicProfile(
     val id: String,
@@ -170,4 +171,25 @@ fun majorLabel(code: String?): String = when (code?.lowercase()) {
     "is" -> "نظم المعلومات"
     "se" -> "هندسة البرمجيات"
     else -> "التخصص غير محدد"
+}
+
+
+object ProfileThemeRules {
+    fun minimumPoints(themeId: String): Int? = when (themeId) {
+        "stars" -> 0
+        "clouds" -> 100
+        "moon" -> 300
+        "sun" -> 700
+        "galaxy" -> 1500
+        else -> null
+    }
+    fun defaultForPoints(points: Int): String = when {
+        points >= 1500 -> "galaxy"
+        points >= 700 -> "sun"
+        points >= 300 -> "moon"
+        points >= 100 -> "clouds"
+        else -> "stars"
+    }
+    fun isUnlocked(points: Int, themeId: String): Boolean =
+        minimumPoints(themeId)?.let { points >= it } ?: false
 }

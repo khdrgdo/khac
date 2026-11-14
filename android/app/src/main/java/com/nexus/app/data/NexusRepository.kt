@@ -193,6 +193,12 @@ class NexusRepository(context: Context) {
         rest("/auth/v1/user", "PUT", JSONObject().put("password", password))
     }
 
+    suspend fun saveProfileCardTheme(themeId: String) {
+        if (ProfileThemeRules.minimumPoints(themeId) == null) throw ApiException("المظهر غير صالح")
+        val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        rest("/rest/v1/profiles?id=eq." + encode(userId), "PATCH", JSONObject().put("card_theme_id", themeId))
+    }
+
     suspend fun signOut() {
         try { if (session != null) rest("/auth/v1/logout", "POST", JSONObject()) }
         finally { session = null; store.clear() }
@@ -214,12 +220,12 @@ class NexusRepository(context: Context) {
     }
 
     private suspend fun loadProfile(userId: String): StudentProfile {
-        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
+        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,card_theme_id&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
             ?: throw ApiException("لم يُعثر على ملف الطالب المرتبط بهذا الحساب")
         return StudentProfile(row.optString("id"), row.optString("university_number"), row.optString("full_name"),
             row.optStringOrNull("major"), if (row.isNull("year")) null else row.optInt("year"),
             row.optStringOrNull("avatar_url"), row.optStringOrNull("bio"), row.optBoolean("must_change_password"),
-            row.optInt("points"), row.optBoolean("banned"), row.optStringOrNull("suspended_until"))
+            row.optInt("points"), row.optBoolean("banned"), row.optStringOrNull("suspended_until"), row.optStringOrNull("card_theme_id"))
     }
 
     private suspend fun verifyStudentAccess(profile: StudentProfile) {

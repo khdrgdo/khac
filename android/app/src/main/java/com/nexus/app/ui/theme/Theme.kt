@@ -16,64 +16,35 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import com.nexus.app.data.ThemeMode
 
-private val Ink = Color(0xFF24354B)
-private val InkDeep = Color(0xFF182638)
-private val Ivory = Color(0xFFF6F4EF)
-private val Paper = Color(0xFFFFFEFB)
-private val Gold = Color(0xFFC49A58)
-private val MutedGreen = Color(0xFF66847F)
-private val TextMuted = Color(0xFF6C7480)
-private val BorderLight = Color(0xFFE4E0D8)
-private val Night = Color(0xFF151F2D)
-private val NightSurface = Color(0xFF202D3E)
-private val NightBorder = Color(0xFF354354)
-private val SoftGold = Color(0xFFD6B878)
-private val SoftGreen = Color(0xFF9AB8B0)
+private val Ink = Color(0xFF172635)
+private val InkDeep = Color(0xFF101820)
+private val Paper = Color(0xFFF5F2EC)
+private val SurfaceLight = Color(0xFFFFFEFB)
+private val Terracotta = Color(0xFFB85E42)
+private val Teal = Color(0xFF39736E)
+private val TextMuted = Color(0xFF66717B)
+private val BorderLight = Color(0xFFE1DDD4)
+private val Night = Color(0xFF101820)
+private val NightSurface = Color(0xFF1B2935)
+private val NightBorder = Color(0xFF35434F)
+private val SoftCobalt = Color(0xFF91A8FF)
+private val SoftTerracotta = Color(0xFFF0A080)
+private val SoftTeal = Color(0xFF9CC2B9)
 
 private val LightColors = lightColorScheme(
-    primary = Ink,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFE6EAF0),
-    onPrimaryContainer = InkDeep,
-    secondary = MutedGreen,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE3ECE9),
-    onSecondaryContainer = Color(0xFF29433F),
-    tertiary = Gold,
-    onTertiary = InkDeep,
-    background = Ivory,
-    onBackground = InkDeep,
-    surface = Paper,
-    onSurface = InkDeep,
-    surfaceVariant = Color(0xFFEDEAE4),
-    onSurfaceVariant = TextMuted,
-    outline = BorderLight,
-    outlineVariant = Color(0xFFECE8E0),
-    error = Color(0xFFB64242),
-    onError = Color.White
+    primary = Ink, onPrimary = Color.White, primaryContainer = Color(0xFFE3E9F1), onPrimaryContainer = InkDeep,
+    secondary = Terracotta, onSecondary = Color.White, secondaryContainer = Color(0xFFF3E3DC), onSecondaryContainer = Color(0xFF592D20),
+    tertiary = Teal, onTertiary = Color.White, background = Paper, onBackground = InkDeep,
+    surface = SurfaceLight, onSurface = InkDeep, surfaceVariant = Color(0xFFEAE6DE), onSurfaceVariant = TextMuted,
+    outline = BorderLight, outlineVariant = Color(0xFFECE8E1), error = Color(0xFFB64242), onError = Color.White
 )
 
 private val DarkColors = darkColorScheme(
-    primary = SoftGold,
-    onPrimary = InkDeep,
-    primaryContainer = Color(0xFF3A3A38),
-    onPrimaryContainer = Color(0xFFF4E7C8),
-    secondary = SoftGreen,
-    onSecondary = Night,
-    secondaryContainer = Color(0xFF2D4442),
-    onSecondaryContainer = Color(0xFFD4E4DF),
-    tertiary = SoftGold,
-    onTertiary = Night,
-    background = Night,
-    onBackground = Color(0xFFF1F0EC),
-    surface = NightSurface,
-    onSurface = Color(0xFFF1F0EC),
-    surfaceVariant = Color(0xFF2B394A),
-    onSurfaceVariant = Color(0xFFB6BEC8),
-    outline = NightBorder,
-    outlineVariant = Color(0xFF2B394A),
-    error = Color(0xFFFF8A80),
-    onError = Color(0xFF3B1111)
+    primary = SoftCobalt, onPrimary = InkDeep, primaryContainer = Color(0xFF273B63), onPrimaryContainer = Color(0xFFE1E8FF),
+    secondary = SoftTerracotta, onSecondary = Night, secondaryContainer = Color(0xFF57382F), onSecondaryContainer = Color(0xFFFFE0D3),
+    tertiary = SoftTeal, onTertiary = Night, background = Night, onBackground = Color(0xFFF3F0E9),
+    surface = NightSurface, onSurface = Color(0xFFF3F0E9), surfaceVariant = Color(0xFF263744), onSurfaceVariant = Color(0xFFB8C0C7),
+    outline = NightBorder, outlineVariant = Color(0xFF2A3945), error = Color(0xFFFF8A80), onError = Color(0xFF3B1111)
 )
 
 private val NexusTypography = Typography(
