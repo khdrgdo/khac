@@ -100,7 +100,7 @@ export function PostCard({ post }: { post: PostWithMeta }) {
   const { canReveal, reveal } = useAnonymousReveal("post", anonymous ? [post.id] : []);
   const isMyAnon = useMyAnonymousIds("post");
   const hashtags = Array.from(new Set(
-    Array.from(post.content.matchAll(/(?:^|\\s)#([\\p{L}\\p{N}_-]{2,40})/gu), (match) => match[1])
+    Array.from(post.content.matchAll(/(?:^|\s)#([\p{L}\p{N}_-]{2,40})/gu), (match) => match[1])
   )).slice(0, 8);
 
   const deletePostMut = useMutation({

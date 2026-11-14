@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function PostList({ authorId, savedByUserId, filter = "all", tag }: Props) {
-  const cleanTag = tag?.replace(/[^\\p{L}\\p{N}_-]/gu, "").slice(0, 40) || undefined;
+  const cleanTag = tag?.replace(/[^\p{L}\p{N}_-]/gu, "").slice(0, 40) || undefined;
   const { data: posts, isLoading } = useQuery({
     queryKey: ["posts", { authorId, savedByUserId, filter, tag: cleanTag }],
     queryFn: async (): Promise<PostWithMeta[]> => {

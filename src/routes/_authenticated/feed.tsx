@@ -15,7 +15,7 @@ import { Trophy } from "lucide-react";
 export const Route = createFileRoute("/_authenticated/feed")({
   validateSearch: (search: Record<string, unknown>) => ({
     tag: typeof search.tag === "string"
-      ? search.tag.replace(/[^\\p{L}\\p{N}_-]/gu, "").slice(0, 40) || undefined
+      ? search.tag.replace(/[^\p{L}\p{N}_-]/gu, "").slice(0, 40) || undefined
       : undefined,
   }),
   component: FeedPage,
