@@ -103,7 +103,6 @@ class NexusRepository(context: Context) {
         ensureFreshSession()
         val cleanTag = tag?.replace(Regex("[^\\p{L}\\p{N}_-]"), "")?.take(40)?.takeIf { it.isNotBlank() }
         var query = "/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&order=created_at.desc&limit=50"
-        query += "&content=" + encode("not.ilike.[course:%")
         when (filter) {
             "open_questions" -> query += "&post_type=eq.question&accepted_answer_id=is.null"
             "solved_questions" -> query += "&post_type=eq.question&accepted_answer_id=not.is.null"
