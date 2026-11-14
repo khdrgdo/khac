@@ -402,71 +402,6 @@ function PostDetailPage() {
   );
 }
 
-function CommentReactionsBar({ commentId }: { commentId: string }) {
-  const { user } = useAuth();
-  const storageKey = `cmt_reactions_${commentId}`;
-
-  const [reactions, setReactions] = useState<Record<string, string[]>>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  const toggleEmoji = (emoji: string) => {
-    if (!user) return;
-    setReactions((prev) => {
-      const current = prev[emoji] ?? [];
-      const hasReacted = current.includes(user.id);
-      const updated = hasReacted ? current.filter((id) => id !== user.id) : [...current, user.id];
-
-      const newMap = { ...prev, [emoji]: updated };
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(newMap));
-      } catch (e) { /* ignore */ }
-      return newMap;
-    });
-  };
-
-  const EMOJIS = [
-    { emoji: "👍", label: "إعجاب" },
-    { emoji: "❤️", label: "حب" },
-    { emoji: "💡", label: "مفيد" },
-    { emoji: "❓", label: "سؤال" },
-    { emoji: "😄", label: "ضحك" },
-  ];
-
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap my-1">
-      {EMOJIS.map(({ emoji, label }) => {
-        const users = reactions[emoji] ?? [];
-        const count = users.length;
-        const active = user ? users.includes(user.id) : false;
-
-        return (
-          <button
-            key={emoji}
-            type="button"
-            onClick={() => toggleEmoji(emoji)}
-            title={label}
-            className={cn(
-              "px-2 py-0.5 rounded-full text-[11px] flex items-center gap-1 border transition-all",
-              active
-                ? "bg-primary/10 border-primary/40 text-primary font-bold scale-105"
-                : "bg-muted/40 border-border/50 text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-            )}
-          >
-            <span>{emoji}</span>
-            {count > 0 && <span className="text-[10px] font-medium">{count}</span>}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function CommentItem({
   c,
   children,
@@ -535,136 +470,90 @@ function CommentItem({
   };
 
   return (
-    <div>
-      <Card className={isAccepted ? "border-emerald-500 border-2" : undefined}>
-        <CardContent className="p-3">
-          {isAccepted && (
-            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2">
-              <CheckCircle2 className="w-3.5 h-3.5" /> الحل المعتمد
-            </div>
-          )}
-          <div className="flex items-start gap-2">
-            {c.author_id ? (
-              <Link to="/profile/$id" params={{ id: c.author_id }}>
-                <UserAvatar avatarUrl={c.author?.avatar_url} fullName={name} className="w-8 h-8" />
-              </Link>
-            ) : (
-              <UserAvatar avatarUrl={null} fullName="؟" className="w-8 h-8" />
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2">
-                {c.author_id ? (
-                  <Link
-                    to="/profile/$id"
-                    params={{ id: c.author_id }}
-                    className="font-medium text-sm inline-flex items-center gap-1 hover:underline"
-                  >
-                    {name}
-                    {c.author?.verified && <VerifiedBadge />}
-                  </Link>
-                ) : (
-                  <span className="font-medium text-sm">{name}</span>
-                )}
-                <span className="text-[10px] text-muted-foreground">
-                  {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: ar })}
-                </span>
-              </div>
-
-              {isEditing ? (
-                <div className="mt-2 space-y-2">
-                  <Textarea
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    className="text-xs rounded-xl"
-                    rows={2}
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleSaveEdit}
-                      disabled={savingEdit || !editText.trim()}
-                      className="h-7 text-xs rounded-lg px-3"
-                    >
-                      {savingEdit && <Loader2 className="w-3 h-3 animate-spin ml-1" />} حفظ التعديل
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setEditText(c.content);
-                      }}
-                      className="h-7 text-xs rounded-lg"
-                    >
-                      إلغاء
-                    </Button>
-                  </div>
-                </div>
+    <div className={cn(
+      "py-4 border-b border-border/70 last:border-b-0",
+      isAccepted && "rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3"
+    )}>
+      {isAccepted && (
+        <div className="flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-2">
+          <CheckCircle2 className="w-3.5 h-3.5" /> الحل المعتمد
+        </div>
+      )}
+      <div className="flex items-start gap-3">
+        {c.author_id ? (
+          <Link to="/profile/$id" params={{ id: c.author_id }}>
+            <UserAvatar avatarUrl={c.author?.avatar_url} fullName={name} className="w-9 h-9" />
+          </Link>
+        ) : (
+          <UserAvatar avatarUrl={null} fullName="؟" className="w-9 h-9" />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="rounded-2xl bg-muted/55 px-3.5 py-2.5">
+            <div className="flex items-baseline gap-x-2 gap-y-1 flex-wrap">
+              {c.author_id ? (
+                <Link to="/profile/$id" params={{ id: c.author_id }} className="font-semibold text-sm inline-flex items-center gap-1 hover:underline">
+                  {name}
+                  {c.author?.verified && <VerifiedBadge />}
+                </Link>
               ) : (
-                <>
-                  <div className="text-sm mt-0.5">
-                    {renderMarkdownContent(c.content, "whitespace-pre-wrap")}
-                  </div>
-                  <CommentReactionsBar commentId={c.id} />
-                </>
+                <span className="font-semibold text-sm">{name}</span>
               )}
-
-              <div className="flex gap-3 mt-1 items-center flex-wrap">
-                <button
-                  onClick={() => onReply(c.id)}
-                  className="text-xs text-muted-foreground hover:text-primary"
-                >
-                  رد
-                </button>
-                {canAccept && (
-                  <button
-                    onClick={() => onAccept?.(c.id)}
-                    disabled={acceptPending}
-                    className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <CheckCircle2 className="w-3 h-3" /> اعتماد كحل
-                  </button>
-                )}
-                {isAccepted && isPostAuthor && (
-                  <button
-                    onClick={() => onAccept?.(null)}
-                    disabled={acceptPending}
-                    className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-50"
-                  >
-                    إلغاء الاعتماد
-                  </button>
-                )}
-                {canEdit && !isEditing && (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                  >
-                    <Pencil className="w-3 h-3" /> تعديل
-                  </button>
-                )}
-                {canDelete(c.author_id) && (
-                  <button
-                    onClick={() => onDelete(c.id)}
-                    className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3 h-3" /> حذف
-                  </button>
-                )}
-              </div>
+              <span className="text-[10px] text-muted-foreground">
+                {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: ar })}
+              </span>
             </div>
+
+            {isEditing ? (
+              <div className="mt-2 space-y-2">
+                <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="text-sm rounded-xl bg-background" rows={2} />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit || !editText.trim()} className="h-8 text-xs rounded-lg px-3">
+                    {savingEdit && <Loader2 className="w-3 h-3 animate-spin ml-1" />} حفظ التعديل
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setIsEditing(false); setEditText(c.content); }} className="h-8 text-xs rounded-lg">
+                    إلغاء
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm mt-1.5 leading-7">{renderMarkdownContent(c.content, "whitespace-pre-wrap")}</div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="flex gap-3 mt-2 px-1 items-center flex-wrap">
+            <button onClick={() => onReply(c.id)} className="text-xs font-semibold text-muted-foreground hover:text-primary">رد</button>
+            {canAccept && (
+              <button onClick={() => onAccept?.(c.id)} disabled={acceptPending} className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 disabled:opacity-50">
+                <CheckCircle2 className="w-3 h-3" /> اعتماد كحل
+              </button>
+            )}
+            {isAccepted && isPostAuthor && (
+              <button onClick={() => onAccept?.(null)} disabled={acceptPending} className="text-xs text-muted-foreground hover:text-destructive disabled:opacity-50">إلغاء الاعتماد</button>
+            )}
+            {canEdit && !isEditing && (
+              <button onClick={() => setIsEditing(true)} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
+                <Pencil className="w-3 h-3" /> تعديل
+              </button>
+            )}
+            {canDelete(c.author_id) && (
+              <button onClick={() => onDelete(c.id)} className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1">
+                <Trash2 className="w-3 h-3" /> حذف
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {children.length > 0 && (
-        <div className="ms-8 mt-2 space-y-2">
+        <div className="me-5 mt-3 border-r-2 border-border/70 pr-4 space-y-3">
           {children.map((ch) => {
-            const cn = ch.author_id ? (ch.author?.full_name ?? "مستخدم") : ANON_NAME;
+            const childName = ch.author_id ? (ch.author?.full_name ?? "مستخدم") : ANON_NAME;
             const canEditChild = !!user && (user.id === ch.author_id || isAdmin);
             return (
               <ChildCommentItem
                 key={ch.id}
                 ch={ch}
-                cn={cn}
+                cn={childName}
                 canEdit={canEditChild}
                 canDelete={canDelete(ch.author_id)}
                 onDelete={onDelete}
@@ -722,98 +611,61 @@ function ChildCommentItem({
   };
 
   return (
-    <Card>
-      <CardContent className="p-3">
-        <div className="flex items-start gap-2">
-          {ch.author_id ? (
-            <Link to="/profile/$id" params={{ id: ch.author_id }}>
-              <UserAvatar avatarUrl={ch.author?.avatar_url} fullName={cn} className="w-7 h-7" />
-            </Link>
-          ) : (
-            <UserAvatar avatarUrl={null} fullName="؟" className="w-7 h-7" />
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-baseline gap-2">
+    <div className="py-1">
+      <div className="flex items-start gap-2.5">
+        {ch.author_id ? (
+          <Link to="/profile/$id" params={{ id: ch.author_id }}>
+            <UserAvatar avatarUrl={ch.author?.avatar_url} fullName={cn} className="w-7 h-7" />
+          </Link>
+        ) : (
+          <UserAvatar avatarUrl={null} fullName="؟" className="w-7 h-7" />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="rounded-xl bg-muted/45 px-3 py-2">
+            <div className="flex items-baseline gap-x-2 gap-y-1 flex-wrap">
               {ch.author_id ? (
-                <Link
-                  to="/profile/$id"
-                  params={{ id: ch.author_id }}
-                  className="font-medium text-xs inline-flex items-center gap-1 hover:underline"
-                >
+                <Link to="/profile/$id" params={{ id: ch.author_id }} className="font-semibold text-xs inline-flex items-center gap-1 hover:underline">
                   {cn}
                   {ch.author?.verified && <VerifiedBadge />}
                 </Link>
               ) : (
-                <span className="font-medium text-xs">{cn}</span>
+                <span className="font-semibold text-xs">{cn}</span>
               )}
               <span className="text-[10px] text-muted-foreground">
-                {formatDistanceToNow(new Date(ch.created_at), {
-                  addSuffix: true,
-                  locale: ar,
-                })}
+                {formatDistanceToNow(new Date(ch.created_at), { addSuffix: true, locale: ar })}
               </span>
             </div>
-
             {isEditing ? (
-              <div className="mt-1.5 space-y-1.5">
-                <Textarea
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                  className="text-xs rounded-xl"
-                  rows={2}
-                />
+              <div className="mt-2 space-y-1.5">
+                <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="text-xs rounded-xl bg-background" rows={2} />
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={saving || !editText.trim()}
-                    className="h-6 text-[11px] rounded-md px-2.5"
-                  >
+                  <Button size="sm" onClick={handleSave} disabled={saving || !editText.trim()} className="h-7 text-[11px] rounded-lg px-2.5">
                     {saving && <Loader2 className="w-3 h-3 animate-spin ml-1" />} حفظ
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setIsEditing(false);
-                      setEditText(ch.content);
-                    }}
-                    className="h-6 text-[11px] rounded-md"
-                  >
+                  <Button size="sm" variant="ghost" onClick={() => { setIsEditing(false); setEditText(ch.content); }} className="h-7 text-[11px] rounded-lg">
                     إلغاء
                   </Button>
                 </div>
               </div>
             ) : (
-              <>
-                <div className="text-sm mt-0.5">
-                  {renderMarkdownContent(ch.content, "whitespace-pre-wrap")}
-                </div>
-                <CommentReactionsBar commentId={ch.id} />
-              </>
+              <div className="text-sm mt-1 leading-6">{renderMarkdownContent(ch.content, "whitespace-pre-wrap")}</div>
             )}
-
-            <div className="flex items-center gap-3 mt-1">
-              {canEdit && !isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                >
-                  <Pencil className="w-3 h-3" /> تعديل
-                </button>
-              )}
-              {canDelete && (
-                <button
-                  onClick={() => onDelete(ch.id)}
-                  className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1"
-                >
-                  <Trash2 className="w-3 h-3" /> حذف
-                </button>
-              )}
-            </div>
+          </div>
+          <div className="flex items-center gap-3 mt-1.5 px-1">
+            {canEdit && !isEditing && (
+              <button onClick={() => setIsEditing(true)} className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1">
+                <Pencil className="w-3 h-3" /> تعديل
+              </button>
+            )}
+            {canDelete && (
+              <button onClick={() => onDelete(ch.id)} className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-1">
+                <Trash2 className="w-3 h-3" /> حذف
+              </button>
+            )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
+  );
   );
 }
