@@ -86,3 +86,12 @@ Use the workflow recommended across the official Codex, Anthropic, and VS Code a
 7. Record evidence and only then proceed to the next slice.
 
 Do not send a one-shot prompt to rewrite the entire app. Keep work small enough to inspect, test, and roll back safely.
+
+
+## Gamification design constraints
+- Preserve the selected hybrid leaderboard direction: macro ranking plus micro ranking by major, cohort/section, course, and period.
+- Include a personal progress view and "nearby rank" so the global leaderboard is not the only feedback loop.
+- Make point-award rules visible and tied to meaningful participation or academic contribution.
+- Do not award points solely for post volume, repetitive comments, or other easy-to-game activity.
+- Allow a student to choose any unlocked theme without falsifying their earned rank; selected appearance and actual rank are separate concepts.
+- Do not claim the system is cheat-resistant until the server validates awards and theme unlocks.
