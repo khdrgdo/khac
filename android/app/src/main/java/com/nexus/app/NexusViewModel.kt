@@ -8,6 +8,7 @@ import com.nexus.app.data.AppScreen
 import com.nexus.app.data.Course
 import com.nexus.app.data.CourseMaterial
 import com.nexus.app.data.CourseTab
+import com.nexus.app.data.FeedReaction
 import com.nexus.app.data.NexusRepository
 import com.nexus.app.data.NexusUiState
 import com.nexus.app.data.ThemeMode
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 
 class NexusViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = NexusRepository(application)
+    private val postImageUrlCache = mutableMapOf<String, String>()
     private val _state = MutableStateFlow(NexusUiState(themeMode = repository.loadThemeMode()))
     val state: StateFlow<NexusUiState> = _state.asStateFlow()
 
@@ -83,30 +85,35 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
 
     fun showFeed() {
         _state.update { it.copy(screen = AppScreen.FEED, error = null) }
-        loadFeed()
+        loadFeed(_state.value.feedFilter, _state.value.feedTag)
     }
 
-    fun loadFeed() {
+    fun loadFeed(filter: String = "all", tag: String? = null) {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null) }
+            val hasCachedPosts = _state.value.feedPosts.isNotEmpty()
+            _state.update { it.copy(loading = !hasCachedPosts, error = null, feedFilter = filter, feedTag = tag) }
             try {
-                val posts = repository.loadFeed()
-                _state.update { it.copy(loading = false, feedPosts = posts) }
+                val posts = repository.loadFeed(filter, tag)
+                _state.update { it.copy(loading = false, feedPosts = posts, feedFilter = filter, feedTag = tag) }
             } catch (error: Exception) {
                 _state.update { it.copy(loading = false, error = error.message ?: "تعذّر تحميل المنشورات") }
             }
         }
     }
 
-    fun publishPost(content: String, anonymous: Boolean) {
+    fun publishPost(content: String, anonymous: Boolean, question: Boolean, imageUris: List<Uri>) {
         if (content.isBlank()) return
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
+            val uploadedPaths = mutableListOf<String>()
             try {
-                repository.createFeedPost(content, anonymous)
-                val posts = repository.loadFeed()
+                imageUris.take(4).forEach { uri -> uploadedPaths += repository.uploadPostImage(uri) }
+                repository.createFeedPost(content, anonymous, question, uploadedPaths)
+                val current = _state.value
+                val posts = repository.loadFeed(current.feedFilter, current.feedTag)
                 _state.update { it.copy(busy = false, feedPosts = posts, notice = "تم نشر مساهمتك") }
             } catch (error: Exception) {
+                uploadedPaths.forEach { path -> runCatching { repository.removePostImage(path) } }
                 _state.update { it.copy(busy = false, error = error.message ?: "تعذّر نشر المساهمة") }
             }
         }
@@ -118,13 +125,87 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { it.copy(busy = true, error = null) }
             try {
                 repository.addComment(postId, content)
-                val posts = repository.loadFeed()
-                _state.update { it.copy(busy = false, feedPosts = posts, notice = "تم إرسال تعليقك") }
+                _state.update {
+                    it.copy(
+                        busy = false,
+                        feedPosts = it.feedPosts.map { post ->
+                            if (post.id == postId) post.copy(commentsCount = post.commentsCount + 1) else post
+                        },
+                        notice = "تم إرسال تعليقك"
+                    )
+                }
             } catch (error: Exception) {
                 _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال التعليق") }
             }
         }
     }
+
+    fun reactToPost(postId: String, reaction: String?) {
+        val userId = _state.value.profile?.id ?: return
+        val previous = _state.value.feedPosts.firstOrNull { it.id == postId } ?: return
+        val updatedReactions = previous.reactions.filterNot { it.userId == userId } +
+            if (reaction == null) emptyList() else listOf(FeedReaction(userId, reaction))
+        _state.update {
+            it.copy(feedPosts = it.feedPosts.map { post ->
+                if (post.id == postId) post.copy(reactions = updatedReactions, myReaction = reaction) else post
+            })
+        }
+        viewModelScope.launch {
+            try {
+                repository.setPostReaction(postId, reaction)
+            } catch (error: Exception) {
+                loadFeed(_state.value.feedFilter, _state.value.feedTag)
+                _state.update { it.copy(error = error.message ?: "تعذّر حفظ التفاعل") }
+            }
+        }
+    }
+
+    fun toggleSavedPost(postId: String, saved: Boolean) {
+        _state.update {
+            it.copy(feedPosts = it.feedPosts.map { post -> if (post.id == postId) post.copy(saved = saved) else post })
+        }
+        viewModelScope.launch {
+            try {
+                repository.toggleSavedPost(postId, saved)
+                _state.update { it.copy(notice = if (saved) "أُضيف المنشور إلى المحفوظات" else "أُزيل من المحفوظات") }
+            } catch (error: Exception) {
+                loadFeed(_state.value.feedFilter, _state.value.feedTag)
+                _state.update { it.copy(error = error.message ?: "تعذّر تحديث المحفوظات") }
+            }
+        }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            try {
+                repository.deletePost(postId)
+                _state.update { it.copy(feedPosts = it.feedPosts.filterNot { post -> post.id == postId }, notice = "تم حذف المنشور") }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر حذف المنشور") }
+            }
+        }
+    }
+
+    fun reportPost(postId: String, reason: String) {
+        viewModelScope.launch {
+            try {
+                repository.reportPost(postId, reason)
+                _state.update { it.copy(notice = "تم إرسال البلاغ للمراجعة") }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر إرسال البلاغ") }
+            }
+        }
+    }
+
+    fun resolvePostImage(path: String, onResult: (String?) -> Unit) {
+        postImageUrlCache[path]?.let { onResult(it); return }
+        viewModelScope.launch {
+            val url = runCatching { repository.resolvePostImageUrl(path) }.getOrNull()
+            if (url != null) postImageUrlCache[path] = url
+            onResult(url)
+        }
+    }
+
     fun showCourses() { _state.update { it.copy(screen = AppScreen.COURSES, error = null) }; loadHome() }
     fun showHome() { showFeed() }
     fun showProfile() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }
