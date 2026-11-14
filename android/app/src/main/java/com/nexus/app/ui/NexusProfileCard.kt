@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.nexus.app.data.ProfileThemeRules
 import com.nexus.app.data.StudentProfile
+import com.nexus.app.data.majorLabel
 
 private data class NexusProfileTheme(val id: String, val name: String, val rank: String, val minPoints: Int, val imageUrl: String, val accent: Color)
 
