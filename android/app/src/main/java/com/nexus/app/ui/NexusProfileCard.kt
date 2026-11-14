@@ -1,5 +1,13 @@
 package com.nexus.app.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -44,14 +53,14 @@ import com.nexus.app.data.ProfileThemeRules
 import com.nexus.app.data.StudentProfile
 import com.nexus.app.data.majorLabel
 
-private data class NexusProfileTheme(val id: String, val name: String, val rank: String, val minPoints: Int, val imageUrl: String, val accent: Color)
+private data class NexusProfileTheme(val id: String, val name: String, val rank: String, val minPoints: Int, val imageUrl: String, val accent: Color, val description: String)
 
 private val NexusProfileThemes = listOf(
-    NexusProfileTheme("stars", "المدار الليلي", "المبتدئ", 0, "https://images.unsplash.com/photo-1522124624696-7ea32eb9592c?auto=format&fit=crop&w=1200&q=80", Color(0xFFE5C58B)),
-    NexusProfileTheme("clouds", "السحب الفضية", "الفضي", 100, "https://images.unsplash.com/photo-1627668354740-85b334441b5e?auto=format&fit=crop&w=1200&q=80", Color(0xFF9FC8D7)),
-    NexusProfileTheme("moon", "الخسوف", "الذهبي", 300, "https://images.unsplash.com/photo-1606373924807-8a1d7bf1bf31?auto=format&fit=crop&w=1200&q=80", Color(0xFFE3B9A1)),
-    NexusProfileTheme("sun", "الشروق", "البلاتيني", 700, "https://images.unsplash.com/photo-1647289491458-2803fbc4499c?auto=format&fit=crop&w=1200&q=80", Color(0xFFF0C27D)),
-    NexusProfileTheme("galaxy", "السديم", "الماسي", 1500, "https://images.unsplash.com/photo-1659413151520-bbc015ee3472?auto=format&fit=crop&w=1200&q=80", Color(0xFFB6B8E8))
+    NexusProfileTheme("stars", "المدار الليلي", "المبتدئ", 0, "https://images.unsplash.com/photo-1522124624696-7ea32eb9592c?auto=format&fit=crop&w=1200&q=80", Color(0xFFE5C58B), "سماء ليلية فوق تضاريس جبلية بعيدة"),
+    NexusProfileTheme("clouds", "السحب الفضية", "الفضي", 100, "https://images.unsplash.com/photo-1627668354740-85b334441b5e?auto=format&fit=crop&w=1200&q=80", Color(0xFF9FC8D7), "طبقات من السحب الفضية عند الغروب"),
+    NexusProfileTheme("moon", "الخسوف", "الذهبي", 300, "https://images.unsplash.com/photo-1606373924807-8a1d7bf1bf31?auto=format&fit=crop&w=1200&q=80", Color(0xFFE3B9A1), "ضوء القمر فوق أفق هادئ"),
+    NexusProfileTheme("sun", "الشروق", "البلاتيني", 700, "https://images.unsplash.com/photo-1647289491458-2803fbc4499c?auto=format&fit=crop&w=1200&q=80", Color(0xFFF0C27D), "كثبان رملية تلتقط أول ضوء"),
+    NexusProfileTheme("galaxy", "السديم", "الماسي", 1500, "https://images.unsplash.com/photo-1659413151520-bbc015ee3472?auto=format&fit=crop&w=1200&q=80", Color(0xFFB6B8E8), "سماء واسعة فوق سلسلة جبلية")
 )
 
 @Composable
@@ -63,16 +72,41 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
     val earnedTheme = NexusProfileThemes.last { it.minPoints <= profile.points }
     val nextTheme = NexusProfileThemes.firstOrNull { it.minPoints > profile.points }
     val progress = if (nextTheme == null) 1f else ((profile.points - earnedTheme.minPoints).toFloat() / (nextTheme.minPoints - earnedTheme.minPoints).toFloat()).coerceIn(0f, 1f)
+    val motion = rememberInfiniteTransition(label = "profile-card-motion")
+    val backgroundScale by motion.animateFloat(1.02f, 1.085f, infiniteRepeatable(tween(18000, easing = LinearEasing), RepeatMode.Reverse), label = "background-scale")
+    val backgroundShift by motion.animateFloat(-8f, 8f, infiniteRepeatable(tween(26000, easing = LinearEasing), RepeatMode.Reverse), label = "background-shift")
+    val lightSweep by motion.animateFloat(-1f, 1f, infiniteRepeatable(tween(14000, easing = LinearEasing), RepeatMode.Restart), label = "light-sweep")
+    val animatedProgress by animateFloatAsState(progress, animationSpec = tween(950), label = "rank-progress")
 
-    Card(modifier = Modifier.fillMaxWidth().height(282.dp), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF14212D)), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth().height(296.dp),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF14212D)),
+        border = BorderStroke(1.5.dp, selectedTheme.accent.copy(alpha = 0.62f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
         Box(Modifier.fillMaxSize()) {
-            AsyncImage(model = selectedTheme.imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            AsyncImage(
+                model = selectedTheme.imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    scaleX = backgroundScale
+                    scaleY = backgroundScale
+                    translationX = backgroundShift
+                },
+                contentScale = ContentScale.Crop
+            )
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0x440B1420), 0.42f to Color(0x7A0B1420), 1f to Color(0xF20B1420))))
             Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color(0x220B1420), Color.Transparent, Color(0x440B1420)))))
+            Box(
+                Modifier.fillMaxSize().graphicsLayer { translationX = lightSweep * 360f }
+                    .background(Brush.horizontalGradient(listOf(Color.Transparent, selectedTheme.accent.copy(alpha = 0.075f), Color.Transparent)))
+            )
+            Box(Modifier.fillMaxWidth().height(3.dp).align(Alignment.TopCenter).background(selectedTheme.accent.copy(alpha = 0.9f)))
             Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("NEXUS / STUDENT CARD", color = Color.White.copy(alpha = 0.76f), fontSize = 9.sp, letterSpacing = 2.2.sp, fontWeight = FontWeight.SemiBold)
+                        Text("NEXUS · بطاقة الطالب", color = Color.White.copy(alpha = 0.78f), fontSize = 10.sp, letterSpacing = 0.7.sp, fontWeight = FontWeight.SemiBold)
                         Text(selectedTheme.name, color = Color.White, style = MaterialTheme.typography.titleMedium)
                     }
                     Surface(color = selectedTheme.accent.copy(alpha = 0.18f), shape = RoundedCornerShape(20.dp)) {
@@ -95,7 +129,7 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
                         Text("${profile.points} نقطة", color = Color.White, style = MaterialTheme.typography.titleMedium)
                         Text(nextTheme?.let { "المستوى التالي: ${it.name} · ${it.minPoints} نقطة" } ?: "أعلى مستوى", color = Color.White.copy(alpha = 0.72f), style = MaterialTheme.typography.labelSmall)
                     }
-                    LinearProgressIndicator(progress = progress, modifier = Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(10.dp)), color = earnedTheme.accent, trackColor = Color.White.copy(alpha = 0.22f))
+                    LinearProgressIndicator(progress = animatedProgress, modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(10.dp)), color = earnedTheme.accent, trackColor = Color.White.copy(alpha = 0.22f))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = { pickerOpen = true }) { Text("تخصيص بطاقة المستوى", color = Color.White, style = MaterialTheme.typography.labelLarge) }
                     }
@@ -120,7 +154,8 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
                             }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(theme.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                                Text("${theme.rank} · ${theme.minPoints} نقطة", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(theme.description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("${theme.rank} · ${theme.minPoints} نقطة" + if (unlocked) "" else " · ينقصك ${theme.minPoints - profile.points}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             if (!unlocked) androidx.compose.material3.Icon(Icons.Outlined.Lock, contentDescription = "مقفل", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             else if (selected) androidx.compose.material3.Icon(Icons.Outlined.Check, contentDescription = "محدد", tint = MaterialTheme.colorScheme.primary)
