@@ -121,7 +121,7 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(profile.fullName, color = Color.White, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(listOfNotNull(profile.major?.let(::majorLabel), profile.year?.let { "السنة $it" }).joinToString("  •  "), color = Color.White.copy(alpha = 0.76f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(profile.universityNumber, color = Color.White.copy(alpha = 0.66f), fontSize = 10.sp, letterSpacing = 1.sp)
+                        Text(if (profile.hideUniversityNumber) "••••••••••" else profile.universityNumber, color = Color.White.copy(alpha = 0.66f), fontSize = 10.sp, letterSpacing = 1.sp)
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {

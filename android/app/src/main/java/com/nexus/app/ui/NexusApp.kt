@@ -2,6 +2,10 @@ package com.nexus.app.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
@@ -91,7 +95,20 @@ fun NexusApp(viewModel: NexusViewModel) {
                 onProfile = viewModel::showProfile
             )
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
-            AppScreen.PROFILE -> ProfileScreen(state, viewModel::showHome, viewModel::showCourses, viewModel::showChangePassword, viewModel::setThemeMode, viewModel::saveProfileCardTheme, viewModel::signOut)
+            AppScreen.PROFILE -> ProfileScreen(
+                state = state,
+                onHome = viewModel::showHome,
+                onCourses = viewModel::showCourses,
+                onChangePassword = viewModel::showChangePassword,
+                onTheme = viewModel::setThemeMode,
+                onCardTheme = viewModel::saveProfileCardTheme,
+                onBioSave = viewModel::updateProfileBio,
+                onNameChange = viewModel::changeProfileName,
+                onTogglePrivacy = viewModel::toggleUniversityNumberPrivacy,
+                onUploadAvatar = viewModel::uploadProfileAvatar,
+                onRefresh = viewModel::refreshProfile,
+                onSignOut = viewModel::signOut
+            )
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
             AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial, viewModel::postQuestion, viewModel::addComment)
         }
@@ -668,13 +685,124 @@ private fun ProfileScreen(
     onChangePassword: () -> Unit,
     onTheme: (ThemeMode) -> Unit,
     onCardTheme: (String) -> Unit,
+    onBioSave: (String) -> Unit,
+    onNameChange: (String, String, String) -> Unit,
+    onTogglePrivacy: (Boolean) -> Unit,
+    onUploadAvatar: (Uri) -> Unit,
+    onRefresh: () -> Unit,
     onSignOut: () -> Unit
 ) {
     val profile = state.profile
-    Scaffold(bottomBar = { NexusBottomBar(AppScreen.PROFILE, onHome, onCourses, {}) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("حسابي", style = MaterialTheme.typography.headlineLarge)
-            if (profile != null) NexusProfileCard(profile, onCardTheme)
+    val context = LocalContext.current
+    var bioDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var nameDialogOpen by rememberSaveable { mutableStateOf(false) }
+    var bioText by rememberSaveable(profile?.id) { mutableStateOf(profile?.bio.orEmpty()) }
+    var nameText by rememberSaveable(profile?.id) { mutableStateOf(profile?.fullName.orEmpty()) }
+    var reasonText by rememberSaveable(profile?.id) { mutableStateOf("") }
+    var contactText by rememberSaveable(profile?.id) { mutableStateOf("") }
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) onUploadAvatar(uri)
+    }
+
+    LaunchedEffect(profile?.bio) { bioText = profile?.bio.orEmpty() }
+    LaunchedEffect(profile?.fullName) { nameText = profile?.fullName.orEmpty() }
+
+    Scaffold(
+        bottomBar = { NexusBottomBar(AppScreen.PROFILE, onHome, onCourses, {}) },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("حسابي", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                    Text("ملفك وإنجازاتك وإعداداتك", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onRefresh) { Icon(Icons.Outlined.Refresh, contentDescription = "تحديث الملف الشخصي") }
+            }
+
+            if (!state.error.isNullOrBlank()) {
+                Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(12.dp)) {
+                    Text(state.error, Modifier.fillMaxWidth().padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (!state.notice.isNullOrBlank()) {
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(12.dp)) {
+                    Text(state.notice, Modifier.fillMaxWidth().padding(12.dp), color = MaterialTheme.colorScheme.onSecondaryContainer, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            if (profile != null) {
+                NexusProfileCard(profile, onCardTheme)
+
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ProfileStatTile("النقاط", profile.points.toString(), Modifier.weight(1f))
+                    ProfileStatTile("المنشورات", state.profileStats?.posts?.toString() ?: "—", Modifier.weight(1f))
+                    ProfileStatTile("التعليقات", state.profileStats?.comments?.toString() ?: "—", Modifier.weight(1f))
+                }
+
+                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("نبذة عني", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            TextButton(onClick = { bioText = profile.bio.orEmpty(); bioDialogOpen = true }) {
+                                Icon(Icons.Outlined.Edit, null, Modifier.size(15.dp))
+                                Spacer(Modifier.width(5.dp))
+                                Text("تعديل")
+                            }
+                        }
+                        Text(
+                            profile.bio?.takeIf { it.isNotBlank() } ?: "أضف نبذة قصيرة تعرّف زملاءك بك واهتماماتك الأكاديمية.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (profile.bio.isNullOrBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                            lineHeight = 23.sp
+                        )
+                    }
+                }
+
+                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("المعلومات الشخصية", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        ProfileDetailRow("التخصص", profile.major?.let(::majorLabel) ?: "غير محدد")
+                        ProfileDetailRow("السنة الدراسية", profile.year?.let { "السنة $it" } ?: "غير محددة")
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("الرقم الجامعي", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(if (profile.hideUniversityNumber) "••••••••••" else profile.universityNumber, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            }
+                            Switch(checked = profile.hideUniversityNumber, onCheckedChange = onTogglePrivacy)
+                        }
+                        Text(
+                            if (profile.hideUniversityNumber) "رقمك الجامعي مخفي في واجهات الملف الشخصي." else "رقمك الجامعي ظاهر في بطاقة ملفك الشخصي.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("إدارة الملف", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        ProfileActionRow(Icons.Outlined.PhotoCamera, "تغيير الصورة الشخصية", "اختر صورة من جهازك") { avatarPicker.launch("image/*") }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        ProfileActionRow(Icons.Outlined.Badge, "تغيير الاسم", if (profile.hasUsedDirectNameChange) "إرسال طلب إلى الإدارة" else "التغيير المباشر متاح مرة واحدة") {
+                            nameText = profile.fullName
+                            nameDialogOpen = true
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        ProfileActionRow(Icons.Outlined.Share, "مشاركة الملف الشخصي", "نسخ رابط ملفك") {
+                            val url = BuildConfig.WEB_AUTH_URL.trimEnd('/') + "/profile/" + profile.id
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("NEXUS profile", url))
+                            Toast.makeText(context, "تم نسخ رابط الملف الشخصي", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+
             SectionTitle("إعدادات التطبيق")
             Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -712,8 +840,74 @@ private fun ProfileScreen(
                 Spacer(Modifier.width(8.dp))
                 Text("تسجيل الخروج")
             }
-            Text("NEXUS  •  الإصدار " + BuildConfig.VERSION_NAME, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
+            Text("NEXUS  •  الإصدار " + BuildConfig.VERSION_NAME, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
         }
+    }
+
+    if (bioDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { bioDialogOpen = false },
+            title = { Text("تعديل النبذة") },
+            text = {
+                OutlinedTextField(value = bioText, onValueChange = { bioText = it }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 5, label = { Text("نبذة قصيرة") })
+            },
+            confirmButton = { TextButton(enabled = !state.busy, onClick = { onBioSave(bioText); bioDialogOpen = false }) { Text("حفظ") } },
+            dismissButton = { TextButton(onClick = { bioDialogOpen = false }) { Text("إلغاء") } }
+        )
+    }
+
+    if (nameDialogOpen && profile != null) {
+        AlertDialog(
+            onDismissRequest = { nameDialogOpen = false },
+            title = { Text(if (profile.hasUsedDirectNameChange) "طلب تغيير الاسم" else "تغيير الاسم") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text(if (profile.hasUsedDirectNameChange) "سبق أن استخدمت التغيير المباشر. سيُرسل طلبك إلى الإدارة للمراجعة." else "يمكنك تغيير اسمك مباشرة مرة واحدة فقط.")
+                    OutlinedTextField(value = nameText, onValueChange = { nameText = it }, modifier = Modifier.fillMaxWidth(), label = { Text("الاسم الجديد") }, singleLine = true)
+                    if (profile.hasUsedDirectNameChange) {
+                        OutlinedTextField(value = reasonText, onValueChange = { reasonText = it }, modifier = Modifier.fillMaxWidth(), label = { Text("سبب الطلب") }, minLines = 2)
+                        OutlinedTextField(value = contactText, onValueChange = { contactText = it }, modifier = Modifier.fillMaxWidth(), label = { Text("معلومات التواصل") }, singleLine = true)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !state.busy && nameText.trim().length >= 2 && (!profile.hasUsedDirectNameChange || (reasonText.isNotBlank() && contactText.isNotBlank())),
+                    onClick = { onNameChange(nameText, reasonText, contactText); nameDialogOpen = false; reasonText = ""; contactText = "" }
+                ) { Text(if (profile.hasUsedDirectNameChange) "إرسال الطلب" else "حفظ الاسم") }
+            },
+            dismissButton = { TextButton(onClick = { nameDialogOpen = false }) { Text("إلغاء") } }
+        )
+    }
+}
+
+@Composable
+private fun ProfileStatTile(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(modifier, shape = RoundedCornerShape(13.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 13.dp, horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ProfileDetailRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun ProfileActionRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.secondary)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(Icons.Outlined.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
