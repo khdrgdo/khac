@@ -739,11 +739,13 @@ private fun ProfileScreen(
             if (profile != null) {
                 NexusProfileCard(profile, onCardTheme)
 
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ProfileStatTile("النقاط", profile.points.toString(), Modifier.weight(1f))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     ProfileStatTile("المنشورات", state.profileStats?.posts?.toString() ?: "—", Modifier.weight(1f))
                     ProfileStatTile("التعليقات", state.profileStats?.comments?.toString() ?: "—", Modifier.weight(1f))
+                    ProfileStatTile("إجابات مقبولة", state.profileStats?.acceptedAnswers?.toString() ?: "—", Modifier.weight(1f))
+                    ProfileStatTile("المحفوظات", state.profileStats?.saved?.toString() ?: "—", Modifier.weight(1f))
                 }
+                ProfileActivityCard(state.profileStats)
 
                 Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -880,6 +882,93 @@ private fun ProfileScreen(
             },
             dismissButton = { TextButton(onClick = { nameDialogOpen = false }) { Text("إلغاء") } }
         )
+    }
+}
+
+@Composable
+private fun ProfileActivityCard(stats: ProfileStats?) {
+    val today = remember { java.time.LocalDate.now(java.time.ZoneId.of("Africa/Khartoum")) }
+    val activityDates = stats?.activityDates.orEmpty().mapNotNull { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
+    val counts = activityDates.groupingBy { it }.eachCount()
+    val uniqueDates = counts.keys
+    val currentStreak = remember(uniqueDates, today) {
+        var cursor = if (today in uniqueDates) today else today.minusDays(1)
+        var total = 0
+        while (cursor in uniqueDates) {
+            total++
+            cursor = cursor.minusDays(1)
+        }
+        total
+    }
+    val longestStreak = remember(uniqueDates) {
+        var longest = 0
+        var run = 0
+        var previous: java.time.LocalDate? = null
+        uniqueDates.sorted().forEach { date ->
+            run = if (previous != null && date == previous!!.plusDays(1)) run + 1 else 1
+            if (run > longest) longest = run
+            previous = date
+        }
+        longest
+    }
+    val start = today.minusDays(363)
+    val alignedStart = start.minusDays((start.dayOfWeek.value % 7).toLong())
+    val weeks = (0 until 364).map { alignedStart.plusDays(it.toLong()) }.chunked(7)
+
+    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Insights, null, tint = MaterialTheme.colorScheme.tertiary)
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("سجل النشاط العلمي", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("${stats?.let { it.posts + it.comments } ?: 0} مساهمة مسجلة", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) {
+                    Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("$currentStreak يوم", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text("السلسلة الحالية", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    }
+                }
+                Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) {
+                    Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("$longestStreak يوم", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                        Text("أطول سلسلة", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    }
+                }
+            }
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(3.dp), modifier = Modifier.fillMaxWidth()) {
+                items(weeks) { week ->
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        week.forEach { date ->
+                            val count = counts[date] ?: 0
+                            val alpha = when {
+                                count == 0 -> 0.07f
+                                count == 1 -> 0.25f
+                                count <= 3 -> 0.48f
+                                count <= 6 -> 0.72f
+                                else -> 1f
+                            }
+                            Box(
+                                Modifier.size(7.dp).clip(RoundedCornerShape(2.dp))
+                                    .background(MaterialTheme.colorScheme.tertiary.copy(alpha = alpha))
+                            )
+                        }
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("أقل", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+                    listOf(0.07f, 0.25f, 0.48f, 0.72f, 1f).forEach { alpha ->
+                        Box(Modifier.size(7.dp).clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.tertiary.copy(alpha = alpha)))
+                    }
+                }
+                Text("أكثر", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
 

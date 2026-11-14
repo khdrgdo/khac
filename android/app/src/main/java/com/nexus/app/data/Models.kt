@@ -58,7 +58,9 @@ data class PublicProfile(
 data class ProfileStats(
     val posts: Int = 0,
     val comments: Int = 0,
-    val saved: Int = 0
+    val saved: Int = 0,
+    val acceptedAnswers: Int = 0,
+    val activityDates: List<String> = emptyList()
 )
 
 data class ScheduleEntry(

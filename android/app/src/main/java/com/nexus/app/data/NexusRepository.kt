@@ -377,10 +377,21 @@ class NexusRepository(context: Context) {
     }
 
     suspend fun loadProfileStats(userId: String): ProfileStats = coroutineScope {
-        val postsTask = async { array(rest("/rest/v1/posts?select=id&author_id=eq." + encode(userId) + "&limit=5000")).size }
-        val commentsTask = async { array(rest("/rest/v1/comments?select=id&author_id=eq." + encode(userId) + "&limit=5000")).size }
-        val savedTask = async { array(rest("/rest/v1/saved_posts?select=id&user_id=eq." + encode(userId) + "&limit=5000")).size }
-        ProfileStats(postsTask.await(), commentsTask.await(), savedTask.await())
+        val postsTask = async { array(rest("/rest/v1/posts?select=id,created_at&author_id=eq." + encode(userId) + "&limit=5000")) }
+        val commentsTask = async { array(rest("/rest/v1/comments?select=id,created_at&author_id=eq." + encode(userId) + "&limit=5000")) }
+        val savedTask = async { array(rest("/rest/v1/saved_posts?select=id&user_id=eq." + encode(userId) + "&limit=5000")) }
+        val posts = postsTask.await()
+        val comments = commentsTask.await()
+        val saved = savedTask.await()
+        val commentIds = comments.mapNotNull { it.optStringOrNull("id") }
+        val acceptedCount = if (commentIds.isEmpty()) 0 else {
+            commentIds.chunked(100).sumOf { chunk ->
+                val ids = chunk.joinToString(",")
+                array(rest("/rest/v1/posts?select=id&accepted_answer_id=in.(" + ids + ")&limit=5000")).size
+            }
+        }
+        val dates = (posts + comments).mapNotNull { it.optStringOrNull("created_at")?.take(10) }
+        ProfileStats(posts.size, comments.size, saved.size, acceptedCount, dates)
     }
 
     suspend fun updateProfileBio(userId: String, bio: String?) {
