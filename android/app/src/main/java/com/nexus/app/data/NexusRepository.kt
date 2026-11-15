@@ -363,7 +363,7 @@ class NexusRepository(context: Context) {
     }
 
     private suspend fun loadProfile(userId: String): StudentProfile {
-        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,card_theme_id,hide_university_number,has_used_direct_name_change&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
+        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,card_theme_id,hide_university_number&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
             ?: throw ApiException("لم يُعثر على ملف الطالب المرتبط بهذا الحساب")
         val rawAvatar = row.optStringOrNull("avatar_url")
         val avatar = if (rawAvatar.isNullOrBlank() || rawAvatar.startsWith("http")) rawAvatar
@@ -382,7 +382,7 @@ class NexusRepository(context: Context) {
             row.optStringOrNull("suspended_until"),
             row.optStringOrNull("card_theme_id"),
             row.optBoolean("hide_university_number"),
-            row.optBoolean("has_used_direct_name_change")
+            false // "has_used_direct_name_change" has no column in the live schema; see docs/ANDROID_REBUILD_PLAN.md
         )
     }
 
@@ -409,8 +409,10 @@ class NexusRepository(context: Context) {
     }
 
     suspend fun updateProfileName(userId: String, name: String) {
+        // "has_used_direct_name_change" has no column in the live schema (see docs/ANDROID_REBUILD_PLAN.md),
+        // so the one-time-direct-change gate cannot be persisted server-side yet; only the name itself is saved.
         rest("/rest/v1/profiles?id=eq." + encode(userId), "PATCH",
-            JSONObject().put("full_name", name.trim()).put("has_used_direct_name_change", true))
+            JSONObject().put("full_name", name.trim()))
     }
 
     suspend fun submitNameChangeRequest(userId: String, currentName: String, requestedName: String, reason: String, contactInfo: String, universityNumber: String) {
