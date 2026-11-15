@@ -1023,7 +1023,6 @@ private fun ChangePasswordScreen(state: NexusUiState, onBack: () -> Unit, onSave
     }
 }
 
-@Composable
 // NexusBottomBar moved to NexusBottomBar.kt and shared across all root tabs.
 
 @Composable
