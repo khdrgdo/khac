@@ -83,7 +83,7 @@ fun NexusApp(viewModel: NexusViewModel) {
     NexusTheme(state.themeMode) {
         when (state.screen) {
             AppScreen.LOGIN -> if (state.loading) SplashScreen() else NexusLoginScreen(state, viewModel::signIn, viewModel::recoverPassword)
-            AppScreen.HOME -> HomeScreen(state, viewModel::openCourse, viewModel::openMaterial, viewModel::refreshHome, viewModel::showCourses, viewModel::showProfile, viewModel::showFeed)
+            AppScreen.HOME -> HomeScreen(state, viewModel::openCourse, viewModel::openMaterial, viewModel::refreshHome, viewModel::showCourses, viewModel::showProfile, viewModel::showFeed, viewModel::showMessages)
             AppScreen.FEED -> SocialFeedScreen(
                 state = state,
                 onRefresh = viewModel::loadFeed,
@@ -96,9 +96,14 @@ fun NexusApp(viewModel: NexusViewModel) {
                 onResolveImage = viewModel::resolvePostImage,
                 onHome = viewModel::showHome,
                 onCourses = viewModel::showCourses,
-                onProfile = viewModel::showProfile
+                onProfile = viewModel::showProfile,
+                onMessages = viewModel::showMessages,
+                onSearch = viewModel::showSearch,
+                onNotifications = viewModel::showNotifications,
+                onLeaderboard = viewModel::showLeaderboard,
+                onAdmin = viewModel::showAdmin
             )
-            AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome)
+            AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome, viewModel::showMessages)
             AppScreen.PROFILE -> ProfileScreen(
                 state = state,
                 onHome = viewModel::showHome,
@@ -111,10 +116,35 @@ fun NexusApp(viewModel: NexusViewModel) {
                 onTogglePrivacy = viewModel::toggleUniversityNumberPrivacy,
                 onUploadAvatar = viewModel::uploadProfileAvatar,
                 onRefresh = viewModel::refreshProfile,
-                onSignOut = viewModel::signOut
+                onSignOut = viewModel::signOut,
+                onMessages = viewModel::showMessages
             )
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
             AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial, viewModel::postQuestion, viewModel::addComment)
+            AppScreen.MESSAGES -> MessagesListScreen(state, viewModel::openConversation, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
+            AppScreen.CONVERSATION -> ConversationScreen(state, viewModel::backFromConversation, viewModel::sendMessage, viewModel::setConversationBlocked, viewModel::leaveActiveConversation, viewModel::reportActiveConversation)
+            AppScreen.NOTIFICATIONS -> NotificationsScreen(state, viewModel::showFeed, viewModel::openNotification, viewModel::markAllNotificationsRead)
+            AppScreen.SEARCH -> SearchScreen(state, viewModel::updateSearchQuery, viewModel::showFeed, { id, name -> viewModel.startConversationWith(id, name) })
+            AppScreen.LEADERBOARD -> LeaderboardScreen(state, viewModel::showFeed, viewModel::loadLeaderboard)
+            AppScreen.ADMIN -> AdminScreen(
+                state = state,
+                onBack = viewModel::showFeed,
+                onTab = viewModel::setAdminTab,
+                onSetRole = viewModel::adminSetRole,
+                onBan = viewModel::adminBan,
+                onUnban = viewModel::adminUnban,
+                onSuspend = viewModel::adminSuspend,
+                onWarn = viewModel::adminWarn,
+                onSetVerified = viewModel::adminSetVerified,
+                onAdjustPoints = viewModel::adminAdjustPoints,
+                onDeleteUser = viewModel::adminDeleteUser,
+                onSetTeacher = viewModel::adminSetTeacherRole,
+                onDismissPostReport = viewModel::adminDismissPostReport,
+                onDismissMessageReport = viewModel::adminDismissMessageReport,
+                onDeletePost = viewModel::adminDeletePost,
+                onAddBannedWord = viewModel::adminAddBannedWord,
+                onRemoveBannedWord = viewModel::adminRemoveBannedWord
+            )
         }
     }
 }
@@ -130,7 +160,8 @@ private fun HomeScreen(
     onRefresh: () -> Unit,
     onCourses: () -> Unit,
     onProfile: () -> Unit,
-    onFeed: () -> Unit
+    onFeed: () -> Unit,
+    onMessages: () -> Unit
 ) {
     val profile = state.profile
     var query by rememberSaveable { mutableStateOf("") }
@@ -139,7 +170,7 @@ private fun HomeScreen(
     }
 
     Scaffold(
-        bottomBar = { NexusBottomBar(AppScreen.HOME, {}, onCourses, onProfile) },
+        bottomBar = { NexusBottomBar(AppScreen.HOME, state.messaging.unreadTotal, {}, onCourses, onMessages, onProfile) },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
@@ -205,7 +236,8 @@ private fun CoursesScreen(
     onOpenCourse: (Course) -> Unit,
     onHome: () -> Unit,
     onProfile: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onMessages: () -> Unit
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var yearFilter by rememberSaveable { mutableStateOf(0) }
@@ -216,7 +248,7 @@ private fun CoursesScreen(
     }
 
     Scaffold(
-        bottomBar = { NexusBottomBar(AppScreen.COURSES, onHome, {}, onProfile) },
+        bottomBar = { NexusBottomBar(AppScreen.COURSES, state.messaging.unreadTotal, onHome, {}, onMessages, onProfile) },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
@@ -659,7 +691,8 @@ private fun ProfileScreen(
     onTogglePrivacy: (Boolean) -> Unit,
     onUploadAvatar: (Uri) -> Unit,
     onRefresh: () -> Unit,
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onMessages: () -> Unit
 ) {
     val profile = state.profile
     val context = LocalContext.current
@@ -677,7 +710,7 @@ private fun ProfileScreen(
     LaunchedEffect(profile?.fullName) { nameText = profile?.fullName.orEmpty() }
 
     Scaffold(
-        bottomBar = { NexusBottomBar(AppScreen.PROFILE, onHome, onCourses, {}) },
+        bottomBar = { NexusBottomBar(AppScreen.PROFILE, state.messaging.unreadTotal, onHome, onCourses, onMessages, {}) },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
@@ -991,13 +1024,7 @@ private fun ChangePasswordScreen(state: NexusUiState, onBack: () -> Unit, onSave
 }
 
 @Composable
-private fun NexusBottomBar(selected: AppScreen, onHome: () -> Unit, onCourses: () -> Unit, onProfile: () -> Unit) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-        NavigationBarItem(selected == AppScreen.HOME, onHome, icon = { Icon(Icons.Outlined.Home, null) }, label = { Text("الرئيسية") })
-        NavigationBarItem(selected == AppScreen.COURSES, onCourses, icon = { Icon(Icons.Outlined.MenuBook, null) }, label = { Text("المقررات") })
-        NavigationBarItem(selected == AppScreen.PROFILE, onProfile, icon = { Icon(Icons.Outlined.PersonOutline, null) }, label = { Text("حسابي") })
-    }
-}
+// NexusBottomBar moved to NexusBottomBar.kt and shared across all root tabs.
 
 @Composable
 private fun NexusBrand(showTagline: Boolean, centered: Boolean = false) {

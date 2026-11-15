@@ -13,6 +13,8 @@ import com.nexus.app.data.NexusRepository
 import com.nexus.app.data.NexusUiState
 import com.nexus.app.data.ThemeMode
 import com.nexus.app.data.ProfileThemeRules
+import com.nexus.app.data.AppRole
+import com.nexus.app.data.AdminTab
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +48,8 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                     _state.update { it.copy(profile = profile, loading = false, busy = false, screen = AppScreen.FEED) }
                     refreshProfileStats(profile.id)
                     loadFeed()
+                    loadRole()
+                    refreshUnreadBadges()
                 }
             } catch (error: Exception) {
                 runCatching { repository.signOut() }
@@ -409,4 +413,287 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             _state.value = NexusUiState(themeMode = repository.loadThemeMode(), loading = false)
         }
     }
+
+    // ---------------------------------------------------------------------
+    // Role + unread badges
+    // ---------------------------------------------------------------------
+    private fun loadRole() {
+        viewModelScope.launch {
+            val role = runCatching { repository.loadRole() }.getOrDefault(AppRole.UNKNOWN)
+            _state.update { it.copy(role = role) }
+        }
+    }
+
+    private fun refreshUnreadBadges() {
+        viewModelScope.launch {
+            runCatching { repository.unreadMessageCount() }.getOrNull()?.let { count ->
+                _state.update { it.copy(messaging = it.messaging.copy(unreadTotal = count)) }
+            }
+        }
+        viewModelScope.launch {
+            runCatching { repository.loadNotifications() }.getOrNull()?.let { ns ->
+                _state.update { it.copy(notifications = ns) }
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Messaging
+    // ---------------------------------------------------------------------
+    fun showMessages() {
+        _state.update { it.copy(screen = AppScreen.MESSAGES, error = null) }
+        viewModelScope.launch {
+            _state.update { it.copy(messaging = it.messaging.copy(loading = true)) }
+            try {
+                val ms = repository.loadConversations()
+                _state.update { it.copy(messaging = ms) }
+            } catch (error: Exception) {
+                _state.update { it.copy(messaging = it.messaging.copy(loading = false), error = error.message ?: "تعذّر تحميل المحادثات") }
+            }
+        }
+    }
+
+    fun openConversation(conversationId: String, otherUserId: String?, title: String) {
+        _state.update { it.copy(screen = AppScreen.CONVERSATION, messaging = it.messaging.copy(activeConversationId = conversationId, activeOtherUserId = otherUserId, activeTitle = title, messages = emptyList(), loading = true)) }
+        viewModelScope.launch {
+            try {
+                val messages = repository.loadMessages(conversationId)
+                _state.update { it.copy(messaging = it.messaging.copy(messages = messages, loading = false)) }
+                runCatching { repository.markConversationRead(conversationId) }
+                refreshUnreadBadges()
+            } catch (error: Exception) {
+                _state.update { it.copy(messaging = it.messaging.copy(loading = false), error = error.message ?: "تعذّر تحميل الرسائل") }
+            }
+        }
+    }
+
+    fun startConversationWith(otherUserId: String, title: String) {
+        viewModelScope.launch {
+            try {
+                val convId = repository.openDirectConversation(otherUserId)
+                openConversation(convId, otherUserId, title)
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر بدء المحادثة") }
+            }
+        }
+    }
+
+    fun sendMessage(text: String) {
+        val convId = _state.value.messaging.activeConversationId ?: return
+        if (text.isBlank()) return
+        viewModelScope.launch {
+            _state.update { it.copy(messaging = it.messaging.copy(sending = true)) }
+            try {
+                repository.sendMessage(convId, text)
+                val messages = repository.loadMessages(convId)
+                _state.update { it.copy(messaging = it.messaging.copy(messages = messages, sending = false)) }
+            } catch (error: Exception) {
+                _state.update { it.copy(messaging = it.messaging.copy(sending = false), error = error.message ?: "تعذّر إرسال الرسالة") }
+            }
+        }
+    }
+
+    fun setConversationBlocked(blocked: Boolean) {
+        val otherId = _state.value.messaging.activeOtherUserId ?: return
+        viewModelScope.launch {
+            runCatching { repository.setUserBlocked(otherId, blocked) }
+            _state.update { it.copy(notice = if (blocked) "تم الحظر" else "تم إلغاء الحظر") }
+        }
+    }
+
+    fun leaveActiveConversation() {
+        val convId = _state.value.messaging.activeConversationId ?: return
+        viewModelScope.launch {
+            runCatching { repository.leaveConversation(convId) }
+            showMessages()
+        }
+    }
+
+    fun reportActiveConversation(reason: String, note: String?) {
+        val convId = _state.value.messaging.activeConversationId ?: return
+        val otherId = _state.value.messaging.activeOtherUserId ?: return
+        viewModelScope.launch {
+            runCatching { repository.reportMessageThread(convId, otherId, reason, note) }
+            _state.update { it.copy(notice = "تم إرسال البلاغ") }
+        }
+    }
+
+    fun backFromConversation() { showMessages() }
+
+    // ---------------------------------------------------------------------
+    // Notifications
+    // ---------------------------------------------------------------------
+    fun showNotifications() {
+        _state.update { it.copy(screen = AppScreen.NOTIFICATIONS, error = null) }
+        viewModelScope.launch {
+            _state.update { it.copy(notifications = it.notifications.copy(loading = true)) }
+            try {
+                val ns = repository.loadNotifications()
+                _state.update { it.copy(notifications = ns) }
+            } catch (error: Exception) {
+                _state.update { it.copy(notifications = it.notifications.copy(loading = false), error = error.message ?: "تعذّر تحميل الإشعارات") }
+            }
+        }
+    }
+
+    fun openNotification(id: String) {
+        viewModelScope.launch {
+            runCatching { repository.markNotificationRead(id) }
+            _state.update { s -> s.copy(notifications = s.notifications.copy(items = s.notifications.items.map { if (it.id == id) it.copy(read = true) else it }, unreadCount = (s.notifications.unreadCount - 1).coerceAtLeast(0))) }
+        }
+    }
+
+    fun markAllNotificationsRead() {
+        viewModelScope.launch {
+            runCatching { repository.markAllNotificationsRead() }
+            _state.update { s -> s.copy(notifications = s.notifications.copy(items = s.notifications.items.map { it.copy(read = true) }, unreadCount = 0)) }
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Search
+    // ---------------------------------------------------------------------
+    fun showSearch() { _state.update { it.copy(screen = AppScreen.SEARCH, error = null) } }
+
+    fun updateSearchQuery(query: String) {
+        _state.update { it.copy(search = it.search.copy(query = query)) }
+        if (query.trim().length < 2) {
+            _state.update { it.copy(search = it.search.copy(results = com.nexus.app.data.SearchResults())) }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(search = it.search.copy(loading = true)) }
+            try {
+                val results = repository.search(query)
+                if (_state.value.search.query == query) {
+                    _state.update { it.copy(search = it.search.copy(results = results, loading = false, recent = (listOf(query) + it.search.recent).distinct().take(8))) }
+                }
+            } catch (error: Exception) {
+                _state.update { it.copy(search = it.search.copy(loading = false)) }
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Leaderboard
+    // ---------------------------------------------------------------------
+    fun showLeaderboard() {
+        _state.update { it.copy(screen = AppScreen.LEADERBOARD, error = null) }
+        loadLeaderboard(null, null)
+    }
+
+    fun loadLeaderboard(major: String?, year: Int?) {
+        viewModelScope.launch {
+            _state.update { it.copy(leaderboard = it.leaderboard.copy(loading = true, major = major, year = year)) }
+            try {
+                val entries = repository.loadLeaderboard(major, year)
+                val mine = entries.firstOrNull { it.id == _state.value.profile?.id }
+                _state.update { it.copy(leaderboard = it.leaderboard.copy(entries = entries, myRank = mine, loading = false)) }
+            } catch (error: Exception) {
+                _state.update { it.copy(leaderboard = it.leaderboard.copy(loading = false), error = error.message ?: "تعذّر تحميل لوحة الصدارة") }
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Admin
+    // ---------------------------------------------------------------------
+    fun showAdmin() {
+        _state.update { it.copy(screen = AppScreen.ADMIN, error = null) }
+        loadAdminOverview()
+    }
+
+    fun setAdminTab(tab: AdminTab) {
+        _state.update { it.copy(admin = it.admin.copy(tab = tab)) }
+        when (tab) {
+            AdminTab.OVERVIEW -> loadAdminOverview()
+            AdminTab.USERS -> loadAdminUsers()
+            AdminTab.REPORTS -> loadAdminReports()
+            AdminTab.WORDS -> loadAdminWords()
+            AdminTab.ACTIVITY -> loadAdminActivity()
+        }
+    }
+
+    private fun loadAdminOverview() {
+        viewModelScope.launch {
+            _state.update { it.copy(admin = it.admin.copy(loading = true)) }
+            try {
+                val stats = repository.loadAdminStats()
+                _state.update { it.copy(admin = it.admin.copy(stats = stats, loading = false)) }
+            } catch (error: Exception) {
+                _state.update { it.copy(admin = it.admin.copy(loading = false), error = error.message ?: "تعذّر تحميل الإحصائيات") }
+            }
+        }
+    }
+
+    private fun loadAdminUsers() {
+        viewModelScope.launch {
+            _state.update { it.copy(admin = it.admin.copy(loading = true)) }
+            try {
+                val users = repository.loadAdminUsers()
+                _state.update { it.copy(admin = it.admin.copy(users = users, loading = false)) }
+            } catch (error: Exception) {
+                _state.update { it.copy(admin = it.admin.copy(loading = false), error = error.message ?: "تعذّر تحميل المستخدمين") }
+            }
+        }
+    }
+
+    private fun loadAdminReports() {
+        viewModelScope.launch {
+            _state.update { it.copy(admin = it.admin.copy(loading = true)) }
+            try {
+                val posts = repository.loadPostReports()
+                val messages = repository.loadMessageReports()
+                _state.update { it.copy(admin = it.admin.copy(postReports = posts, messageReports = messages, loading = false)) }
+            } catch (error: Exception) {
+                _state.update { it.copy(admin = it.admin.copy(loading = false), error = error.message ?: "تعذّر تحميل البلاغات") }
+            }
+        }
+    }
+
+    private fun loadAdminWords() {
+        viewModelScope.launch {
+            try {
+                val words = repository.loadBannedWords()
+                _state.update { it.copy(admin = it.admin.copy(bannedWords = words)) }
+            } catch (error: Exception) { }
+        }
+    }
+
+    private fun loadAdminActivity() {
+        viewModelScope.launch {
+            try {
+                val activity = repository.loadRecentAdminActivity()
+                _state.update { it.copy(admin = it.admin.copy(activity = activity)) }
+            } catch (error: Exception) { }
+        }
+    }
+
+    private fun runAdminAction(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            try {
+                block()
+                _state.update { it.copy(notice = "تم تنفيذ الإجراء") }
+                setAdminTab(_state.value.admin.tab)
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر تنفيذ الإجراء") }
+            }
+        }
+    }
+
+    fun adminSetRole(userId: String, role: String) = runAdminAction { repository.adminSetRole(userId, role) }
+    fun adminBan(userId: String, reason: String) = runAdminAction { repository.adminBan(userId, reason) }
+    fun adminUnban(userId: String) = runAdminAction { repository.adminUnban(userId) }
+    fun adminSuspend(userId: String, days: Int, reason: String) = runAdminAction { repository.adminSuspend(userId, days, reason) }
+    fun adminWarn(userId: String, reason: String) = runAdminAction { repository.adminWarn(userId, reason) }
+    fun adminSetVerified(userId: String, verified: Boolean) = runAdminAction { repository.adminSetVerified(userId, verified) }
+    fun adminAdjustPoints(userId: String, delta: Int) = runAdminAction { repository.adminAdjustPoints(userId, delta) }
+    fun adminDeleteUser(userId: String) = runAdminAction { repository.adminDeleteUser(userId) }
+    fun adminSetTeacherRole(userId: String) = runAdminAction { repository.adminSetTeacherRole(userId) }
+    fun adminDismissPostReport(id: String) = runAdminAction { repository.dismissPostReport(id) }
+    fun adminDismissMessageReport(id: String) = runAdminAction { repository.dismissMessageReport(id) }
+    fun adminDeletePost(postId: String, reportId: String) = runAdminAction { repository.deletePostAsAdmin(postId); repository.dismissPostReport(reportId) }
+    fun adminAddBannedWord(word: String) = runAdminAction { repository.addBannedWord(word) }
+    fun adminRemoveBannedWord(id: String) = runAdminAction { repository.removeBannedWord(id) }
+
 }

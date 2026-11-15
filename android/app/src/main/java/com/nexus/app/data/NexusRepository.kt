@@ -227,6 +227,11 @@ class NexusRepository(context: Context) {
             rest("/rest/v1/post_reactions?on_conflict=post_id,user_id", "POST",
                 JSONObject().put("post_id", postId).put("user_id", userId).put("reaction", reaction),
                 "resolution=merge-duplicates,return=minimal")
+            runCatching {
+                val post = array(rest("/rest/v1/posts?select=author_id&id=eq." + encode(postId))).firstOrNull()
+                val authorId = post?.optStringOrNull("author_id")
+                if (authorId != null) notifyUser(authorId, "post_like", "تفاعل جديد على منشورك", "قام أحد زملائك بالتفاعل على منشورك.", "/posts/" + postId)
+            }
         }
     }
 
@@ -300,6 +305,11 @@ class NexusRepository(context: Context) {
 
     suspend fun addComment(postId: String, content: String) {
         rest("/rest/v1/rpc/create_comment_as", "POST", JSONObject().put("_post_id", postId).put("_content", content.trim()).put("_parent_id", JSONObject.NULL).put("_anonymous", false))
+        runCatching {
+            val post = array(rest("/rest/v1/posts?select=author_id&id=eq." + encode(postId))).firstOrNull()
+            val authorId = post?.optStringOrNull("author_id")
+            if (authorId != null) notifyUser(authorId, "post_comment", "تعليق جديد على منشورك", content.trim().take(120), "/posts/" + postId)
+        }
     }
 
     suspend fun resolveMaterialUrl(material: CourseMaterial): String {
@@ -459,6 +469,337 @@ class NexusRepository(context: Context) {
         }
     }
 
+
+    // ---------------------------------------------------------------------
+    // Messaging
+    // ---------------------------------------------------------------------
+
+    suspend fun loadConversations(): MessagingState {
+        val userId = session?.userId.orEmpty()
+        if (userId.isBlank()) return MessagingState()
+        val convos = array(rest("/rest/v1/conversation_members?select=conversation_id,conversations(id,is_group,title,updated_at)&user_id=eq." + encode(userId)))
+        val convIds = convos.mapNotNull { it.optJSONObject("conversations")?.optString("id") }.distinct()
+        if (convIds.isEmpty()) return MessagingState(unreadTotal = 0)
+
+        return coroutineScope {
+            val membersTask = async {
+                array(rest("/rest/v1/conversation_members?select=conversation_id,user_id&conversation_id=in.(" + convIds.joinToString(",") + ")"))
+            }
+            val lastMsgTask = async {
+                array(rest("/rest/v1/messages?select=conversation_id,content,created_at&conversation_id=in.(" + convIds.joinToString(",") + ")&order=created_at.desc&limit=400"))
+            }
+            val unreadTask = async {
+                array(rest("/rest/v1/rpc/get_conversation_unread_counts", "POST", JSONObject().put("_user_id", userId)))
+            }
+            val blockedTask = async {
+                array(rest("/rest/v1/blocked_users?select=blocked_id&blocker_id=eq." + encode(userId)))
+                    .mapNotNull { it.optStringOrNull("blocked_id") }.toSet()
+            }
+
+            val memberRows = membersTask.await()
+            val otherIdByConv = memberRows.groupBy { it.optString("conversation_id") }
+                .mapValues { (_, rows) -> rows.map { it.optString("user_id") }.firstOrNull { it != userId } }
+            val otherIds = otherIdByConv.values.filterNotNull().toSet()
+            val profiles = publicProfiles(otherIds)
+            val lastByConv = lastMsgTask.await().groupBy { it.optString("conversation_id") }
+                .mapValues { (_, rows) -> rows.maxByOrNull { it.optString("created_at") } }
+            val unreadByConv = unreadTask.await().associate { it.optString("conversation_id") to it.optInt("unread_count") }
+            val blocked = blockedTask.await()
+
+            val summaries = convos.mapNotNull { row ->
+                val conv = row.optJSONObject("conversations") ?: return@mapNotNull null
+                val id = conv.optString("id")
+                val isGroup = conv.optBoolean("is_group")
+                val otherId = otherIdByConv[id]
+                val title = if (isGroup) conv.optStringOrNull("title") ?: "مجموعة" else profiles[otherId]?.fullName ?: "مستخدم"
+                ConversationSummary(
+                    id = id,
+                    isGroup = isGroup,
+                    title = title,
+                    avatarUrl = if (isGroup) null else profiles[otherId]?.avatarUrl,
+                    otherUserId = otherId,
+                    lastMessage = lastByConv[id]?.optStringOrNull("content"),
+                    lastMessageAt = lastByConv[id]?.optStringOrNull("created_at") ?: conv.optStringOrNull("updated_at"),
+                    unreadCount = unreadByConv[id] ?: 0,
+                    blocked = otherId != null && blocked.contains(otherId)
+                )
+            }.sortedByDescending { it.lastMessageAt ?: "" }
+
+            MessagingState(conversations = summaries, unreadTotal = summaries.sumOf { it.unreadCount })
+        }
+    }
+
+    suspend fun loadMessages(conversationId: String): List<ChatMessage> {
+        val rows = array(rest("/rest/v1/messages?select=id,conversation_id,sender_id,content,created_at&conversation_id=eq." + encode(conversationId) + "&order=created_at.asc&limit=500"))
+        val senderIds = rows.mapNotNull { it.optStringOrNull("sender_id") }.toSet()
+        val profiles = publicProfiles(senderIds)
+        return rows.map { row ->
+            val senderId = row.optString("sender_id")
+            ChatMessage(
+                id = row.optString("id"),
+                conversationId = row.optString("conversation_id"),
+                senderId = senderId,
+                senderName = profiles[senderId]?.fullName ?: "مستخدم",
+                senderAvatar = profiles[senderId]?.avatarUrl,
+                content = row.optString("content"),
+                createdAt = row.optString("created_at")
+            )
+        }
+    }
+
+    suspend fun sendMessage(conversationId: String, content: String) {
+        val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        val member = array(rest("/rest/v1/conversation_members?select=conversation_id&conversation_id=eq." + encode(conversationId) + "&user_id=eq." + encode(userId)))
+        if (member.isEmpty()) {
+            rest("/rest/v1/conversation_members", "POST", JSONObject().put("conversation_id", conversationId).put("user_id", userId))
+        }
+        rest("/rest/v1/messages", "POST", JSONObject().put("conversation_id", conversationId).put("sender_id", userId).put("content", content.trim()))
+        runCatching {
+            rest("/rest/v1/conversations?id=eq." + encode(conversationId), "PATCH", JSONObject().put("updated_at", java.time.Instant.now().toString()))
+        }
+    }
+
+    suspend fun openDirectConversation(otherUserId: String): String {
+        val raw = rest("/rest/v1/rpc/create_dm", "POST", JSONObject().put("_other", otherUserId))
+        return parseScalar(raw)
+    }
+
+    suspend fun markConversationRead(conversationId: String) {
+        val userId = session?.userId.orEmpty()
+        if (userId.isBlank()) return
+        rest("/rest/v1/rpc/mark_conversation_read", "POST", JSONObject().put("_conv_id", conversationId).put("_user_id", userId))
+    }
+
+    suspend fun leaveConversation(conversationId: String) {
+        val userId = session?.userId.orEmpty()
+        rest("/rest/v1/rpc/leave_conversation", "POST", JSONObject().put("_conv_id", conversationId).put("_user_id", userId))
+    }
+
+    suspend fun deleteConversation(conversationId: String) {
+        val userId = session?.userId.orEmpty()
+        rest("/rest/v1/rpc/delete_conversation", "POST", JSONObject().put("_conv_id", conversationId).put("_user_id", userId))
+    }
+
+    suspend fun setUserBlocked(otherUserId: String, blocked: Boolean) {
+        val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        if (blocked) {
+            rest("/rest/v1/blocked_users", "POST", JSONObject().put("blocker_id", userId).put("blocked_id", otherUserId))
+        } else {
+            rest("/rest/v1/blocked_users?blocker_id=eq." + encode(userId) + "&blocked_id=eq." + encode(otherUserId), "DELETE")
+        }
+    }
+
+    suspend fun reportMessageThread(conversationId: String, reportedUserId: String, reason: String, note: String?) {
+        val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        rest("/rest/v1/message_reports", "POST", JSONObject()
+            .put("reporter_id", userId).put("reported_user_id", reportedUserId)
+            .put("conversation_id", conversationId).put("reason", reason).put("note", note ?: JSONObject.NULL))
+    }
+
+    suspend fun unreadMessageCount(): Int {
+        val userId = session?.userId.orEmpty()
+        if (userId.isBlank()) return 0
+        val raw = rest("/rest/v1/rpc/get_unread_message_count", "POST", JSONObject().put("_user_id", userId))
+        return raw.trim().toIntOrNull() ?: 0
+    }
+
+    // ---------------------------------------------------------------------
+    // Notifications
+    // ---------------------------------------------------------------------
+
+    suspend fun loadNotifications(): NotificationsState {
+        val userId = session?.userId.orEmpty()
+        if (userId.isBlank()) return NotificationsState()
+        val rows = array(rest("/rest/v1/notifications?select=id,type,title,body,link,actor_name,actor_avatar,priority,read,created_at&recipient_id=eq." + encode(userId) + "&order=created_at.desc&limit=100"))
+        val items = rows.map { row ->
+            NotificationItem(
+                id = row.optString("id"), type = row.optString("type"), title = row.optString("title"),
+                body = row.optStringOrNull("body"), link = row.optStringOrNull("link"), actorName = row.optStringOrNull("actor_name"),
+                actorAvatar = row.optStringOrNull("actor_avatar"), priority = row.optString("priority", "normal"),
+                read = row.optBoolean("read"), createdAt = row.optString("created_at")
+            )
+        }
+        return NotificationsState(items = items, unreadCount = items.count { !it.read })
+    }
+
+    suspend fun markNotificationRead(id: String) {
+        rest("/rest/v1/notifications?id=eq." + encode(id), "PATCH", JSONObject().put("read", true))
+    }
+
+    suspend fun markAllNotificationsRead() {
+        val userId = session?.userId.orEmpty()
+        if (userId.isBlank()) return
+        rest("/rest/v1/notifications?recipient_id=eq." + encode(userId) + "&read=eq.false", "PATCH", JSONObject().put("read", true))
+    }
+
+    /** Best-effort: a failed notification must never break the action that triggered it. */
+    private suspend fun notifyUser(recipientId: String, type: String, title: String, body: String, link: String) {
+        val userId = session?.userId.orEmpty()
+        if (recipientId.isBlank() || recipientId == userId) return
+        runCatching {
+            rest("/rest/v1/notifications", "POST", JSONObject()
+                .put("recipient_id", recipientId).put("actor_id", userId).put("type", type)
+                .put("title", title).put("body", body).put("priority", "normal").put("link", link).put("read", false))
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Search
+    // ---------------------------------------------------------------------
+
+    suspend fun search(query: String): SearchResults {
+        val q = query.trim()
+        if (q.length < 2) return SearchResults()
+        return coroutineScope {
+            val peopleTask = async { array(rest("/rest/v1/rpc/search_public_profiles", "POST", JSONObject().put("_q", q))) }
+            val postsTask = async { array(rest("/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&content=" + encode("ilike.%$q%") + "&order=created_at.desc&limit=20")) }
+            val coursesTask = async { array(rest("/rest/v1/courses?select=id,name,description,major,year,semester,teacher_id&name=" + encode("ilike.%$q%") + "&limit=20")) }
+
+            val people = peopleTask.await().map {
+                PublicProfile(it.optString("id"), it.optString("full_name", "مستخدم"), it.optStringOrNull("avatar_url"), false)
+            }
+            val postRows = postsTask.await()
+            val authorIds = postRows.mapNotNull { it.optStringOrNull("author_id") }.toSet()
+            val authorProfiles = publicProfiles(authorIds)
+            val posts = postRows.map { row ->
+                val authorId = row.optStringOrNull("author_id")
+                val anonymous = row.optBoolean("is_anonymous") || authorId == null
+                val author = authorProfiles[authorId]
+                FeedPost(
+                    id = row.optString("id"), authorId = authorId,
+                    authorName = if (anonymous) "طالب مجهول" else author?.fullName ?: "طالب",
+                    avatarUrl = if (anonymous) null else author?.avatarUrl, anonymous = anonymous,
+                    content = row.optString("content"), postType = row.optString("post_type", "general"),
+                    createdAt = row.optString("created_at"), commentsCount = 0, images = row.strList("images"),
+                    acceptedAnswerId = row.optStringOrNull("accepted_answer_id")
+                )
+            }
+            val courses = coursesTask.await().map { row ->
+                Course(row.optString("id"), row.optString("name"), row.optStringOrNull("description"), row.optString("major"),
+                    row.optInt("year"), row.optInt("semester"), row.optStringOrNull("teacher_id"), null, emptyList())
+            }
+            SearchResults(people = people, posts = posts, courses = courses)
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Leaderboard
+    // ---------------------------------------------------------------------
+
+    suspend fun loadLeaderboard(major: String?, year: Int?): List<LeaderboardEntry> {
+        val path = "/rest/v1/rpc/get_leaderboard_profiles"
+        val body = JSONObject()
+        if (!major.isNullOrBlank()) body.put("_major", major)
+        if (year != null) body.put("_year", year)
+        val rows = array(rest(path, "POST", body))
+        return rows.sortedByDescending { it.optInt("points") }.mapIndexed { index, row ->
+            LeaderboardEntry(
+                id = row.optString("id"), fullName = row.optString("full_name", "طالب"),
+                avatarUrl = row.optStringOrNull("avatar_url"), major = row.optStringOrNull("major"), year = row.optInt("year").takeIf { row.has("year") },
+                points = row.optInt("points"), verified = row.optBoolean("verified"),
+                universityNumber = row.optString("university_number"), rank = index + 1
+            )
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Admin
+    // ---------------------------------------------------------------------
+
+    suspend fun loadRole(): AppRole {
+        val userId = session?.userId.orEmpty()
+        if (userId.isBlank()) return AppRole.UNKNOWN
+        val rows = array(rest("/rest/v1/user_roles?select=role&user_id=eq." + encode(userId)))
+        val roles = rows.mapNotNull { it.optStringOrNull("role") }
+        return when {
+            roles.contains("admin") -> AppRole.ADMIN
+            roles.contains("sub_admin") -> AppRole.SUB_ADMIN
+            roles.contains("teacher") -> AppRole.TEACHER
+            else -> AppRole.STUDENT
+        }
+    }
+
+    suspend fun loadAdminUsers(): List<AdminUserRow> {
+        val rows = array(rest("/rest/v1/profiles?select=id,full_name,university_number,avatar_url,major,year,points,verified,banned,suspended_until&order=created_at.desc&limit=500"))
+        val roleRows = array(rest("/rest/v1/user_roles?select=user_id,role&limit=1000"))
+        val roleByUser = roleRows.associate { it.optString("user_id") to it.optString("role") }
+        return rows.map { row ->
+            val id = row.optString("id")
+            AdminUserRow(
+                id = id, fullName = row.optString("full_name", "طالب"), universityNumber = row.optString("university_number"),
+                avatarUrl = row.optStringOrNull("avatar_url"), major = row.optStringOrNull("major"), year = row.optInt("year").takeIf { row.has("year") },
+                role = roleByUser[id] ?: "student", points = row.optInt("points"), verified = row.optBoolean("verified"),
+                banned = row.optBoolean("banned"), suspendedUntil = row.optStringOrNull("suspended_until")
+            )
+        }
+    }
+
+    suspend fun adminSetRole(userId: String, role: String) { rest("/rest/v1/rpc/admin_set_user_role", "POST", JSONObject().put("_user", userId).put("_role", role)) }
+    suspend fun adminBan(userId: String, reason: String) { rest("/rest/v1/rpc/admin_ban", "POST", JSONObject().put("_user", userId).put("_reason", reason)) }
+    suspend fun adminUnban(userId: String) { rest("/rest/v1/rpc/admin_unban", "POST", JSONObject().put("_user", userId)) }
+    suspend fun adminSuspend(userId: String, days: Int, reason: String) { rest("/rest/v1/rpc/admin_suspend", "POST", JSONObject().put("_user", userId).put("_days", days).put("_reason", reason)) }
+    suspend fun adminWarn(userId: String, reason: String) { rest("/rest/v1/rpc/admin_warn", "POST", JSONObject().put("_user", userId).put("_reason", reason)) }
+    suspend fun adminSetVerified(userId: String, verified: Boolean) { rest("/rest/v1/rpc/admin_set_verified", "POST", JSONObject().put("_user", userId).put("_verified", verified)) }
+    suspend fun adminAdjustPoints(userId: String, delta: Int) { rest("/rest/v1/rpc/admin_adjust_points", "POST", JSONObject().put("_user", userId).put("_delta", delta)) }
+    suspend fun adminDeleteUser(userId: String) { rest("/rest/v1/rpc/admin_delete_user", "POST", JSONObject().put("_user", userId)) }
+    suspend fun adminSetTeacherRole(userId: String) { rest("/rest/v1/rpc/admin_set_teacher_role", "POST", JSONObject().put("_user", userId)) }
+
+    suspend fun loadPostReports(): List<PostReport> {
+        val rows = array(rest("/rest/v1/post_reports?select=id,post_id,reporter_id,reason,created_at&order=created_at.desc&limit=200"))
+        val postIds = rows.mapNotNull { it.optStringOrNull("post_id") }.toSet()
+        val reporterIds = rows.mapNotNull { it.optStringOrNull("reporter_id") }.toSet()
+        val posts = if (postIds.isEmpty()) emptyMap() else array(rest("/rest/v1/posts?select=id,content&id=in.(" + postIds.joinToString(",") + ")")).associate { it.optString("id") to it.optString("content") }
+        val reporters = publicProfiles(reporterIds)
+        return rows.map { row ->
+            val reporterId = row.optString("reporter_id")
+            PostReport(row.optString("id"), row.optString("post_id"), posts[row.optString("post_id")], reporterId,
+                reporters[reporterId]?.fullName, row.optString("reason"), row.optString("created_at"))
+        }
+    }
+
+    suspend fun loadMessageReports(): List<MessageReport> {
+        val rows = array(rest("/rest/v1/message_reports?select=id,conversation_id,reporter_id,reported_user_id,reason,note,created_at&order=created_at.desc&limit=200"))
+        val ids = (rows.mapNotNull { it.optStringOrNull("reporter_id") } + rows.mapNotNull { it.optStringOrNull("reported_user_id") }).toSet()
+        val profiles = publicProfiles(ids)
+        return rows.map { row ->
+            val reporterId = row.optString("reporter_id"); val reportedId = row.optString("reported_user_id")
+            MessageReport(row.optString("id"), row.optString("conversation_id"), reporterId, profiles[reporterId]?.fullName,
+                reportedId, profiles[reportedId]?.fullName, row.optString("reason"), row.optStringOrNull("note"), row.optString("created_at"))
+        }
+    }
+
+    suspend fun dismissPostReport(id: String) { rest("/rest/v1/post_reports?id=eq." + encode(id), "DELETE") }
+    suspend fun dismissMessageReport(id: String) { rest("/rest/v1/message_reports?id=eq." + encode(id), "DELETE") }
+    suspend fun deletePostAsAdmin(postId: String) { rest("/rest/v1/posts?id=eq." + encode(postId), "DELETE") }
+
+    suspend fun loadBannedWords(): List<BannedWord> =
+        array(rest("/rest/v1/banned_words?select=id,word&order=word.asc")).map { BannedWord(it.optString("id"), it.optString("word")) }
+
+    suspend fun addBannedWord(word: String) { rest("/rest/v1/banned_words", "POST", JSONObject().put("word", word.trim())) }
+    suspend fun removeBannedWord(id: String) { rest("/rest/v1/banned_words?id=eq." + encode(id), "DELETE") }
+
+    suspend fun loadRecentAdminActivity(): List<AdminActivityItem> =
+        array(rest("/rest/v1/rpc/get_recent_admin_activity", "POST", JSONObject())).map { row ->
+            AdminActivityItem(row.optString("id"), row.optString("activity_type"), row.optString("description"), row.optStringOrNull("user_name"), row.optString("created_at"))
+        }
+
+    /** Counts cap at 2000 rows: enough for an overview card, not a billing-grade total. */
+    suspend fun loadAdminStats(): AdminStats = coroutineScope {
+        val since = java.time.Instant.now().minusSeconds(14L * 86400).toString()
+        val usersTask = async { array(rest("/rest/v1/profiles?select=id&limit=2000")) }
+        val postsTask = async { array(rest("/rest/v1/posts?select=id&limit=2000")) }
+        val coursesTask = async { array(rest("/rest/v1/courses?select=id&limit=2000")) }
+        val reportsTask = async { array(rest("/rest/v1/post_reports?select=id")) }
+        val dailyPostsTask = async { array(rest("/rest/v1/rpc/get_daily_posts", "POST", JSONObject().put("since", since))) }
+        val dailyRegTask = async { array(rest("/rest/v1/rpc/get_daily_user_registrations", "POST", JSONObject().put("since", since))) }
+        AdminStats(
+            totalUsers = usersTask.await().size, totalPosts = postsTask.await().size,
+            totalCourses = coursesTask.await().size, pendingReports = reportsTask.await().size,
+            dailyPosts = dailyPostsTask.await().map { it.optString("day") to it.optInt("count") },
+            dailyRegistrations = dailyRegTask.await().map { it.optString("day") to it.optInt("count") }
+        )
+    }
+
     private suspend fun publicProfiles(ids: Set<String>): Map<String, PublicProfile> {
         if (ids.isEmpty()) return emptyMap()
         val idArray = JSONArray()
@@ -539,6 +880,13 @@ class NexusRepository(context: Context) {
         val j = JSONArray(raw)
         return (0 until j.length()).mapNotNull { j.optJSONObject(it) }
     }
+
+    private fun JSONObject.strList(key: String): List<String> {
+        val arr = optJSONArray(key) ?: return emptyList()
+        return (0 until arr.length()).mapNotNull { idx -> arr.optString(idx).takeIf { it.isNotBlank() && it != "null" } }
+    }
+
+    private fun parseScalar(raw: String): String = raw.trim().trim('"')
 
     private fun parseSchedule(json: JSONArray?): List<ScheduleEntry> {
         if (json == null) return emptyList()

@@ -1,7 +1,8 @@
 package com.nexus.app.data
 
 enum class AppScreen {
-    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD
+    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD,
+    MESSAGES, CONVERSATION, NOTIFICATIONS, SEARCH, LEADERBOARD, ADMIN
 }
 
 enum class CourseTab(val label: String) {
@@ -181,7 +182,13 @@ data class NexusUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val error: String? = null,
     val notice: String? = null,
-    val pendingUrl: String? = null
+    val pendingUrl: String? = null,
+    val role: AppRole = AppRole.UNKNOWN,
+    val messaging: MessagingState = MessagingState(),
+    val notifications: NotificationsState = NotificationsState(),
+    val search: SearchState = SearchState(),
+    val leaderboard: LeaderboardState = LeaderboardState(),
+    val admin: AdminState = AdminState()
 )
 
 fun normalizeLoginIdentifier(value: String): String {
@@ -221,3 +228,178 @@ object ProfileThemeRules {
     fun isUnlocked(points: Int, themeId: String): Boolean =
         minimumPoints(themeId)?.let { points >= it } ?: false
 }
+
+
+enum class AppRole { STUDENT, TEACHER, SUB_ADMIN, ADMIN, UNKNOWN;
+    companion object {
+        fun from(value: String?): AppRole = when (value) {
+            "admin" -> ADMIN
+            "sub_admin" -> SUB_ADMIN
+            "teacher" -> TEACHER
+            "student" -> STUDENT
+            else -> UNKNOWN
+        }
+    }
+}
+
+data class NotificationItem(
+    val id: String,
+    val type: String,
+    val title: String,
+    val body: String?,
+    val link: String?,
+    val actorName: String?,
+    val actorAvatar: String?,
+    val priority: String,
+    val read: Boolean,
+    val createdAt: String
+)
+
+data class ConversationSummary(
+    val id: String,
+    val isGroup: Boolean,
+    val title: String,
+    val avatarUrl: String?,
+    val otherUserId: String?,
+    val lastMessage: String?,
+    val lastMessageAt: String?,
+    val unreadCount: Int,
+    val blocked: Boolean
+)
+
+data class ChatMessage(
+    val id: String,
+    val conversationId: String,
+    val senderId: String,
+    val senderName: String,
+    val senderAvatar: String?,
+    val content: String,
+    val createdAt: String,
+    val pending: Boolean = false,
+    val failed: Boolean = false
+)
+
+data class LeaderboardEntry(
+    val id: String,
+    val fullName: String,
+    val avatarUrl: String?,
+    val major: String?,
+    val year: Int?,
+    val points: Int,
+    val verified: Boolean,
+    val universityNumber: String,
+    val rank: Int
+)
+
+data class AdminUserRow(
+    val id: String,
+    val fullName: String,
+    val universityNumber: String,
+    val avatarUrl: String?,
+    val major: String?,
+    val year: Int?,
+    val role: String,
+    val points: Int,
+    val verified: Boolean,
+    val banned: Boolean,
+    val suspendedUntil: String?
+)
+
+data class PostReport(
+    val id: String,
+    val postId: String,
+    val postContent: String?,
+    val reporterId: String,
+    val reporterName: String?,
+    val reason: String,
+    val createdAt: String
+)
+
+data class MessageReport(
+    val id: String,
+    val conversationId: String,
+    val reporterId: String,
+    val reporterName: String?,
+    val reportedUserId: String,
+    val reportedUserName: String?,
+    val reason: String,
+    val note: String?,
+    val createdAt: String
+)
+
+data class BannedWord(val id: String, val word: String)
+
+data class AdminActivityItem(
+    val id: String,
+    val activityType: String,
+    val description: String,
+    val userName: String?,
+    val createdAt: String
+)
+
+data class AdminStats(
+    val totalUsers: Int = 0,
+    val totalPosts: Int = 0,
+    val totalCourses: Int = 0,
+    val pendingReports: Int = 0,
+    val dailyPosts: List<Pair<String, Int>> = emptyList(),
+    val dailyRegistrations: List<Pair<String, Int>> = emptyList()
+)
+
+data class SearchResults(
+    val people: List<PublicProfile> = emptyList(),
+    val posts: List<FeedPost> = emptyList(),
+    val courses: List<Course> = emptyList()
+)
+
+data class MessagingState(
+    val conversations: List<ConversationSummary> = emptyList(),
+    val activeConversationId: String? = null,
+    val activeOtherUserId: String? = null,
+    val activeTitle: String = "",
+    val messages: List<ChatMessage> = emptyList(),
+    val unreadTotal: Int = 0,
+    val loading: Boolean = false,
+    val sending: Boolean = false
+)
+
+data class NotificationsState(
+    val items: List<NotificationItem> = emptyList(),
+    val unreadCount: Int = 0,
+    val loading: Boolean = false
+)
+
+data class SearchState(
+    val query: String = "",
+    val results: SearchResults = SearchResults(),
+    val recent: List<String> = emptyList(),
+    val loading: Boolean = false
+)
+
+data class LeaderboardState(
+    val entries: List<LeaderboardEntry> = emptyList(),
+    val myRank: LeaderboardEntry? = null,
+    val major: String? = null,
+    val year: Int? = null,
+    val loading: Boolean = false
+)
+
+enum class AdminTab(val label: String) {
+    OVERVIEW("نظرة عامة"),
+    USERS("المستخدمون"),
+    REPORTS("البلاغات"),
+    WORDS("الكلمات المحظورة"),
+    ACTIVITY("سجل النشاط")
+}
+
+data class AdminState(
+    val role: AppRole = AppRole.UNKNOWN,
+    val users: List<AdminUserRow> = emptyList(),
+    val postReports: List<PostReport> = emptyList(),
+    val messageReports: List<MessageReport> = emptyList(),
+    val bannedWords: List<BannedWord> = emptyList(),
+    val activity: List<AdminActivityItem> = emptyList(),
+    val stats: AdminStats = AdminStats(),
+    val tab: AdminTab = AdminTab.OVERVIEW,
+    val loading: Boolean = false
+)

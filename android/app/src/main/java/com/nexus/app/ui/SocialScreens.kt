@@ -55,7 +55,12 @@ fun SocialFeedScreen(
     onResolveImage: (String, (String?) -> Unit) -> Unit,
     onHome: () -> Unit,
     onCourses: () -> Unit,
-    onProfile: () -> Unit
+    onProfile: () -> Unit,
+    onMessages: () -> Unit,
+    onSearch: () -> Unit,
+    onNotifications: () -> Unit,
+    onLeaderboard: () -> Unit,
+    onAdmin: () -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
     var anonymous by rememberSaveable { mutableStateOf(false) }
@@ -82,11 +87,7 @@ fun SocialFeedScreen(
 
     Scaffold(
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                NavigationBarItem(selected = true, onClick = onHome, icon = { Icon(Icons.Outlined.Home, null) }, label = { Text("الرئيسية") })
-                NavigationBarItem(selected = false, onClick = onCourses, icon = { Icon(Icons.Outlined.MenuBook, null) }, label = { Text("المقررات") })
-                NavigationBarItem(selected = false, onClick = onProfile, icon = { Icon(Icons.Outlined.PersonOutline, null) }, label = { Text("حسابي") })
-            }
+            NexusBottomBar(AppScreen.FEED, state.messaging.unreadTotal, onHome, onCourses, onMessages, onProfile)
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -100,6 +101,20 @@ fun SocialFeedScreen(
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text("المجتمع", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Text("مساحة لتبادل المعرفة والنقاش", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, contentDescription = "بحث") }
+                    IconButton(onClick = onLeaderboard) { Icon(Icons.Outlined.EmojiEvents, contentDescription = "لوحة الصدارة") }
+                    IconButton(onClick = onNotifications) {
+                        if (state.notifications.unreadCount > 0) {
+                            BadgedBox(badge = { Badge { Text(state.notifications.unreadCount.coerceAtMost(99).toString()) } }) {
+                                Icon(Icons.Outlined.NotificationsNone, contentDescription = "الإشعارات")
+                            }
+                        } else {
+                            Icon(Icons.Outlined.NotificationsNone, contentDescription = "الإشعارات")
+                        }
+                    }
+                    if (state.role == AppRole.ADMIN || state.role == AppRole.SUB_ADMIN) {
+                        IconButton(onClick = onAdmin) { Icon(Icons.Outlined.AdminPanelSettings, contentDescription = "لوحة الإدارة") }
                     }
                     IconButton(onClick = { onRefresh(filter, activeTag) }, enabled = !state.loading) {
                         Icon(Icons.Outlined.Refresh, contentDescription = "تحديث المنشورات")
