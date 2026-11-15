@@ -214,7 +214,7 @@ private fun AdminReportsTab(
     onDeletePost: (String, String) -> Unit
 ) {
     if (postReports.isEmpty() && messageReports.isEmpty()) {
-        EmptyState(Icons.Outlined.ReportGmailerrorred, "لا توجد بلاغات معلّقة", "ستظهر هنا بلاغات المنشورات والرسائل")
+        NexusEmptyState(Icons.Outlined.ReportGmailerrorred, "لا توجد بلاغات معلّقة", "ستظهر هنا بلاغات المنشورات والرسائل")
         return
     }
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -272,7 +272,7 @@ private fun AdminWordsTab(words: List<BannedWord>, onAdd: (String) -> Unit, onRe
 @Composable
 private fun AdminActivityTab(activity: List<AdminActivityItem>) {
     if (activity.isEmpty()) {
-        EmptyState(Icons.Outlined.History, "لا يوجد نشاط إداري مسجّل", "ستظهر هنا إجراءات فريق الإدارة")
+        NexusEmptyState(Icons.Outlined.History, "لا يوجد نشاط إداري مسجّل", "ستظهر هنا إجراءات فريق الإدارة")
         return
     }
     LazyColumn(contentPadding = PaddingValues(16.dp)) {

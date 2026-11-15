@@ -60,7 +60,7 @@ internal fun NexusTopBar(title: String, onBack: (() -> Unit)? = null, actions: @
 }
 
 @Composable
-internal fun EmptyState(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) {
+internal fun NexusEmptyState(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) {
     Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
         Spacer(Modifier.height(8.dp))
@@ -91,7 +91,7 @@ fun MessagesListScreen(
             if (ms.loading && ms.conversations.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else if (ms.conversations.isEmpty()) {
-                EmptyState(Icons.Outlined.ChatBubbleOutline, "لا توجد محادثات بعد", "ابدأ محادثة من صفحة أحد الأعضاء")
+                NexusEmptyState(Icons.Outlined.ChatBubbleOutline, "لا توجد محادثات بعد", "ابدأ محادثة من صفحة أحد الأعضاء")
             } else {
                 LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
                     items(ms.conversations, key = { it.id }) { c ->
@@ -219,7 +219,7 @@ fun NotificationsScreen(state: NexusUiState, onBack: () -> Unit, onOpen: (String
         if (ns.loading && ns.items.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         } else if (ns.items.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding)) { EmptyState(Icons.Outlined.NotificationsNone, "لا توجد إشعارات", "ستظهر هنا تفاعلات زملائك") }
+            Box(Modifier.fillMaxSize().padding(padding)) { NexusEmptyState(Icons.Outlined.NotificationsNone, "لا توجد إشعارات", "ستظهر هنا تفاعلات زملائك") }
         } else {
             LazyColumn(Modifier.padding(padding)) {
                 items(ns.items, key = { it.id }) { n ->
