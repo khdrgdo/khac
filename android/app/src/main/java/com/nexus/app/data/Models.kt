@@ -1,7 +1,7 @@
 package com.nexus.app.data
 
 enum class AppScreen {
-    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, CHANGE_PASSWORD,
+    LOGIN, HOME, FEED, COURSES, COURSE_DETAIL, PROFILE, PUBLIC_PROFILE, CHANGE_PASSWORD,
     MESSAGES, CONVERSATION, NOTIFICATIONS, SEARCH, LEADERBOARD, ADMIN
 }
 
@@ -53,7 +53,9 @@ data class PublicProfile(
     val avatarUrl: String?,
     val verified: Boolean,
     val major: String? = null,
-    val points: Int = 0
+    val points: Int = 0,
+    val year: Int? = null,
+    val bio: String? = null
 )
 
 data class ProfileStats(
@@ -106,6 +108,19 @@ data class FeedReaction(
     val reaction: String
 )
 
+data class FeedComment(
+    val id: String,
+    val postId: String,
+    val parentId: String?,
+    val authorId: String?,
+    val authorName: String,
+    val avatarUrl: String?,
+    val content: String,
+    val createdAt: String,
+    val anonymous: Boolean = false,
+    val verified: Boolean = false
+)
+
 data class FeedPost(
     val id: String,
     val authorId: String?,
@@ -123,7 +138,8 @@ data class FeedPost(
     val authorVerified: Boolean = false,
     val reactions: List<FeedReaction> = emptyList(),
     val myReaction: String? = null,
-    val saved: Boolean = false
+    val saved: Boolean = false,
+    val comments: List<FeedComment> = emptyList()
 )
 
 data class CourseUpdate(
@@ -176,6 +192,10 @@ data class NexusUiState(
     val feedFilter: String = "all",
     val feedTag: String? = null,
     val profileStats: ProfileStats? = null,
+    val publicProfile: PublicProfile? = null,
+    val publicProfileStats: ProfileStats? = null,
+    val publicProfilePosts: List<FeedPost> = emptyList(),
+    val publicProfileLoading: Boolean = false,
     val selectedCourse: Course? = null,
     val courseDetail: CourseDetail? = null,
     val selectedTab: CourseTab = CourseTab.FILES,
@@ -312,7 +332,8 @@ data class PostReport(
     val reporterId: String,
     val reporterName: String?,
     val reason: String,
-    val createdAt: String
+    val createdAt: String,
+    val status: String = "pending"
 )
 
 data class MessageReport(
@@ -324,7 +345,8 @@ data class MessageReport(
     val reportedUserName: String?,
     val reason: String,
     val note: String?,
-    val createdAt: String
+    val createdAt: String,
+    val status: String = "pending"
 )
 
 data class BannedWord(val id: String, val word: String)
@@ -388,7 +410,13 @@ enum class AdminTab(val label: String) {
     OVERVIEW("نظرة عامة"),
     USERS("المستخدمون"),
     REPORTS("البلاغات"),
+    TEACHERS("الأساتذة"),
     WORDS("الكلمات المحظورة"),
+    SUB_ADMINS("المشرفون المساعدون"),
+    COURSES("المقررات"),
+    PINNED_CARD("البطاقة المثبتة"),
+    BROADCAST("الإشعارات الجماعية"),
+    NAME_REQUESTS("طلبات تغيير الاسم"),
     ACTIVITY("سجل النشاط")
 }
 

@@ -45,7 +45,7 @@ private val LightExtras = NexusExtras(
     reaction = Color(NexusPalette.Light.Coral), reactionContainer = Color(NexusPalette.Light.CoralContainer),
     onReactionContainer = Color(NexusPalette.Light.OnCoralContainer),
     surfaceRaised = Color(NexusPalette.Light.SurfaceHigh),
-    brandStart = Color(0xFF7C4DFF), brandEnd = Color(0xFF4A1FB8)
+    brandStart = Color(0xFF172635), brandEnd = Color(0xFFB85E42)
 )
 
 private val DarkExtras = NexusExtras(
@@ -55,7 +55,7 @@ private val DarkExtras = NexusExtras(
     reaction = Color(NexusPalette.Dark.Coral), reactionContainer = Color(NexusPalette.Dark.CoralContainer),
     onReactionContainer = Color(NexusPalette.Dark.OnCoralContainer),
     surfaceRaised = Color(NexusPalette.Dark.SurfaceHigh),
-    brandStart = Color(0xFF9B7BFF), brandEnd = Color(0xFF5B2BD6)
+    brandStart = Color(0xFF101820), brandEnd = Color(0xFFF0A080)
 )
 
 val LocalNexusExtras = staticCompositionLocalOf { LightExtras }
@@ -106,11 +106,11 @@ private val DarkColors = darkColorScheme(
 )
 
 private val NexusShapes = Shapes(
-    extraSmall = RoundedCornerShape(6.dp),
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(14.dp),
-    large = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(28.dp)
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(22.dp)
 )
 
 private val Sans = FontFamily.SansSerif

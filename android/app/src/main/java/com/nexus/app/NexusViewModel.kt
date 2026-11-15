@@ -68,6 +68,8 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                 _state.update { it.copy(busy = false, loading = false, profile = profile, screen = AppScreen.FEED, notice = "مرحباً بعودتك، " + profile.fullName) }
                 refreshProfileStats(profile.id)
                 loadFeed()
+                loadRole()
+                refreshUnreadBadges()
             } catch (error: Exception) {
                 _state.update { it.copy(busy = false, loading = false, error = error.message ?: "تعذّر تسجيل الدخول") }
             }
@@ -112,15 +114,20 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
             val uploadedPaths = mutableListOf<String>()
+            var postCreated = false
             try {
                 imageUris.take(4).forEach { uri -> uploadedPaths += repository.uploadPostImage(uri) }
                 repository.createFeedPost(content, anonymous, question, uploadedPaths)
+                postCreated = true
                 val current = _state.value
                 val posts = repository.loadFeed(current.feedFilter, current.feedTag)
                 _state.update { it.copy(busy = false, feedPosts = posts, notice = "تم نشر مساهمتك") }
             } catch (error: Exception) {
-                uploadedPaths.forEach { path -> runCatching { repository.removePostImage(path) } }
-                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر نشر المساهمة") }
+                if (!postCreated) uploadedPaths.forEach { path -> runCatching { repository.removePostImage(path) } }
+                _state.update {
+                    if (postCreated) it.copy(busy = false, notice = "تم نشر المساهمة، لكن تعذّر تحديث الخلاصة. اسحب للتحديث.")
+                    else it.copy(busy = false, error = error.message ?: "تعذّر نشر المساهمة")
+                }
             }
         }
     }
@@ -496,16 +503,26 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun setConversationBlocked(blocked: Boolean) {
         val otherId = _state.value.messaging.activeOtherUserId ?: return
         viewModelScope.launch {
-            runCatching { repository.setUserBlocked(otherId, blocked) }
-            _state.update { it.copy(notice = if (blocked) "تم الحظر" else "تم إلغاء الحظر") }
+            try {
+                repository.setUserBlocked(otherId, blocked)
+                _state.update { it.copy(notice = if (blocked) "تم حظر المستخدم" else "تم إلغاء الحظر") }
+                showMessages()
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر تحديث الحظر") }
+            }
         }
     }
 
     fun leaveActiveConversation() {
         val convId = _state.value.messaging.activeConversationId ?: return
         viewModelScope.launch {
-            runCatching { repository.leaveConversation(convId) }
-            showMessages()
+            try {
+                repository.leaveConversation(convId)
+                showMessages()
+                _state.update { it.copy(notice = "تمت مغادرة المحادثة") }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّرت مغادرة المحادثة") }
+            }
         }
     }
 
@@ -513,8 +530,12 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
         val convId = _state.value.messaging.activeConversationId ?: return
         val otherId = _state.value.messaging.activeOtherUserId ?: return
         viewModelScope.launch {
-            runCatching { repository.reportMessageThread(convId, otherId, reason, note) }
-            _state.update { it.copy(notice = "تم إرسال البلاغ") }
+            try {
+                repository.reportMessageThread(convId, otherId, reason, note)
+                _state.update { it.copy(notice = "تم إرسال البلاغ للمراجعة") }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر إرسال البلاغ") }
+            }
         }
     }
 
@@ -599,6 +620,10 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     // Admin
     // ---------------------------------------------------------------------
     fun showAdmin() {
+        if (_state.value.role != AppRole.ADMIN && _state.value.role != AppRole.SUB_ADMIN) {
+            _state.update { it.copy(error = "لا تملك صلاحية الوصول إلى لوحة الإدارة") }
+            return
+        }
         _state.update { it.copy(screen = AppScreen.ADMIN, error = null) }
         loadAdminOverview()
     }

@@ -121,7 +121,7 @@ class NexusRepository(context: Context) {
                 array(rest("/rest/v1/post_reactions?select=post_id,user_id,reaction&post_id=in.(" + postIds.joinToString(",") + ")&limit=5000"))
             }
             val commentsTask = async {
-                array(rest("/rest/v1/comments?select=post_id&post_id=in.(" + postIds.joinToString(",") + ")&limit=5000"))
+                array(rest("/rest/v1/comments?select=id,post_id,parent_id,author_id,content,created_at,is_anonymous&post_id=in.(" + postIds.joinToString(",") + ")&order=created_at.asc&limit=5000"))
             }
             val savedTask = async {
                 if (currentUserId.isBlank()) emptySet<String>()
@@ -130,7 +130,26 @@ class NexusRepository(context: Context) {
             }
             val profiles = profilesTask.await()
             val reactionRows = reactionsTask.await()
-            val commentCounts = commentsTask.await().groupingBy { it.optString("post_id") }.eachCount()
+            val commentRows = commentsTask.await()
+            val commentAuthorIds = commentRows.filterNot { it.optBoolean("is_anonymous") }
+                .mapNotNull { it.optStringOrNull("author_id") }.toSet()
+            val commentProfiles = publicProfiles(commentAuthorIds)
+            val commentCounts = commentRows.groupingBy { it.optString("post_id") }.eachCount()
+            val commentsByPost = commentRows.groupBy { it.optString("post_id") }.mapValues { (_, rowsForPost) ->
+                rowsForPost.map { comment ->
+                    val authorId = comment.optStringOrNull("author_id")
+                    val anonymous = comment.optBoolean("is_anonymous") || authorId == null
+                    val author = if (anonymous) null else commentProfiles[authorId]
+                    FeedComment(
+                        id = comment.optString("id"), postId = comment.optString("post_id"),
+                        parentId = comment.optStringOrNull("parent_id"), authorId = if (anonymous) null else authorId,
+                        authorName = if (anonymous) "طالب مجهول" else author?.fullName ?: "طالب",
+                        avatarUrl = if (anonymous) null else author?.avatarUrl,
+                        content = comment.optString("content"), createdAt = comment.optString("created_at"),
+                        anonymous = anonymous, verified = !anonymous && author?.verified == true
+                    )
+                }
+            }
             val savedIds = savedTask.await()
             val reactionsByPost = reactionRows.groupBy { it.optString("post_id") }
 
@@ -164,7 +183,8 @@ class NexusRepository(context: Context) {
                     authorVerified = !anonymous && author?.verified == true,
                     reactions = postReactions,
                     myReaction = postReactions.firstOrNull { it.userId == currentUserId }?.reaction,
-                    saved = savedIds.contains(id)
+                    saved = savedIds.contains(id),
+                    comments = commentsByPost[id].orEmpty()
                 )
             }
         }
@@ -303,8 +323,8 @@ class NexusRepository(context: Context) {
         rest("/rest/v1/rpc/create_post_as", "POST", JSONObject().put("_content", "[course:" + courseId + "] " + content.trim()).put("_post_type", "question").put("_anonymous", anonymous))
     }
 
-    suspend fun addComment(postId: String, content: String) {
-        rest("/rest/v1/rpc/create_comment_as", "POST", JSONObject().put("_post_id", postId).put("_content", content.trim()).put("_parent_id", JSONObject.NULL).put("_anonymous", false))
+    suspend fun addComment(postId: String, content: String, parentId: String? = null, anonymous: Boolean = false) {
+        rest("/rest/v1/rpc/create_comment_as", "POST", JSONObject().put("_post_id", postId).put("_content", content.trim()).put("_parent_id", parentId ?: JSONObject.NULL).put("_anonymous", anonymous))
         runCatching {
             val post = array(rest("/rest/v1/posts?select=author_id&id=eq." + encode(postId))).firstOrNull()
             val authorId = post?.optStringOrNull("author_id")
@@ -363,7 +383,7 @@ class NexusRepository(context: Context) {
     }
 
     private suspend fun loadProfile(userId: String): StudentProfile {
-        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,card_theme_id,hide_university_number&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
+        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,card_theme_id,hide_university_number,has_used_direct_name_change&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
             ?: throw ApiException("لم يُعثر على ملف الطالب المرتبط بهذا الحساب")
         val rawAvatar = row.optStringOrNull("avatar_url")
         val avatar = if (rawAvatar.isNullOrBlank() || rawAvatar.startsWith("http")) rawAvatar
@@ -382,7 +402,7 @@ class NexusRepository(context: Context) {
             row.optStringOrNull("suspended_until"),
             row.optStringOrNull("card_theme_id"),
             row.optBoolean("hide_university_number"),
-            false // "has_used_direct_name_change" has no column in the live schema; see docs/ANDROID_REBUILD_PLAN.md
+            row.optBoolean("has_used_direct_name_change")
         )
     }
 
@@ -409,10 +429,8 @@ class NexusRepository(context: Context) {
     }
 
     suspend fun updateProfileName(userId: String, name: String) {
-        // "has_used_direct_name_change" has no column in the live schema (see docs/ANDROID_REBUILD_PLAN.md),
-        // so the one-time-direct-change gate cannot be persisted server-side yet; only the name itself is saved.
         rest("/rest/v1/profiles?id=eq." + encode(userId), "PATCH",
-            JSONObject().put("full_name", name.trim()))
+            JSONObject().put("full_name", name.trim()).put("has_used_direct_name_change", true))
     }
 
     suspend fun submitNameChangeRequest(userId: String, currentName: String, requestedName: String, reason: String, contactInfo: String, universityNumber: String) {
@@ -479,7 +497,7 @@ class NexusRepository(context: Context) {
     suspend fun loadConversations(): MessagingState {
         val userId = session?.userId.orEmpty()
         if (userId.isBlank()) return MessagingState()
-        val convos = array(rest("/rest/v1/conversation_members?select=conversation_id,conversations(id,is_group,title,updated_at)&user_id=eq." + encode(userId)))
+        val convos = array(rest("/rest/v1/conversation_members?select=conversation_id,conversations(id,is_group,name,updated_at)&user_id=eq." + encode(userId)))
         val convIds = convos.mapNotNull { it.optJSONObject("conversations")?.optString("id") }.distinct()
         if (convIds.isEmpty()) return MessagingState(unreadTotal = 0)
 
@@ -513,7 +531,7 @@ class NexusRepository(context: Context) {
                 val id = conv.optString("id")
                 val isGroup = conv.optBoolean("is_group")
                 val otherId = otherIdByConv[id]
-                val title = if (isGroup) conv.optStringOrNull("title") ?: "مجموعة" else profiles[otherId]?.fullName ?: "مستخدم"
+                val title = if (isGroup) conv.optStringOrNull("name") ?: "مجموعة" else profiles[otherId]?.fullName ?: "مستخدم"
                 ConversationSummary(
                     id = id,
                     isGroup = isGroup,
@@ -552,9 +570,7 @@ class NexusRepository(context: Context) {
     suspend fun sendMessage(conversationId: String, content: String) {
         val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
         val member = array(rest("/rest/v1/conversation_members?select=conversation_id&conversation_id=eq." + encode(conversationId) + "&user_id=eq." + encode(userId)))
-        if (member.isEmpty()) {
-            rest("/rest/v1/conversation_members", "POST", JSONObject().put("conversation_id", conversationId).put("user_id", userId))
-        }
+        if (member.isEmpty()) throw ApiException("لا تملك صلاحية إرسال رسالة في هذه المحادثة")
         rest("/rest/v1/messages", "POST", JSONObject().put("conversation_id", conversationId).put("sender_id", userId).put("content", content.trim()))
         runCatching {
             rest("/rest/v1/conversations?id=eq." + encode(conversationId), "PATCH", JSONObject().put("updated_at", java.time.Instant.now().toString()))
@@ -585,7 +601,7 @@ class NexusRepository(context: Context) {
     suspend fun setUserBlocked(otherUserId: String, blocked: Boolean) {
         val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
         if (blocked) {
-            rest("/rest/v1/blocked_users", "POST", JSONObject().put("blocker_id", userId).put("blocked_id", otherUserId))
+            rest("/rest/v1/blocked_users?on_conflict=blocker_id,blocked_id", "POST", JSONObject().put("blocker_id", userId).put("blocked_id", otherUserId), "resolution=ignore-duplicates,return=minimal")
         } else {
             rest("/rest/v1/blocked_users?blocker_id=eq." + encode(userId) + "&blocked_id=eq." + encode(otherUserId), "DELETE")
         }
@@ -593,9 +609,11 @@ class NexusRepository(context: Context) {
 
     suspend fun reportMessageThread(conversationId: String, reportedUserId: String, reason: String, note: String?) {
         val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        if (reason.isBlank()) throw ApiException("اختر سبب البلاغ")
         rest("/rest/v1/message_reports", "POST", JSONObject()
             .put("reporter_id", userId).put("reported_user_id", reportedUserId)
-            .put("conversation_id", conversationId).put("reason", reason).put("note", note ?: JSONObject.NULL))
+            .put("conversation_id", conversationId).put("reason", reason.trim())
+            .put("note", note?.trim()?.take(300)?.takeIf { it.isNotBlank() } ?: JSONObject.NULL))
     }
 
     suspend fun unreadMessageCount(): Int {
@@ -747,7 +765,7 @@ class NexusRepository(context: Context) {
     suspend fun adminSetTeacherRole(userId: String) { rest("/rest/v1/rpc/admin_set_teacher_role", "POST", JSONObject().put("_user", userId)) }
 
     suspend fun loadPostReports(): List<PostReport> {
-        val rows = array(rest("/rest/v1/post_reports?select=id,post_id,reporter_id,reason,created_at&order=created_at.desc&limit=200"))
+        val rows = array(rest("/rest/v1/post_reports?select=id,post_id,reporter_id,reason,created_at,status&order=created_at.desc&limit=200"))
         val postIds = rows.mapNotNull { it.optStringOrNull("post_id") }.toSet()
         val reporterIds = rows.mapNotNull { it.optStringOrNull("reporter_id") }.toSet()
         val posts = if (postIds.isEmpty()) emptyMap() else array(rest("/rest/v1/posts?select=id,content&id=in.(" + postIds.joinToString(",") + ")")).associate { it.optString("id") to it.optString("content") }
@@ -755,23 +773,23 @@ class NexusRepository(context: Context) {
         return rows.map { row ->
             val reporterId = row.optString("reporter_id")
             PostReport(row.optString("id"), row.optString("post_id"), posts[row.optString("post_id")], reporterId,
-                reporters[reporterId]?.fullName, row.optString("reason"), row.optString("created_at"))
+                reporters[reporterId]?.fullName, row.optString("reason"), row.optString("created_at"), row.optString("status", "pending"))
         }
     }
 
     suspend fun loadMessageReports(): List<MessageReport> {
-        val rows = array(rest("/rest/v1/message_reports?select=id,conversation_id,reporter_id,reported_user_id,reason,note,created_at&order=created_at.desc&limit=200"))
+        val rows = array(rest("/rest/v1/message_reports?select=id,conversation_id,reporter_id,reported_user_id,reason,note,created_at,status&order=created_at.desc&limit=200"))
         val ids = (rows.mapNotNull { it.optStringOrNull("reporter_id") } + rows.mapNotNull { it.optStringOrNull("reported_user_id") }).toSet()
         val profiles = publicProfiles(ids)
         return rows.map { row ->
             val reporterId = row.optString("reporter_id"); val reportedId = row.optString("reported_user_id")
             MessageReport(row.optString("id"), row.optString("conversation_id"), reporterId, profiles[reporterId]?.fullName,
-                reportedId, profiles[reportedId]?.fullName, row.optString("reason"), row.optStringOrNull("note"), row.optString("created_at"))
+                reportedId, profiles[reportedId]?.fullName, row.optString("reason"), row.optStringOrNull("note"), row.optString("created_at"), row.optString("status", "pending"))
         }
     }
 
-    suspend fun dismissPostReport(id: String) { rest("/rest/v1/post_reports?id=eq." + encode(id), "DELETE") }
-    suspend fun dismissMessageReport(id: String) { rest("/rest/v1/message_reports?id=eq." + encode(id), "DELETE") }
+    suspend fun dismissPostReport(id: String) { rest("/rest/v1/post_reports?id=eq." + encode(id), "PATCH", JSONObject().put("status", "dismissed")) }
+    suspend fun dismissMessageReport(id: String) { rest("/rest/v1/message_reports?id=eq." + encode(id), "PATCH", JSONObject().put("status", "dismissed")) }
     suspend fun deletePostAsAdmin(postId: String) { rest("/rest/v1/posts?id=eq." + encode(postId), "DELETE") }
 
     suspend fun loadBannedWords(): List<BannedWord> =
@@ -813,7 +831,11 @@ class NexusRepository(context: Context) {
             val id = row.optString("id")
             val rawAvatar = row.optStringOrNull("avatar_url")
             val avatar = if (rawAvatar.isNullOrBlank() || rawAvatar.startsWith("http")) rawAvatar else signedAvatars[rawAvatar] ?: rawAvatar
-            id to PublicProfile(id, row.optString("full_name", "مستخدم"), avatar, row.optBoolean("verified"), row.optStringOrNull("major"), row.optInt("points"))
+            id to PublicProfile(
+                id, row.optString("full_name", "مستخدم"), avatar, row.optBoolean("verified"),
+                row.optStringOrNull("major"), row.optInt("points"),
+                if (row.isNull("year")) null else row.optInt("year"), row.optStringOrNull("bio")
+            )
         }
     }
 
