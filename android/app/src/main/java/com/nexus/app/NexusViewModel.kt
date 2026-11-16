@@ -239,7 +239,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                         it.copy(
                             publicProfile = profile,
                             publicProfilePosts = posts,
-                            publicProfileStats = ProfileStats(
+                            publicProfileStats = com.nexus.app.data.ProfileStats(
                                 posts = posts.size,
                                 comments = posts.sumOf { post -> post.commentsCount },
                                 acceptedAnswers = posts.count { post -> post.acceptedAnswerId != null }

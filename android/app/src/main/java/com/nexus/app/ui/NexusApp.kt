@@ -1152,7 +1152,7 @@ private fun PublicProfilePreviewScreen(
                     items(state.publicProfilePosts, key = { it.id }) { post ->
                         Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(relativePostTime(post.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(publicProfilePostTime(post.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(post.content, style = MaterialTheme.typography.bodyMedium, maxLines = 12, overflow = TextOverflow.Ellipsis)
                                 if (post.images.isNotEmpty()) Text("${post.images.size} مرفق", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1166,4 +1166,10 @@ private fun PublicProfilePreviewScreen(
             }
         }
     }
+}
+
+
+private fun publicProfilePostTime(value: String): String {
+    val millis = runCatching { java.time.Instant.parse(value).toEpochMilli() }.getOrNull() ?: return value
+    return DateUtils.getRelativeTimeSpanString(millis, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString()
 }
