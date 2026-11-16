@@ -47,7 +47,7 @@ fun SocialFeedScreen(
     state: NexusUiState,
     onRefresh: (String, String?) -> Unit,
     onPublish: (String, Boolean, Boolean, List<Uri>) -> Unit,
-    onComment: (String, String) -> Unit,
+    onComment: (String, String, String?) -> Unit,
     onReact: (String, String?) -> Unit,
     onSave: (String, Boolean) -> Unit,
     onDelete: (String) -> Unit,
@@ -296,7 +296,7 @@ private fun FeedPostCard(
     post: FeedPost,
     currentUserId: String?,
     onTagClick: (String) -> Unit,
-    onComment: (String, String) -> Unit,
+    onComment: (String, String, String?) -> Unit,
     onReact: (String, String?) -> Unit,
     onSave: (String, Boolean) -> Unit,
     onDelete: (String) -> Unit,
@@ -307,6 +307,8 @@ private fun FeedPostCard(
     var expanded by rememberSaveable(post.id) { mutableStateOf(false) }
     var commentOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     var commentDraft by rememberSaveable(post.id) { mutableStateOf("") }
+    var commentsExpanded by rememberSaveable(post.id) { mutableStateOf(false) }
+    var replyToCommentId by rememberSaveable(post.id) { mutableStateOf<String?>(null) }
     var moreOpen by remember { mutableStateOf(false) }
     var reactionsOpen by remember { mutableStateOf(false) }
     var reportOpen by rememberSaveable(post.id) { mutableStateOf(false) }
@@ -415,6 +417,52 @@ private fun FeedPostCard(
                 }
             }
 
+            if (post.comments.isNotEmpty()) {
+                val roots = post.comments.filter { it.parentId == null }
+                val visibleRoots = if (commentsExpanded) roots else roots.take(2)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    visibleRoots.forEach { comment ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                            ProfileAvatar(comment.avatarUrl, comment.authorName, 30)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f), shape = RoundedCornerShape(13.dp)) {
+                                    Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Text(comment.authorName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                            if (comment.verified) Icon(Icons.Outlined.Verified, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.tertiary)
+                                            if (comment.anonymous) Text("مجهول", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                        Text(comment.content, style = MaterialTheme.typography.bodySmall, lineHeight = 20.sp)
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(relativePostTime(comment.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    TextButton(onClick = { replyToCommentId = comment.id; commentOpen = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                                        Text("رد", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                                post.comments.filter { it.parentId == comment.id }.forEach { reply ->
+                                    Row(Modifier.fillMaxWidth().padding(start = 8.dp), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.Top) {
+                                        ProfileAvatar(reply.avatarUrl, reply.authorName, 25)
+                                        Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f), shape = RoundedCornerShape(11.dp), modifier = Modifier.weight(1f)) {
+                                            Column(Modifier.padding(horizontal = 9.dp, vertical = 7.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                                Text(reply.authorName, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                                Text(reply.content, style = MaterialTheme.typography.bodySmall, lineHeight = 19.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (roots.size > 2) {
+                        TextButton(onClick = { commentsExpanded = !commentsExpanded }, contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)) {
+                            Text(if (commentsExpanded) "عرض تعليقات أقل" else "عرض كل التعليقات (${post.comments.size})", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Box {
@@ -459,20 +507,28 @@ private fun FeedPostCard(
             }
 
             if (commentOpen) {
+                if (replyToCommentId != null) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("الرد على تعليق", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = { replyToCommentId = null }, contentPadding = PaddingValues(0.dp)) { Text("إلغاء الرد", style = MaterialTheme.typography.labelSmall) }
+                    }
+                }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = commentDraft,
                         onValueChange = { commentDraft = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("اكتب تعليقاً...") },
+                        placeholder = { Text(if (replyToCommentId == null) "اكتب تعليقاً..." else "اكتب ردك...") },
                         maxLines = 3,
                         shape = RoundedCornerShape(12.dp)
                     )
                     IconButton(
                         onClick = {
                             if (commentDraft.isNotBlank()) {
-                                onComment(post.id, commentDraft.trim())
+                                onComment(post.id, commentDraft.trim(), replyToCommentId)
                                 commentDraft = ""
+                                replyToCommentId = null
                                 commentOpen = false
                             }
                         },

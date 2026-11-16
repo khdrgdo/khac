@@ -132,20 +132,16 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addFeedComment(postId: String, content: String) {
+    fun addFeedComment(postId: String, content: String, parentId: String? = null) {
         if (content.isBlank()) return
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null) }
             try {
-                repository.addComment(postId, content)
+                repository.addComment(postId, content, parentId)
+                val current = _state.value
+                val refreshed = repository.loadFeed(current.feedFilter, current.feedTag)
                 _state.update {
-                    it.copy(
-                        busy = false,
-                        feedPosts = it.feedPosts.map { post ->
-                            if (post.id == postId) post.copy(commentsCount = post.commentsCount + 1) else post
-                        },
-                        notice = "تم إرسال تعليقك"
-                    )
+                    it.copy(busy = false, feedPosts = refreshed, notice = if (parentId == null) "تم إرسال تعليقك" else "تم إرسال ردك")
                 }
             } catch (error: Exception) {
                 _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال التعليق") }
