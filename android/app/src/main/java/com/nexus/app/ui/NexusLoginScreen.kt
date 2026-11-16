@@ -70,7 +70,8 @@ import com.nexus.app.ui.theme.nexus
 fun NexusLoginScreen(
     state: NexusUiState,
     onSignIn: (String, String) -> Unit,
-    onRecover: (String) -> Unit
+    onRecover: (String) -> Unit,
+    onClearError: () -> Unit
 ) {
     val context = LocalContext.current
     var identifier by rememberSaveable { mutableStateOf("") }
@@ -164,7 +165,7 @@ fun NexusLoginScreen(
                 else Text("دخول إلى NEXUS", fontWeight = FontWeight.Bold)
             }
 
-            TextButton(onClick = { recoveryIdentifier = identifier; recoveryOpen = true }, modifier = Modifier.align(Alignment.End)) {
+            TextButton(onClick = { onClearError(); recoveryIdentifier = identifier; recoveryOpen = true }, modifier = Modifier.align(Alignment.End)) {
                 Text("نسيت كلمة المرور؟", color = MaterialTheme.colorScheme.secondary)
             }
 
@@ -196,16 +197,22 @@ fun NexusLoginScreen(
                     Text("أدخل الرقم الجامعي أو البريد المرتبط بحسابك.")
                     OutlinedTextField(
                         value = recoveryIdentifier, onValueChange = { recoveryIdentifier = it },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("بيانات الحساب") }
+                        modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("بيانات الحساب") },
+                        enabled = !state.busy
                     )
+                    if (!state.error.isNullOrBlank()) Text(state.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    if (!state.notice.isNullOrBlank()) Text(state.notice, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                 }
             },
             confirmButton = {
                 TextButton(enabled = !state.busy && recoveryIdentifier.isNotBlank(), onClick = {
-                    onRecover(recoveryIdentifier.trim()); recoveryOpen = false
-                }) { Text("إرسال رابط الاستعادة") }
+                    onRecover(recoveryIdentifier.trim())
+                }) {
+                    if (state.busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    else Text("إرسال رابط الاستعادة")
+                }
             },
-            dismissButton = { TextButton(onClick = { recoveryOpen = false }) { Text("إلغاء") } }
+            dismissButton = { TextButton(onClick = { recoveryOpen = false }) { Text("إغلاق") } }
         )
     }
 }

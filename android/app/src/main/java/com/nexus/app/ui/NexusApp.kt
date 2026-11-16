@@ -82,7 +82,7 @@ fun NexusApp(viewModel: NexusViewModel) {
 
     NexusTheme(state.themeMode) {
         when (state.screen) {
-            AppScreen.LOGIN -> if (state.loading) SplashScreen() else NexusLoginScreen(state, viewModel::signIn, viewModel::recoverPassword)
+            AppScreen.LOGIN -> if (state.loading) SplashScreen() else NexusLoginScreen(state, viewModel::signIn, viewModel::recoverPassword, viewModel::clearError)
             AppScreen.HOME -> HomeScreen(state, viewModel::openCourse, viewModel::openMaterial, viewModel::refreshHome, viewModel::showCourses, viewModel::showProfile, viewModel::showFeed, viewModel::showMessages)
             AppScreen.FEED -> SocialFeedScreen(
                 state = state,

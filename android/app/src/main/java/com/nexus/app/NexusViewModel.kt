@@ -328,6 +328,8 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearPendingUrl() { _state.update { it.copy(pendingUrl = null) } }
 
+    fun clearError() { _state.update { it.copy(error = null, notice = null) } }
+
     fun recoverPassword(identifier: String) {
         viewModelScope.launch {
             _state.update { it.copy(busy = true, error = null, notice = null) }
