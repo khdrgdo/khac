@@ -198,7 +198,6 @@ fun NexusLoginScreen(
                         value = recoveryIdentifier, onValueChange = { recoveryIdentifier = it },
                         modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("بيانات الحساب") }
                     )
-                    if (!state.error.isNullOrBlank()) Text(state.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             },
             confirmButton = {
