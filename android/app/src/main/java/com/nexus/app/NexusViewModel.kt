@@ -71,8 +71,20 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                 loadRole()
                 refreshUnreadBadges()
             } catch (error: Exception) {
-                _state.update { it.copy(busy = false, loading = false, error = error.message ?: "تعذّر تسجيل الدخول") }
+                _state.update { it.copy(busy = false, loading = false, error = friendlyAuthError(error)) }
             }
+        }
+    }
+
+    private fun friendlyAuthError(error: Throwable): String {
+        val message = error.message.orEmpty().lowercase()
+        return when {
+            "invalid login credentials" in message -> "بيانات الدخول غير صحيحة. تحقق من الرقم الجامعي أو البريد الإلكتروني وكلمة المرور."
+            "email not confirmed" in message -> "لم يتم تأكيد البريد الإلكتروني لهذا الحساب بعد."
+            "user not found" in message -> "لم نعثر على حساب بهذه البيانات."
+            "too many requests" in message || "rate limit" in message -> "محاولات كثيرة خلال وقت قصير. انتظر قليلاً ثم حاول مجدداً."
+            "network" in message || "timeout" in message || "unable to resolve host" in message -> "تعذّر الاتصال بالخادم. تحقق من الإنترنت وحاول مرة أخرى."
+            else -> "تعذّر تسجيل الدخول حالياً. راجع بياناتك وحاول مرة أخرى."
         }
     }
 
