@@ -337,7 +337,8 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                 repository.recoverPassword(identifier)
                 _state.update { it.copy(busy = false, notice = "إذا كان الحساب مسجلاً، فسيصلك رابط استعادة كلمة المرور.") }
             } catch (error: Exception) {
-                _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال رابط الاستعادة") }
+                val message = error.message?.takeIf { it.isNotBlank() } ?: "تعذّر إرسال رابط الاستعادة. تحقق من بيانات الحساب وحاول مرة أخرى."
+                _state.update { it.copy(busy = false, error = message) }
             }
         }
     }
