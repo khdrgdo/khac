@@ -206,6 +206,7 @@ fun NexusLoginScreen(
             },
             confirmButton = {
                 TextButton(enabled = !state.busy && recoveryIdentifier.isNotBlank(), onClick = {
+                    Toast.makeText(context, "جارٍ إرسال طلب الاستعادة...", Toast.LENGTH_SHORT).show()
                     onRecover(recoveryIdentifier.trim())
                 }) {
                     if (state.busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
