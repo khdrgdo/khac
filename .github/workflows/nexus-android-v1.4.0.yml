@@ -1,0 +1,42 @@
+name: NEXUS Android 1.4.0 Preview
+
+on:
+  push:
+    branches:
+      - feat/nexus-android-experience-v1.4.0
+    paths:
+      - "android/**"
+      - ".github/workflows/nexus-android-v1.4.0.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Run unit tests
+        working-directory: android
+        run: ./gradlew --no-daemon testDebugUnitTest
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-android-v1.4.0-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
