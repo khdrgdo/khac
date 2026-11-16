@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.nexus.app.data.*
 import com.nexus.app.ui.theme.nexus
+import kotlinx.coroutines.delay
 
 // =============================================================================
 // Shared bits
@@ -370,4 +371,99 @@ private fun LeaderboardRow(entry: LeaderboardEntry, highlight: Boolean = false) 
         }
         Text("${entry.points} نقطة", fontWeight = FontWeight.Bold, color = MaterialTheme.nexus.gold)
     }
+}
+
+
+// =============================================================================
+// Mention-aware text field (shared by the post composer and comment input)
+// =============================================================================
+
+/**
+ * A text field that watches for a trailing "@partial-name" token and offers matching
+ * people below the field, Facebook-style. Only the token at the very end of the text is
+ * considered live — this keeps the detection simple and predictable while typing.
+ */
+@Composable
+internal fun MentionAwareField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    searchPeople: suspend (String) -> List<PublicProfile>,
+    modifier: Modifier = Modifier,
+    minLines: Int = 1,
+    maxLines: Int = 3
+) {
+    var suggestions by remember { mutableStateOf<List<PublicProfile>>(emptyList()) }
+    val mentionQuery = remember(value) {
+        val at = value.lastIndexOf('@')
+        if (at == -1) return@remember null
+        val after = value.substring(at + 1)
+        if (after.isEmpty() || after.any { it.isWhitespace() }) null else after
+    }
+
+    LaunchedEffect(mentionQuery) {
+        if (mentionQuery != null && mentionQuery.isNotBlank()) {
+            delay(250)
+            suggestions = searchPeople(mentionQuery).take(5)
+        } else {
+            suggestions = emptyList()
+        }
+    }
+
+    Column(modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(placeholder) },
+            minLines = minLines,
+            maxLines = maxLines,
+            shape = RoundedCornerShape(12.dp)
+        )
+        if (suggestions.isNotEmpty()) {
+            Surface(
+                Modifier.fillMaxWidth().padding(top = 4.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Column {
+                    suggestions.forEach { person ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                val at = value.lastIndexOf('@')
+                                onValueChange(value.substring(0, at) + "@" + person.fullName.replace(" ", "_") + " ")
+                                suggestions = emptyList()
+                            }.padding(horizontal = 12.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            InitialsAvatar(person.fullName, person.avatarUrl, 28)
+                            Text(person.fullName, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Renders body text with "@mention" tokens picked out in the primary color, Facebook-style. */
+@Composable
+internal fun MentionText(text: String, style: androidx.compose.ui.text.TextStyle, color: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified, modifier: Modifier = Modifier) {
+    val mentionColor = MaterialTheme.colorScheme.primary
+    val annotated = remember(text, mentionColor) {
+        androidx.compose.ui.text.buildAnnotatedString {
+            val regex = Regex("@[\\p{L}0-9_]+")
+            var last = 0
+            for (match in regex.findAll(text)) {
+                append(text.substring(last, match.range.first))
+                withStyle(androidx.compose.ui.text.SpanStyle(color = mentionColor, fontWeight = FontWeight.SemiBold)) {
+                    append(match.value.replace("_", " "))
+                }
+                last = match.range.last + 1
+            }
+            append(text.substring(last))
+        }
+    }
+    Text(annotated, style = style, color = color, modifier = modifier)
 }

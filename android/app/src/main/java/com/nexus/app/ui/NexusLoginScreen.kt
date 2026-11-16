@@ -97,16 +97,24 @@ fun NexusLoginScreen(
         // Masthead: the brand lives here, not in a floating logo row above a card.
         Box(
             Modifier.fillMaxWidth()
-                .heightIn(min = 190.dp)
-                .background(Brush.linearGradient(listOf(MaterialTheme.nexus.brandEnd, MaterialTheme.nexus.brandStart), start = Offset(0f, 0f), end = Offset(1000f, 1000f)))
+                .heightIn(min = 168.dp)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 26.dp, vertical = 30.dp)
         ) {
             Column(Modifier.align(Alignment.CenterStart)) {
-                Text("NEXUS", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.displayLarge.copy(fontSize = 34.sp, letterSpacing = 2.sp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("N", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                    }
+                    Text("NEXUS", style = MaterialTheme.typography.headlineMedium.copy(letterSpacing = 1.sp), fontWeight = FontWeight.ExtraBold)
+                }
                 Spacer(Modifier.height(10.dp))
                 Text(
                     "مقرراتك ومجتمعك وإنجازاتك، في مكان واحد.",
-                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.92f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.titleMedium
                 )
             }

@@ -130,28 +130,26 @@ private fun AdminUsersTab(
         )
         LazyColumn(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
             items(filtered, key = { it.id }) { user ->
-                Surface(
-                    Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { expandedId = if (expandedId == user.id) null else user.id },
-                    shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant
+                Column(
+                    Modifier.fillMaxWidth().clickable { expandedId = if (expandedId == user.id) null else user.id }.padding(vertical = 10.dp)
                 ) {
-                    Column(Modifier.padding(12.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            InitialsAvatar(user.fullName, user.avatarUrl, 40)
-                            Column(Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(user.fullName, fontWeight = FontWeight.Bold)
-                                    if (user.verified) Icon(Icons.Outlined.Verified, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                                    if (user.banned) AssistChip(onClick = {}, label = { Text("محظور", style = MaterialTheme.typography.labelSmall) })
-                                }
-                                Text("${user.universityNumber} · ${user.role} · ${user.points} نقطة", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        InitialsAvatar(user.fullName, user.avatarUrl, 40)
+                        Column(Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(user.fullName, fontWeight = FontWeight.Bold)
+                                if (user.verified) Icon(Icons.Outlined.Verified, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                                if (user.banned) Text("محظور", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                             }
-                            Icon(if (expandedId == user.id) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
+                            Text("${user.universityNumber} · ${user.role} · ${user.points} نقطة", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        if (expandedId == user.id) {
-                            AdminUserActions(user, onSetRole, onBan, onUnban, onSuspend, onWarn, onSetVerified, onAdjustPoints, onDeleteUser, onSetTeacher)
-                        }
+                        Icon(if (expandedId == user.id) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (expandedId == user.id) {
+                        AdminUserActions(user, onSetRole, onBan, onUnban, onSuspend, onWarn, onSetVerified, onAdjustPoints, onDeleteUser, onSetTeacher)
                     }
                 }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }

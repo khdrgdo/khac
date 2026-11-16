@@ -438,6 +438,12 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ---------------------------------------------------------------------
+    // Mentions (used by the @-mention autocomplete in the composer and comments)
+    // ---------------------------------------------------------------------
+    suspend fun searchPeopleForMention(query: String): List<com.nexus.app.data.PublicProfile> =
+        runCatching { repository.search(query).people }.getOrDefault(emptyList())
+
+    // ---------------------------------------------------------------------
     // Messaging
     // ---------------------------------------------------------------------
     fun showMessages() {

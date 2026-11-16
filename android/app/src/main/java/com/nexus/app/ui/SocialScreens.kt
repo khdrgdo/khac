@@ -60,7 +60,8 @@ fun SocialFeedScreen(
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
     onLeaderboard: () -> Unit,
-    onAdmin: () -> Unit
+    onAdmin: () -> Unit,
+    onSearchPeople: suspend (String) -> List<PublicProfile>
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
     var anonymous by rememberSaveable { mutableStateOf(false) }
@@ -173,14 +174,13 @@ fun SocialFeedScreen(
                                 Text("شارك فكرة أو اطرح سؤالاً", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
-                        OutlinedTextField(
+                        MentionAwareField(
                             value = draft,
                             onValueChange = { draft = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text(if (question) "اكتب سؤالك بالتفصيل..." else "ما الذي تود مشاركته مع زملائك؟") },
+                            placeholder = if (question) "اكتب سؤالك بالتفصيل..." else "ما الذي تود مشاركته مع زملائك؟",
+                            searchPeople = onSearchPeople,
                             minLines = 3,
-                            maxLines = 6,
-                            shape = RoundedCornerShape(12.dp)
+                            maxLines = 6
                         )
                         Text(
                             "استخدم #وسم لتصنيف المنشور، أو @ للإشارة إلى زميل.",
@@ -283,7 +283,8 @@ fun SocialFeedScreen(
                         onSave = onSave,
                         onDelete = onDelete,
                         onReport = onReport,
-                        onResolveImage = onResolveImage
+                        onResolveImage = onResolveImage,
+                        onSearchPeople = onSearchPeople
                     )
                 }
             }
@@ -301,7 +302,8 @@ private fun FeedPostCard(
     onSave: (String, Boolean) -> Unit,
     onDelete: (String) -> Unit,
     onReport: (String, String) -> Unit,
-    onResolveImage: (String, (String?) -> Unit) -> Unit
+    onResolveImage: (String, (String?) -> Unit) -> Unit,
+    onSearchPeople: suspend (String) -> List<PublicProfile>
 ) {
     val context = LocalContext.current
     var expanded by rememberSaveable(post.id) { mutableStateOf(false) }
@@ -460,13 +462,13 @@ private fun FeedPostCard(
 
             if (commentOpen) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    MentionAwareField(
                         value = commentDraft,
                         onValueChange = { commentDraft = it },
+                        placeholder = "اكتب تعليقاً...",
+                        searchPeople = onSearchPeople,
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("اكتب تعليقاً...") },
-                        maxLines = 3,
-                        shape = RoundedCornerShape(12.dp)
+                        maxLines = 3
                     )
                     IconButton(
                         onClick = {
