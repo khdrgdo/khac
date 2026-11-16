@@ -60,7 +60,8 @@ fun SocialFeedScreen(
     onSearch: () -> Unit,
     onNotifications: () -> Unit,
     onLeaderboard: () -> Unit,
-    onAdmin: () -> Unit
+    onAdmin: () -> Unit,
+    onOpenProfile: (String) -> Unit
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
     var anonymous by rememberSaveable { mutableStateOf(false) }
@@ -277,6 +278,7 @@ fun SocialFeedScreen(
                     FeedPostCard(
                         post = post,
                         currentUserId = state.profile?.id,
+                        onOpenProfile = onOpenProfile,
                         onTagClick = { tag -> activeTag = tag; onRefresh(filter, tag) },
                         onComment = onComment,
                         onReact = onReact,
@@ -295,6 +297,7 @@ fun SocialFeedScreen(
 private fun FeedPostCard(
     post: FeedPost,
     currentUserId: String?,
+    onOpenProfile: (String) -> Unit,
     onTagClick: (String) -> Unit,
     onComment: (String, String, String?) -> Unit,
     onReact: (String, String?) -> Unit,
@@ -336,10 +339,12 @@ private fun FeedPostCard(
     ) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ProfileAvatar(post.avatarUrl, post.authorName, 42)
+                Box(Modifier.clickable(enabled = !post.anonymous && post.authorId != null) { post.authorId?.let(onOpenProfile) }) {
+                    ProfileAvatar(post.avatarUrl, post.authorName, 42)
+                }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(post.authorName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(post.authorName, modifier = if (!post.anonymous && post.authorId != null) Modifier.clickable { onOpenProfile(post.authorId) } else Modifier, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (post.authorVerified) Icon(Icons.Outlined.Verified, contentDescription = "حساب موثق", tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(15.dp))
                         if (post.anonymous) Text("مجهول", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -423,12 +428,14 @@ private fun FeedPostCard(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     visibleRoots.forEach { comment ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
-                            ProfileAvatar(comment.avatarUrl, comment.authorName, 30)
+                            Box(Modifier.clickable(enabled = comment.authorId != null) { comment.authorId?.let(onOpenProfile) }) {
+                                ProfileAvatar(comment.avatarUrl, comment.authorName, 30)
+                            }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                 Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f), shape = RoundedCornerShape(13.dp)) {
                                     Column(Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            Text(comment.authorName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                            Text(comment.authorName, modifier = if (comment.authorId != null) Modifier.clickable { onOpenProfile(comment.authorId) } else Modifier, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                                             if (comment.verified) Icon(Icons.Outlined.Verified, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.tertiary)
                                             if (comment.anonymous) Text("مجهول", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
@@ -443,10 +450,12 @@ private fun FeedPostCard(
                                 }
                                 post.comments.filter { it.parentId == comment.id }.forEach { reply ->
                                     Row(Modifier.fillMaxWidth().padding(start = 8.dp), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.Top) {
-                                        ProfileAvatar(reply.avatarUrl, reply.authorName, 25)
+                                        Box(Modifier.clickable(enabled = reply.authorId != null) { reply.authorId?.let(onOpenProfile) }) {
+                                            ProfileAvatar(reply.avatarUrl, reply.authorName, 25)
+                                        }
                                         Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f), shape = RoundedCornerShape(11.dp), modifier = Modifier.weight(1f)) {
                                             Column(Modifier.padding(horizontal = 9.dp, vertical = 7.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                Text(reply.authorName, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                                Text(reply.authorName, modifier = if (reply.authorId != null) Modifier.clickable { onOpenProfile(reply.authorId) } else Modifier, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                                                 Text(reply.content, style = MaterialTheme.typography.bodySmall, lineHeight = 19.sp)
                                             }
                                         }

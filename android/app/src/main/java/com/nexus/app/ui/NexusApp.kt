@@ -101,7 +101,8 @@ fun NexusApp(viewModel: NexusViewModel) {
                 onSearch = viewModel::showSearch,
                 onNotifications = viewModel::showNotifications,
                 onLeaderboard = viewModel::showLeaderboard,
-                onAdmin = viewModel::showAdmin
+                onAdmin = viewModel::showAdmin,
+                onOpenProfile = viewModel::openPublicProfile
             )
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome, viewModel::showMessages)
             AppScreen.PROFILE -> ProfileScreen(
@@ -119,13 +120,17 @@ fun NexusApp(viewModel: NexusViewModel) {
                 onSignOut = viewModel::signOut,
                 onMessages = viewModel::showMessages
             )
-            AppScreen.PUBLIC_PROFILE -> PublicProfilePreviewScreen(state, viewModel::showFeed)
+            AppScreen.PUBLIC_PROFILE -> PublicProfilePreviewScreen(
+                state = state,
+                onBack = viewModel::showFeed,
+                onMessage = { id, name -> viewModel.startConversationWith(id, name) }
+            )
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
             AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial, viewModel::postQuestion, viewModel::addComment)
             AppScreen.MESSAGES -> MessagesListScreen(state, viewModel::openConversation, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
             AppScreen.CONVERSATION -> ConversationScreen(state, viewModel::backFromConversation, viewModel::sendMessage, viewModel::setConversationBlocked, viewModel::leaveActiveConversation, viewModel::reportActiveConversation)
             AppScreen.NOTIFICATIONS -> NotificationsScreen(state, viewModel::showFeed, viewModel::openNotification, viewModel::markAllNotificationsRead)
-            AppScreen.SEARCH -> SearchScreen(state, viewModel::updateSearchQuery, viewModel::showFeed, { id, name -> viewModel.startConversationWith(id, name) })
+            AppScreen.SEARCH -> SearchScreen(state, viewModel::updateSearchQuery, viewModel::showFeed, { id, _ -> viewModel.openPublicProfile(id) })
             AppScreen.LEADERBOARD -> LeaderboardScreen(state, viewModel::showFeed, viewModel::loadLeaderboard)
             AppScreen.ADMIN -> AdminScreen(
                 state = state,
@@ -1094,21 +1099,70 @@ private fun relativeTime(value: String): String = runCatching {
 
 
 @Composable
-private fun PublicProfilePreviewScreen(state: NexusUiState, onBack: () -> Unit) {
+private fun PublicProfilePreviewScreen(
+    state: NexusUiState,
+    onBack: () -> Unit,
+    onMessage: (String, String) -> Unit
+) {
     val profile = state.publicProfile
     Scaffold(topBar = { NexusTopBar(profile?.fullName ?: "الملف الشخصي", onBack = onBack) }) { padding ->
-        if (profile == null) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("لم يتم تحميل بيانات هذا الملف بعد", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            Column(Modifier.fillMaxSize().padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(profile.fullName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                if (profile.verified) Text("حساب موثّق", color = MaterialTheme.colorScheme.tertiary)
-                profile.major?.let { Text(majorLabel(it), style = MaterialTheme.typography.bodyMedium) }
-                profile.year?.let { Text("السنة $it", style = MaterialTheme.typography.bodyMedium) }
-                profile.bio?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
-                Text("النقاط: ${profile.points}", style = MaterialTheme.typography.labelLarge)
+        when {
+            state.publicProfileLoading && profile == null -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            profile == null -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text(state.error ?: "تعذّر تحميل الملف الشخصي", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            else -> LazyColumn(
+                Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            AsyncImage(model = profile.avatarUrl, contentDescription = profile.fullName, modifier = Modifier.size(88.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text(profile.fullName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                if (profile.verified) Icon(Icons.Outlined.Verified, null, tint = MaterialTheme.colorScheme.tertiary)
+                            }
+                            profile.major?.let { Text(majorLabel(it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            profile.year?.let { Text("السنة $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            profile.bio?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
+                            Text("${profile.points} نقطة", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                            if (profile.id != state.profile?.id) Button(onClick = { onMessage(profile.id, profile.fullName) }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Outlined.Chat, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("مراسلة")
+                            }
+                        }
+                    }
+                }
+                item {
+                    val stats = state.publicProfileStats
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("المنشورات" to (stats?.posts ?: 0), "التعليقات" to (stats?.comments ?: 0), "الإجابات" to (stats?.acceptedAnswers ?: 0)).forEach { (label, value) ->
+                            Surface(Modifier.weight(1f), shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                                Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(value.toString(), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                                    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+                item { Text("منشوراته", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                if (state.publicProfilePosts.isEmpty()) {
+                    item { NexusEmptyState(Icons.Outlined.Article, "لا توجد منشورات", "لم ينشر هذا العضو أي منشورات بعد") }
+                } else {
+                    items(state.publicProfilePosts, key = { it.id }) { post ->
+                        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(relativePostTime(post.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(post.content, style = MaterialTheme.typography.bodyMedium, maxLines = 12, overflow = TextOverflow.Ellipsis)
+                                if (post.images.isNotEmpty()) Text("${post.images.size} مرفق", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text("${post.reactions.size} تفاعل", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${post.commentsCount} تعليق", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

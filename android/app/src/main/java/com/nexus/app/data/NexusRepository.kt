@@ -99,7 +99,15 @@ class NexusRepository(context: Context) {
         return courses to recentRows.map { materialFrom(it, names[it.optString("course_id")]) }
     }
 
-    suspend fun loadFeed(filter: String = "all", tag: String? = null): List<FeedPost> {
+    suspend fun loadPublicProfile(userId: String): Pair<PublicProfile?, List<FeedPost>> {
+        ensureFreshSession()
+        val profile = publicProfiles(setOf(userId))[userId]
+        if (profile == null) return null to emptyList()
+        val posts = loadFeed(authorId = userId)
+        return profile to posts
+    }
+
+    suspend fun loadFeed(filter: String = "all", tag: String? = null, authorId: String? = null): List<FeedPost> {
         ensureFreshSession()
         val cleanTag = tag?.replace(Regex("[^\\p{L}\\p{N}_-]"), "")?.take(40)?.takeIf { it.isNotBlank() }
         var query = "/rest/v1/posts?select=id,author_id,content,images,created_at,is_anonymous,post_type,accepted_answer_id&order=created_at.desc&limit=50"
@@ -108,6 +116,7 @@ class NexusRepository(context: Context) {
             "solved_questions" -> query += "&post_type=eq.question&accepted_answer_id=not.is.null"
         }
         if (cleanTag != null) query += "&content=" + encode("ilike.%#${cleanTag}%")
+        if (!authorId.isNullOrBlank()) query += "&author_id=eq." + encode(authorId)
         val rows = array(rest(query))
         if (rows.isEmpty()) return emptyList()
 

@@ -218,6 +218,43 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun showCourses() { _state.update { it.copy(screen = AppScreen.COURSES, error = null) }; loadHome() }
     fun showHome() { showFeed() }
     fun showProfile() { _state.update { it.copy(screen = AppScreen.PROFILE, error = null) } }
+    fun openPublicProfile(userId: String) {
+        if (userId.isBlank()) return
+        _state.update {
+            it.copy(
+                previousScreen = it.screen,
+                screen = AppScreen.PUBLIC_PROFILE,
+                publicProfile = null,
+                publicProfileStats = null,
+                publicProfilePosts = emptyList(),
+                publicProfileLoading = true,
+                error = null
+            )
+        }
+        viewModelScope.launch {
+            try {
+                val (profile, posts) = repository.loadPublicProfile(userId)
+                if (_state.value.screen == AppScreen.PUBLIC_PROFILE) {
+                    _state.update {
+                        it.copy(
+                            publicProfile = profile,
+                            publicProfilePosts = posts,
+                            publicProfileStats = ProfileStats(
+                                posts = posts.size,
+                                comments = posts.sumOf { post -> post.commentsCount },
+                                acceptedAnswers = posts.count { post -> post.acceptedAnswerId != null }
+                            ),
+                            publicProfileLoading = false,
+                            error = if (profile == null) "تعذّر العثور على الملف الشخصي" else null
+                        )
+                    }
+                }
+            } catch (error: Exception) {
+                _state.update { it.copy(publicProfileLoading = false, error = error.message ?: "تعذّر تحميل الملف الشخصي") }
+            }
+        }
+    }
+
 
     fun openCourse(course: Course) {
         _state.update { it.copy(previousScreen = it.screen, screen = AppScreen.COURSE_DETAIL, selectedCourse = course, courseDetail = null, selectedTab = CourseTab.FILES, detailLoading = true, error = null) }
