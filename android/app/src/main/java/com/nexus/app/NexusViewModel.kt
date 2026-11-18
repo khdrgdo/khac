@@ -691,7 +691,6 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun adminBan(userId: String, reason: String) = runAdminAction { repository.adminBan(userId, reason) }
     fun adminUnban(userId: String) = runAdminAction { repository.adminUnban(userId) }
     fun adminSuspend(userId: String, days: Int, reason: String) = runAdminAction { repository.adminSuspend(userId, days, reason) }
-    fun adminWarn(userId: String, reason: String) = runAdminAction { repository.adminWarn(userId, reason) }
     fun adminSetVerified(userId: String, verified: Boolean) = runAdminAction { repository.adminSetVerified(userId, verified) }
     fun adminAdjustPoints(userId: String, delta: Int) = runAdminAction { repository.adminAdjustPoints(userId, delta) }
     fun adminDeleteUser(userId: String) = runAdminAction { repository.adminDeleteUser(userId) }

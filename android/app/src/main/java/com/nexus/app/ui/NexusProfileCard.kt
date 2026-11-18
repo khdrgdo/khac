@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -119,7 +120,19 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
                         else Text(profile.fullName.take(1).ifBlank { "N" }, modifier = Modifier.align(Alignment.Center), color = Color.White, style = MaterialTheme.typography.headlineMedium)
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(profile.fullName, color = Color.White, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(profile.fullName, color = Color.White, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (profile.verified) {
+                                Icon(Icons.Outlined.Verified, contentDescription = "حساب موثّق", tint = Color.White, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        if (profile.banned || profile.suspendedUntil != null || profile.warningCount > 0) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                if (profile.banned) StatusPill("الحساب محظور")
+                                else if (profile.suspendedUntil != null) StatusPill("موقوف مؤقتًا")
+                                if (profile.warningCount > 0) StatusPill(profile.warningCount.toString() + " إنذار")
+                            }
+                        }
                         Text(listOfNotNull(profile.major?.let(::majorLabel), profile.year?.let { "السنة $it" }).joinToString("  •  "), color = Color.White.copy(alpha = 0.76f), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(if (profile.hideUniversityNumber) "••••••••••" else profile.universityNumber, color = Color.White.copy(alpha = 0.66f), fontSize = 10.sp, letterSpacing = 1.sp)
                     }
@@ -165,5 +178,16 @@ fun NexusProfileCard(profile: StudentProfile, onThemeSelected: (String) -> Unit)
             },
             confirmButton = { TextButton(onClick = { pickerOpen = false }) { Text("إغلاق") } }
         )
+    }
+}
+
+
+@Composable
+private fun StatusPill(text: String) {
+    androidx.compose.material3.Surface(
+        color = Color.White.copy(alpha = 0.22f),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+    ) {
+        Text(text, color = Color.White, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp))
     }
 }

@@ -36,7 +36,6 @@ fun AdminScreen(
     onBan: (String, String) -> Unit,
     onUnban: (String) -> Unit,
     onSuspend: (String, Int, String) -> Unit,
-    onWarn: (String, String) -> Unit,
     onSetVerified: (String, Boolean) -> Unit,
     onAdjustPoints: (String, Int) -> Unit,
     onDeleteUser: (String) -> Unit,
@@ -59,7 +58,7 @@ fun AdminScreen(
             if (admin.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             when (admin.tab) {
                 AdminTab.OVERVIEW -> AdminOverviewTab(admin.stats)
-                AdminTab.USERS -> AdminUsersTab(admin.users, onSetRole, onBan, onUnban, onSuspend, onWarn, onSetVerified, onAdjustPoints, onDeleteUser, onSetTeacher)
+                AdminTab.USERS -> AdminUsersTab(admin.users, onSetRole, onBan, onUnban, onSuspend, onSetVerified, onAdjustPoints, onDeleteUser, onSetTeacher)
                 AdminTab.REPORTS -> AdminReportsTab(admin.postReports, admin.messageReports, onDismissPostReport, onDismissMessageReport, onDeletePost)
                 AdminTab.WORDS -> AdminWordsTab(admin.bannedWords, onAddBannedWord, onRemoveBannedWord)
                 AdminTab.ACTIVITY -> AdminActivityTab(admin.activity)
@@ -112,7 +111,6 @@ private fun AdminUsersTab(
     onBan: (String, String) -> Unit,
     onUnban: (String) -> Unit,
     onSuspend: (String, Int, String) -> Unit,
-    onWarn: (String, String) -> Unit,
     onSetVerified: (String, Boolean) -> Unit,
     onAdjustPoints: (String, Int) -> Unit,
     onDeleteUser: (String) -> Unit,
@@ -146,7 +144,7 @@ private fun AdminUsersTab(
                         Icon(if (expandedId == user.id) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (expandedId == user.id) {
-                        AdminUserActions(user, onSetRole, onBan, onUnban, onSuspend, onWarn, onSetVerified, onAdjustPoints, onDeleteUser, onSetTeacher)
+                        AdminUserActions(user, onSetRole, onBan, onUnban, onSuspend, onSetVerified, onAdjustPoints, onDeleteUser, onSetTeacher)
                     }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -162,7 +160,6 @@ private fun AdminUserActions(
     onBan: (String, String) -> Unit,
     onUnban: (String) -> Unit,
     onSuspend: (String, Int, String) -> Unit,
-    onWarn: (String, String) -> Unit,
     onSetVerified: (String, Boolean) -> Unit,
     onAdjustPoints: (String, Int) -> Unit,
     onDeleteUser: (String) -> Unit,
@@ -173,7 +170,6 @@ private fun AdminUserActions(
         AssistChip(onClick = { onSetVerified(user.id, !user.verified) }, label = { Text(if (user.verified) "إلغاء التوثيق" else "توثيق") })
         AssistChip(onClick = { onAdjustPoints(user.id, 10) }, label = { Text("+10 نقاط") })
         AssistChip(onClick = { onAdjustPoints(user.id, -10) }, label = { Text("-10 نقاط") })
-        AssistChip(onClick = { onWarn(user.id, "مخالفة قوانين المجتمع") }, label = { Text("تحذير") })
         if (user.banned) {
             AssistChip(onClick = { onUnban(user.id) }, label = { Text("فك الحظر") })
         } else {

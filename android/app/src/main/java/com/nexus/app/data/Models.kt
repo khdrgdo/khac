@@ -44,7 +44,9 @@ data class StudentProfile(
     val suspendedUntil: String?,
     val cardThemeId: String? = null,
     val hideUniversityNumber: Boolean = false,
-    val hasUsedDirectNameChange: Boolean = false
+    val hasUsedDirectNameChange: Boolean = false,
+    val verified: Boolean = false,
+    val warningCount: Int = 0
 )
 
 data class PublicProfile(

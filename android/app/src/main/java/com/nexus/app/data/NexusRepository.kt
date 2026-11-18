@@ -363,7 +363,7 @@ class NexusRepository(context: Context) {
     }
 
     private suspend fun loadProfile(userId: String): StudentProfile {
-        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,card_theme_id,hide_university_number&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
+        val row = array(rest("/rest/v1/profiles?select=id,university_number,full_name,major,year,avatar_url,bio,must_change_password,points,banned,suspended_until,card_theme_id,hide_university_number,verified,warning_count&id=eq." + encode(userId) + "&limit=1")).firstOrNull()
             ?: throw ApiException("لم يُعثر على ملف الطالب المرتبط بهذا الحساب")
         val rawAvatar = row.optStringOrNull("avatar_url")
         val avatar = if (rawAvatar.isNullOrBlank() || rawAvatar.startsWith("http")) rawAvatar
@@ -382,7 +382,9 @@ class NexusRepository(context: Context) {
             row.optStringOrNull("suspended_until"),
             row.optStringOrNull("card_theme_id"),
             row.optBoolean("hide_university_number"),
-            false // "has_used_direct_name_change" has no column in the live schema; see docs/ANDROID_REBUILD_PLAN.md
+            false, // "has_used_direct_name_change" has no column in the live schema; see docs/ANDROID_REBUILD_PLAN.md
+            row.optBoolean("verified"),
+            row.optInt("warning_count")
         )
     }
 
@@ -479,7 +481,7 @@ class NexusRepository(context: Context) {
     suspend fun loadConversations(): MessagingState {
         val userId = session?.userId.orEmpty()
         if (userId.isBlank()) return MessagingState()
-        val convos = array(rest("/rest/v1/conversation_members?select=conversation_id,conversations(id,is_group,title,updated_at)&user_id=eq." + encode(userId)))
+        val convos = array(rest("/rest/v1/conversation_members?select=conversation_id,conversations(id,is_group,name,updated_at)&user_id=eq." + encode(userId)))
         val convIds = convos.mapNotNull { it.optJSONObject("conversations")?.optString("id") }.distinct()
         if (convIds.isEmpty()) return MessagingState(unreadTotal = 0)
 
@@ -513,7 +515,7 @@ class NexusRepository(context: Context) {
                 val id = conv.optString("id")
                 val isGroup = conv.optBoolean("is_group")
                 val otherId = otherIdByConv[id]
-                val title = if (isGroup) conv.optStringOrNull("title") ?: "مجموعة" else profiles[otherId]?.fullName ?: "مستخدم"
+                val title = if (isGroup) conv.optStringOrNull("name") ?: "مجموعة" else profiles[otherId]?.fullName ?: "مستخدم"
                 ConversationSummary(
                     id = id,
                     isGroup = isGroup,
@@ -561,9 +563,41 @@ class NexusRepository(context: Context) {
         }
     }
 
+    /**
+     * Mirrors the web client's getOrCreateDM: the "create_dm" RPC exists on some environments but
+     * not reliably (it is absent from the generated schema types), so every step here has a fallback
+     * rather than assuming the RPC succeeded.
+     */
     suspend fun openDirectConversation(otherUserId: String): String {
-        val raw = rest("/rest/v1/rpc/create_dm", "POST", JSONObject().put("_other", otherUserId))
-        return parseScalar(raw)
+        val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        if (userId == otherUserId) throw ApiException("لا يمكنك مراسلة نفسك")
+
+        runCatching {
+            val raw = rest("/rest/v1/rpc/create_dm", "POST", JSONObject().put("_other", otherUserId))
+            val id = parseScalar(raw)
+            if (id.isNotBlank() && id != "null") return id
+        }
+
+        val myConvIds = array(rest("/rest/v1/conversation_members?select=conversation_id&user_id=eq." + encode(userId)))
+            .mapNotNull { it.optStringOrNull("conversation_id") }
+        if (myConvIds.isNotEmpty()) {
+            val sharedIds = array(rest("/rest/v1/conversation_members?select=conversation_id&user_id=eq." + encode(otherUserId) + "&conversation_id=in.(" + myConvIds.joinToString(",") + ")"))
+                .mapNotNull { it.optStringOrNull("conversation_id") }
+            if (sharedIds.isNotEmpty()) {
+                val existing = array(rest("/rest/v1/conversations?select=id&id=in.(" + sharedIds.joinToString(",") + ")&is_group=eq.false&order=updated_at.desc&limit=1"))
+                    .firstOrNull()?.optStringOrNull("id")
+                if (existing != null) return existing
+            }
+        }
+
+        val created = array(rest("/rest/v1/conversations", "POST",
+            JSONObject().put("is_group", false).put("created_by", userId).put("updated_at", java.time.Instant.now().toString()),
+            "return=representation")).firstOrNull()?.optStringOrNull("id")
+            ?: throw ApiException("تعذّر إنشاء المحادثة")
+
+        rest("/rest/v1/conversation_members", "POST", JSONObject().put("conversation_id", created).put("user_id", userId))
+        rest("/rest/v1/conversation_members", "POST", JSONObject().put("conversation_id", created).put("user_id", otherUserId))
+        return created
     }
 
     suspend fun markConversationRead(conversationId: String) {
@@ -598,11 +632,12 @@ class NexusRepository(context: Context) {
             .put("conversation_id", conversationId).put("reason", reason).put("note", note ?: JSONObject.NULL))
     }
 
+    /** "get_unread_message_count" is absent from the live schema; sum the per-conversation counts instead (same RPC the web client uses). */
     suspend fun unreadMessageCount(): Int {
         val userId = session?.userId.orEmpty()
         if (userId.isBlank()) return 0
-        val raw = rest("/rest/v1/rpc/get_unread_message_count", "POST", JSONObject().put("_user_id", userId))
-        return raw.trim().toIntOrNull() ?: 0
+        return array(rest("/rest/v1/rpc/get_conversation_unread_counts", "POST", JSONObject().put("_user_id", userId)))
+            .sumOf { it.optInt("unread_count") }
     }
 
     // ---------------------------------------------------------------------
@@ -740,7 +775,7 @@ class NexusRepository(context: Context) {
     suspend fun adminBan(userId: String, reason: String) { rest("/rest/v1/rpc/admin_ban", "POST", JSONObject().put("_user", userId).put("_reason", reason)) }
     suspend fun adminUnban(userId: String) { rest("/rest/v1/rpc/admin_unban", "POST", JSONObject().put("_user", userId)) }
     suspend fun adminSuspend(userId: String, days: Int, reason: String) { rest("/rest/v1/rpc/admin_suspend", "POST", JSONObject().put("_user", userId).put("_days", days).put("_reason", reason)) }
-    suspend fun adminWarn(userId: String, reason: String) { rest("/rest/v1/rpc/admin_warn", "POST", JSONObject().put("_user", userId).put("_reason", reason)) }
+    // adminWarn removed: the web app has no "admin_warn" RPC either — warning_count is a read-only stat, not an action.
     suspend fun adminSetVerified(userId: String, verified: Boolean) { rest("/rest/v1/rpc/admin_set_verified", "POST", JSONObject().put("_user", userId).put("_verified", verified)) }
     suspend fun adminAdjustPoints(userId: String, delta: Int) { rest("/rest/v1/rpc/admin_adjust_points", "POST", JSONObject().put("_user", userId).put("_delta", delta)) }
     suspend fun adminDeleteUser(userId: String) { rest("/rest/v1/rpc/admin_delete_user", "POST", JSONObject().put("_user", userId)) }

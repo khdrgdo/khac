@@ -135,7 +135,6 @@ fun NexusApp(viewModel: NexusViewModel) {
                 onBan = viewModel::adminBan,
                 onUnban = viewModel::adminUnban,
                 onSuspend = viewModel::adminSuspend,
-                onWarn = viewModel::adminWarn,
                 onSetVerified = viewModel::adminSetVerified,
                 onAdjustPoints = viewModel::adminAdjustPoints,
                 onDeleteUser = viewModel::adminDeleteUser,
