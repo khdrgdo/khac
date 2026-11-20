@@ -146,9 +146,8 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center p-5 sm:p-8">
-      <div className="absolute inset-x-0 top-0 h-1 bg-accent" />
-      <div className="absolute top-0 end-0 h-full w-px bg-border/60" />
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-5 sm:p-8">
+      <AuthBackdrop />
       <div className="w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-8 flex flex-col items-center justify-center">
@@ -163,9 +162,9 @@ function AuthPage() {
           </p>
         </div>
 
-        <Card className="border-t-4 border-t-accent shadow-xl shadow-primary/10">
+        <Card className="animate-rise rounded-[28px] border-border/60 shadow-2xl shadow-primary/10">
           <CardHeader className="pb-4 text-right p-7 sm:p-9">
-            <CardTitle className="text-2xl" data-display>مرحبًا بك</CardTitle>
+            <CardTitle className="text-[28px] font-semibold" data-display>أهلاً بعودتك</CardTitle>
             <CardDescription className="text-xs">
               اختر طريقة المتابعة المباشرة عبر غوغل أو التسجيل اليدوي
             </CardDescription>
@@ -745,5 +744,36 @@ function SignupForm({
         سيصلك بريد إلكتروني يحتوي على رابط لتأكيد الحساب فور الضغط.
       </p>
     </form>
+  );
+}
+
+function AuthBackdrop() {
+  const chips = [
+    { t: "📚 ملخص هياكل البيانات", c: "top-[12%] right-[6%]", d: "0s" },
+    { t: "💬 ٣ زملاء ردّوا على سؤالك", c: "top-[68%] right-[9%]", d: "1.2s" },
+    { t: "🏆 وصلت للرتبة الفضية", c: "top-[22%] left-[7%]", d: "0.6s" },
+    { t: "📅 جدول امتحانات الفصل", c: "top-[76%] left-[10%]", d: "1.8s" },
+  ];
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <svg className="absolute inset-0 h-full w-full text-primary/15" preserveAspectRatio="none">
+        <defs>
+          <pattern id="nx-dots" width="28" height="28" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1.2" fill="currentColor" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#nx-dots)" />
+      </svg>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,var(--color-background)_75%)]" />
+      {chips.map((c) => (
+        <div
+          key={c.t}
+          className={`glass absolute hidden lg:block rounded-2xl border px-4 py-2.5 text-sm text-foreground/80 animate-rise ${c.c}`}
+          style={{ animationDelay: c.d }}
+        >
+          {c.t}
+        </div>
+      ))}
+    </div>
   );
 }

@@ -468,10 +468,13 @@ function ChatPage() {
                 )}
                 <div
                   className={cn(
-                    "max-w-[75%] px-3 py-2 text-sm shadow-sm group/msg",
+                    "max-w-[75%] px-3.5 py-2 text-[14.5px] group/msg rounded-[20px] transition-transform active:scale-[0.98]",
                     mine
-                      ? "bg-primary text-primary-foreground rounded-2xl rounded-br-none"
-                      : "bg-card border rounded-2xl rounded-bl-none",
+                      ? "bg-gradient-to-bl from-primary to-primary/80 text-primary-foreground shadow-[0_6px_18px_-10px_var(--color-primary)]"
+                      : "glass border",
+                    mine && groupWithNext && "rounded-ee-md",
+                    !mine && groupWithNext && "rounded-es-md",
+                    groupWithNext ? "mb-0" : "mb-1.5",
                   )}
                 >
                   {!mine && conv?.is_group && showAvatar && (

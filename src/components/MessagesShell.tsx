@@ -167,7 +167,7 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
   });
 
   return (
-    <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] flex rounded-xl overflow-hidden border bg-card shadow-sm">
+    <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-6rem)] flex rounded-3xl overflow-hidden border glass">
       {/* Sidebar */}
       <aside
         className={cn("flex flex-col w-full md:w-80 border-e", inChat ? "hidden md:flex" : "flex")}
@@ -218,7 +218,7 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
                     to="/messages/$id"
                     params={{ id: c.id }}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60 transition border-b border-border/40",
+                      "mx-2 my-0.5 flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-secondary/70 transition",
                       isActive && "bg-primary/10 hover:bg-primary/15",
                       unread > 0 && !isActive && "bg-primary/5",
                     )}
@@ -241,7 +241,7 @@ export function MessagesShell({ activeId, children }: { activeId?: string; child
                         <div className="font-semibold truncate text-sm flex items-center gap-1.5">
                           {title}
                           {unread > 0 && (
-                            <span className="min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center shrink-0">
+                            <span className="min-w-[18px] h-[18px] px-1 bg-destructive text-destructive-foreground text-[9px] font-extrabold rounded-full flex items-center justify-center shrink-0">
                               {unread > 99 ? "99+" : unread}
                             </span>
                           )}

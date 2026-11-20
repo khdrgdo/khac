@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/hooks/useAuth";
+import { SplashScreen } from "@/components/SplashScreen";
 
 function NotFoundComponent() {
   return (
@@ -107,7 +108,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "twitter:image",
         content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/59866c9e-faf5-491b-b8ff-2a422ce6c7cf",
       },
-      { name: "theme-color", content: "#13202A" },
+      { name: "theme-color", content: "#6B4FD8" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "mobile-web-app-capable", content: "yes" },
@@ -121,7 +122,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Instrument+Serif&family=Work+Sans:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Instrument+Serif&family=Work+Sans:wght@400;500;600;700&display=swap",
       },
     ],
   }),
@@ -199,6 +200,7 @@ function RootComponent() {
       <AuthProvider>
         <TooltipProvider delayDuration={200}>
           <HeadContent />
+          <SplashScreen />
           <Outlet />
           <Toaster position="top-center" richColors />
         </TooltipProvider>

@@ -1,5 +1,7 @@
 import { formatUnivNumber } from "@/lib/privacy";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type React from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,7 @@ import {
   CheckCircle2,
   Trash2,
   VenetianMask,
+  ThumbsUp,
 } from "lucide-react";
 import { RankBadge } from "@/components/RankBadge";
 import { ANON_NAME, useAnonymousReveal, useMyAnonymousIds } from "@/lib/anonymous";
@@ -93,7 +95,6 @@ export function PostCard({ post }: { post: PostWithMeta }) {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [openReact, setOpenReact] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const anonymous = !!post.is_anonymous || !post.author_id;
@@ -246,13 +247,13 @@ export function PostCard({ post }: { post: PostWithMeta }) {
     <UserAvatar
       avatarUrl={isAnon ? null : post.author?.avatar_url}
       fullName={isAnon ? "؟" : authorName}
-      className="w-10 h-10"
+      className="w-11 h-11 ring-2 ring-background"
     />
   );
 
   return (
-    <Card>
-      <CardContent className="p-3 sm:p-4">
+    <Card className="animate-rise">
+      <CardContent className="p-4 pb-1.5">
         <div className="flex items-start gap-3">
           {profileLinkId ? (
             <Link to="/profile/$id" params={{ id: profileLinkId }}>{avatarEl}</Link>
@@ -354,73 +355,43 @@ export function PostCard({ post }: { post: PostWithMeta }) {
         </Link>
 
         {totalReactions > 0 || post.commentCount > 0 ? (
-          <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              {topEmojis.map((e) => (
-                <span key={e.type}>{e.emoji}</span>
-              ))}
-              {totalReactions > 0 && <span className="ms-1">{totalReactions}</span>}
+          <div className="flex items-center justify-between mt-3 text-[13px] text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <div className="flex -space-x-1.5 space-x-reverse">
+                {topEmojis.map((e) => (
+                  <span key={e.type} className="grid h-5 w-5 place-items-center rounded-full bg-popover text-[12px] ring-2 ring-popover">
+                    {e.emoji}
+                  </span>
+                ))}
+              </div>
+              {totalReactions > 0 && <span>{totalReactions}</span>}
             </div>
-            {post.commentCount > 0 && <span>{post.commentCount} تعليق</span>}
+            {post.commentCount > 0 && (
+              <Link to="/posts/$id" params={{ id: post.id }} className="hover:underline">
+                {post.commentCount} تعليق
+              </Link>
+            )}
           </div>
         ) : null}
 
-        <div className="mt-2 pt-2 border-t flex items-center gap-1">
-          <Popover open={openReact} onOpenChange={setOpenReact}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn("flex-1 gap-1", post.myReaction && "text-primary")}
-                onClick={() => (post.myReaction ? reactMut.mutate(null) : reactMut.mutate("like"))}
-              >
-                {post.myReaction ? (
-                  <>
-                    <span>{REACTIONS.find((r) => r.type === post.myReaction)?.emoji}</span>
-                    {REACTIONS.find((r) => r.type === post.myReaction)?.label}
-                  </>
-                ) : (
-                  <>👍 إعجاب</>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-1" side="top">
-              <div className="flex gap-1">
-                {REACTIONS.map((r) => (
-                  <button
-                    key={r.type}
-                    onClick={() => {
-                      reactMut.mutate(r.type);
-                      setOpenReact(false);
-                    }}
-                    className="text-2xl hover:scale-125 transition-transform p-1"
-                    title={r.label}
-                  >
-                    {r.emoji}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          <Button variant="ghost" size="sm" className="flex-1 gap-1" asChild>
-            <Link to="/posts/$id" params={{ id: post.id }}>
-              <MessageCircle className="w-4 h-4" /> تعليق
-            </Link>
-          </Button>
-
-          <Button variant="ghost" size="sm" className="flex-1 gap-1" onClick={share}>
-            <Share2 className="w-4 h-4" /> مشاركة
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("gap-1", post.saved && "text-primary")}
+        <div className="mt-2.5 pt-1 border-t flex items-center">
+          <ReactionButton
+            myReaction={post.myReaction as ReactionType | null | undefined}
+            onReact={(r) => reactMut.mutate(r)}
+          />
+          <ActionButton asLink postId={post.id} icon={<MessageCircle className="w-[18px] h-[18px]" />} label="تعليق" />
+          <ActionButton onClick={share} icon={<Share2 className="w-[18px] h-[18px]" />} label="مشاركة" />
+          <button
+            type="button"
             onClick={() => saveMut.mutate()}
+            aria-label="حفظ"
+            className={cn(
+              "grid h-9 w-10 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary",
+              post.saved && "text-primary",
+            )}
           >
-            <Bookmark className={cn("w-4 h-4", post.saved && "fill-current")} />
-          </Button>
+            <Bookmark className={cn("w-[18px] h-[18px]", post.saved && "fill-current")} />
+          </button>
         </div>
       </CardContent>
 
@@ -518,5 +489,147 @@ function ReportDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const REACTION_TONE: Record<string, string> = {
+  like: "text-react-like",
+  love: "text-react-love",
+  haha: "text-react-warm",
+  wow: "text-react-warm",
+  sad: "text-react-warm",
+};
+
+function ActionButton({
+  icon,
+  label,
+  onClick,
+  asLink,
+  postId,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  asLink?: boolean;
+  postId?: string;
+}) {
+  const cls =
+    "flex flex-1 items-center justify-center gap-1.5 h-9 rounded-lg text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary";
+  if (asLink && postId)
+    return (
+      <Link to="/posts/$id" params={{ id: postId }} className={cls}>
+        {icon} {label}
+      </Link>
+    );
+  return (
+    <button type="button" onClick={onClick} className={cls}>
+      {icon} {label}
+    </button>
+  );
+}
+
+/** Facebook-style: tap = like/unlike, hover or long-press = floating reaction dock. */
+function ReactionButton({
+  myReaction,
+  onReact,
+}: {
+  myReaction: ReactionType | null | undefined;
+  onReact: (r: ReactionType | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressed = useRef(false);
+  const current = REACTIONS.find((r) => r.type === myReaction);
+
+  const clear = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  const openSoon = (ms: number) => {
+    clear();
+    timer.current = setTimeout(() => {
+      longPressed.current = true;
+      setOpen(true);
+    }, ms);
+  };
+  const closeSoon = () => {
+    clear();
+    timer.current = setTimeout(() => setOpen(false), 350);
+  };
+  useEffect(() => clear, []);
+
+  return (
+    <div
+      className="relative flex-1"
+      onMouseEnter={() => openSoon(450)}
+      onMouseLeave={closeSoon}
+    >
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            className="absolute bottom-full right-0 z-30 mb-2 flex items-end gap-0.5 rounded-full border bg-popover px-2 py-1.5 shadow-xl"
+            onMouseEnter={clear}
+            onMouseLeave={closeSoon}
+          >
+            {REACTIONS.map((r, i) => (
+              <motion.button
+                key={r.type}
+                type="button"
+                initial={{ opacity: 0, y: 12, scale: 0.5 }}
+                animate={{ opacity: 1, y: 0, scale: hovered === r.type ? 1.45 : 1 }}
+                transition={{ type: "spring", stiffness: 520, damping: 22, delay: i * 0.03 }}
+                onMouseEnter={() => setHovered(r.type)}
+                onMouseLeave={() => setHovered(null)}
+                onClick={() => {
+                  onReact(r.type);
+                  setOpen(false);
+                }}
+                className="relative grid h-10 w-10 origin-bottom place-items-center text-[28px] leading-none"
+                aria-label={r.label}
+              >
+                {hovered === r.type && (
+                  <span className="absolute -top-7 whitespace-nowrap rounded-full bg-foreground px-2 py-0.5 text-[11px] font-medium text-background">
+                    {r.label}
+                  </span>
+                )}
+                {r.emoji}
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        type="button"
+        className={cn(
+          "flex w-full items-center justify-center gap-1.5 h-9 rounded-lg text-[13px] font-semibold transition-colors hover:bg-secondary select-none",
+          current ? REACTION_TONE[current.type] : "text-muted-foreground font-medium",
+        )}
+        onTouchStart={() => {
+          longPressed.current = false;
+          openSoon(420);
+        }}
+        onTouchEnd={clear}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={() => {
+          if (longPressed.current) {
+            longPressed.current = false;
+            return;
+          }
+          clear();
+          setOpen(false);
+          onReact(current ? null : "like");
+        }}
+      >
+        <motion.span key={current?.type ?? "none"} initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 600, damping: 14 }} className="text-base leading-none">
+          {current ? current.emoji : <ThumbsUp className="w-[18px] h-[18px]" />}
+        </motion.span>
+        {current ? current.label : "إعجاب"}
+      </button>
+    </div>
   );
 }

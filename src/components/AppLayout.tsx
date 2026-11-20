@@ -84,9 +84,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-background selection:bg-accent/25">
+    <div className="min-h-screen selection:bg-primary/20">
       {/* Fixed editorial sidebar (desktop) */}
-      <aside className="hidden md:flex fixed inset-y-0 end-0 w-64 flex-col bg-sidebar text-sidebar-foreground border-s border-sidebar-border">
+      <aside className="hidden md:flex fixed inset-y-0 end-0 w-64 flex-col bg-sidebar backdrop-blur-2xl text-sidebar-foreground border-s border-sidebar-border">
         <div className="px-5 py-6 border-b border-sidebar-border">
           <Link to="/feed" className="block">
             <NexusLogo size="md" showTagline taglineText="المنصة الأكاديمية" />
@@ -111,7 +111,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 {active && (
                   <motion.span
                     layoutId="sidebarActive"
-                    className="absolute inset-0 -z-10 rounded-md bg-sidebar-primary"
+                    className="absolute inset-0 -z-10 rounded-xl bg-sidebar-primary shadow-lg shadow-primary/25"
                     transition={{ type: "spring", stiffness: 420, damping: 34 }}
                   />
                 )}
@@ -155,7 +155,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Top bar */}
-      <header className="sticky top-0 z-40 md:pe-64 border-b border-border bg-background/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-40 md:pe-64 border-b border-border bg-background/60 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           <div className="md:hidden">
             <Link to="/feed">
@@ -240,7 +240,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 inset-x-0 md:hidden z-50 bg-background/95 backdrop-blur border-t border-border flex items-center justify-around">
+      <nav className="fixed bottom-0 inset-x-0 md:hidden z-50 bg-background/70 backdrop-blur-xl border-t border-border flex items-center justify-around">
         {navItems.map((it) => {
           const active = path.startsWith(it.to);
           const isMessages = it.to === "/messages";
