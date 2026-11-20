@@ -99,9 +99,11 @@ fun SocialFeedScreen(
         ) {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("المجتمع", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                        Text("مساحة لتبادل المعرفة والنقاش", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    InitialsAvatar(state.profile?.fullName.orEmpty(), state.profile?.avatarUrl, 34)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        Text("مرحبًا، ${state.profile?.fullName?.split(" ")?.firstOrNull() ?: ""}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("شو عندك اليوم؟", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     IconButton(onClick = onSearch) { Icon(Icons.Outlined.Search, contentDescription = "بحث") }
                     IconButton(onClick = onLeaderboard) { Icon(Icons.Outlined.EmojiEvents, contentDescription = "لوحة الصدارة") }
@@ -160,11 +162,9 @@ fun SocialFeedScreen(
             }
 
             item {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -286,6 +286,7 @@ fun SocialFeedScreen(
                         onResolveImage = onResolveImage,
                         onSearchPeople = onSearchPeople
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 6.dp)
                 }
             }
         }
@@ -327,11 +328,9 @@ private fun FeedPostCard(
             .toList()
     }
 
-    Card(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
