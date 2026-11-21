@@ -303,7 +303,28 @@ class NexusRepository(context: Context) {
         rest("/rest/v1/rpc/create_post_as", "POST", JSONObject().put("_content", "[course:" + courseId + "] " + content.trim()).put("_post_type", "question").put("_anonymous", anonymous))
     }
 
-    suspend fun addComment(postId: String, content: String) {
+suspend fun loadPostComments(postId: String): List<FeedComment> {
+        val rows = array(rest("/rest/v1/comments?select=id,post_id,author_id,content,created_at,is_anonymous,parent_id&post_id=eq." + encode(postId) + "&order=created_at.asc&limit=200"))
+        val authorIds = rows.mapNotNull { it.optStringOrNull("author_id") }.toSet()
+        val profiles = publicProfiles(authorIds)
+        return rows.map { row ->
+            val authorId = row.optStringOrNull("author_id")
+            val anonymous = row.optBoolean("is_anonymous") || authorId == null
+            val author = profiles[authorId]
+            FeedComment(
+                id = row.optString("id"), postId = row.optString("post_id"), authorId = authorId,
+                authorName = if (anonymous) "طالب مجهول" else author?.fullName ?: "طالب",
+                avatarUrl = if (anonymous) null else author?.avatarUrl, anonymous = anonymous,
+                content = row.optString("content"), createdAt = row.optString("created_at"),
+                parentId = row.optStringOrNull("parent_id")
+            )
+        }
+    }
+
+    /** Resolves a batch of user ids to display names/avatars — used for the "who reacted" sheet. */
+    suspend fun resolveProfiles(ids: Set<String>): Map<String, PublicProfile> = publicProfiles(ids)
+
+        suspend fun addComment(postId: String, content: String) {
         rest("/rest/v1/rpc/create_comment_as", "POST", JSONObject().put("_post_id", postId).put("_content", content.trim()).put("_parent_id", JSONObject.NULL).put("_anonymous", false))
         runCatching {
             val post = array(rest("/rest/v1/posts?select=author_id&id=eq." + encode(postId))).firstOrNull()

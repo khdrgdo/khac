@@ -108,6 +108,18 @@ data class FeedReaction(
     val reaction: String
 )
 
+data class FeedComment(
+    val id: String,
+    val postId: String,
+    val authorId: String?,
+    val authorName: String,
+    val avatarUrl: String?,
+    val anonymous: Boolean,
+    val content: String,
+    val createdAt: String,
+    val parentId: String? = null
+)
+
 data class FeedPost(
     val id: String,
     val authorId: String?,
@@ -190,7 +202,9 @@ data class NexusUiState(
     val notifications: NotificationsState = NotificationsState(),
     val search: SearchState = SearchState(),
     val leaderboard: LeaderboardState = LeaderboardState(),
-    val admin: AdminState = AdminState()
+    val admin: AdminState = AdminState(),
+    val feedComments: Map<String, List<FeedComment>> = emptyMap(),
+    val feedCommentsLoading: Set<String> = emptySet()
 )
 
 fun normalizeLoginIdentifier(value: String): String {

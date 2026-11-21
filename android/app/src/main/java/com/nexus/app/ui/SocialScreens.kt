@@ -33,6 +33,7 @@ import coil.compose.AsyncImage
 import com.nexus.app.BuildConfig
 import com.nexus.app.data.*
 import java.time.Instant
+import androidx.compose.ui.graphics.Color
 
 private val feedReactionOptions = listOf(
     Triple("like", "👍", "إعجاب"),
@@ -61,7 +62,9 @@ fun SocialFeedScreen(
     onNotifications: () -> Unit,
     onLeaderboard: () -> Unit,
     onAdmin: () -> Unit,
-    onSearchPeople: suspend (String) -> List<PublicProfile>
+    onSearchPeople: suspend (String) -> List<PublicProfile>,
+    onLoadComments: (String) -> Unit,
+    onResolveReactors: suspend (List<String>) -> List<String>
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
     var anonymous by rememberSaveable { mutableStateOf(false) }
@@ -277,6 +280,8 @@ fun SocialFeedScreen(
                     FeedPostCard(
                         post = post,
                         currentUserId = state.profile?.id,
+                        comments = state.feedComments[post.id] ?: emptyList(),
+                        commentsLoading = post.id in state.feedCommentsLoading,
                         onTagClick = { tag -> activeTag = tag; onRefresh(filter, tag) },
                         onComment = onComment,
                         onReact = onReact,
@@ -284,7 +289,9 @@ fun SocialFeedScreen(
                         onDelete = onDelete,
                         onReport = onReport,
                         onResolveImage = onResolveImage,
-                        onSearchPeople = onSearchPeople
+                        onSearchPeople = onSearchPeople,
+                        onLoadComments = onLoadComments,
+                        onResolveReactors = onResolveReactors
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 6.dp)
                 }
@@ -297,6 +304,8 @@ fun SocialFeedScreen(
 private fun FeedPostCard(
     post: FeedPost,
     currentUserId: String?,
+    comments: List<FeedComment>,
+    commentsLoading: Boolean,
     onTagClick: (String) -> Unit,
     onComment: (String, String) -> Unit,
     onReact: (String, String?) -> Unit,
@@ -304,7 +313,9 @@ private fun FeedPostCard(
     onDelete: (String) -> Unit,
     onReport: (String, String) -> Unit,
     onResolveImage: (String, (String?) -> Unit) -> Unit,
-    onSearchPeople: suspend (String) -> List<PublicProfile>
+    onSearchPeople: suspend (String) -> List<PublicProfile>,
+    onLoadComments: (String) -> Unit,
+    onResolveReactors: suspend (List<String>) -> List<String>
 ) {
     val context = LocalContext.current
     var expanded by rememberSaveable(post.id) { mutableStateOf(false) }
@@ -312,6 +323,8 @@ private fun FeedPostCard(
     var commentDraft by rememberSaveable(post.id) { mutableStateOf("") }
     var moreOpen by remember { mutableStateOf(false) }
     var reactionsOpen by remember { mutableStateOf(false) }
+    var reactorsOpen by remember { mutableStateOf(false) }
+    var reactorNames by remember { mutableStateOf<List<String>>(emptyList()) }
     var reportOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     var deleteOpen by rememberSaveable(post.id) { mutableStateOf(false) }
     var reportReason by rememberSaveable(post.id) { mutableStateOf("محتوى غير مناسب") }
@@ -403,14 +416,25 @@ private fun FeedPostCard(
             if (totalReactions > 0 || post.commentsCount > 0) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        feedReactionOptions.filter { reactionCounts.containsKey(it.first) }.take(3).joinToString(" ") { it.second } +
-                            if (totalReactions > 0) "  $totalReactions" else "",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (post.commentsCount > 0) Text("${post.commentsCount} تعليق", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(
+                        Modifier.weight(1f).clickable(enabled = totalReactions > 0) { reactorsOpen = true },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            feedReactionOptions.filter { reactionCounts.containsKey(it.first) }.take(3).joinToString(" ") { it.second } +
+                                if (totalReactions > 0) "  $totalReactions" else "",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (post.commentsCount > 0) {
+                        Text(
+                            "${post.commentsCount} تعليق",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.clickable { commentOpen = true; onLoadComments(post.id) }
+                        )
+                    }
                 }
             }
 
@@ -423,14 +447,23 @@ private fun FeedPostCard(
                         Text(selectedReaction?.third ?: "إعجاب", style = MaterialTheme.typography.labelMedium)
                     }
                     DropdownMenu(expanded = reactionsOpen, onDismissRequest = { reactionsOpen = false }) {
-                        feedReactionOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text("${option.second}  ${option.third}") },
-                                onClick = {
-                                    onReact(post.id, if (post.myReaction == option.first) null else option.first)
-                                    reactionsOpen = false
+                        Row(Modifier.padding(horizontal = 6.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            feedReactionOptions.forEach { option ->
+                                val mine = post.myReaction == option.first
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(if (mine) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                                        .clickable {
+                                            onReact(post.id, if (mine) null else option.first)
+                                            reactionsOpen = false
+                                        }
+                                        .padding(7.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(option.second, fontSize = 22.sp)
                                 }
-                            )
+                            }
                         }
                     }
                 }
@@ -458,6 +491,29 @@ private fun FeedPostCard(
             }
 
             if (commentOpen) {
+                LaunchedEffect(post.id) { onLoadComments(post.id) }
+                if (commentsLoading && comments.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    }
+                } else if (comments.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        comments.forEach { c ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ProfileAvatar(c.avatarUrl, c.authorName, 28)
+                                Column(Modifier.weight(1f)) {
+                                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp)) {
+                                        Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
+                                            Text(c.authorName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                            Text(c.content, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                    Text(relativePostTime(c.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp, top = 2.dp))
+                                }
+                            }
+                        }
+                    }
+                }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MentionAwareField(
                         value = commentDraft,
@@ -472,7 +528,6 @@ private fun FeedPostCard(
                             if (commentDraft.isNotBlank()) {
                                 onComment(post.id, commentDraft.trim())
                                 commentDraft = ""
-                                commentOpen = false
                             }
                         },
                         enabled = commentDraft.isNotBlank()
@@ -510,6 +565,24 @@ private fun FeedPostCard(
             text = { Text("لن تتمكن من استعادة المنشور بعد حذفه.") },
             confirmButton = { TextButton(onClick = { onDelete(post.id); deleteOpen = false }) { Text("حذف", color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton(onClick = { deleteOpen = false }) { Text("إلغاء") } }
+        )
+    }
+
+    if (reactorsOpen) {
+        LaunchedEffect(post.id) { reactorNames = onResolveReactors(post.reactions.map { it.userId }) }
+        AlertDialog(
+            onDismissRequest = { reactorsOpen = false },
+            title = { Text("من تفاعل مع المنشور") },
+            text = {
+                if (reactorNames.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        reactorNames.forEach { name -> Text(name, style = MaterialTheme.typography.bodyMedium) }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { reactorsOpen = false }) { Text("إغلاق") } }
         )
     }
 }

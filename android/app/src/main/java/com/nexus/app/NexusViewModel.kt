@@ -141,6 +141,7 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                         notice = "تم إرسال تعليقك"
                     )
                 }
+                loadPostComments(postId)
             } catch (error: Exception) {
                 _state.update { it.copy(busy = false, error = error.message ?: "تعذّر إرسال التعليق") }
             }
@@ -436,6 +437,28 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
                 _state.update { it.copy(notifications = ns) }
             }
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Feed comments + reactors (loaded on demand, not with every feed refresh)
+    // ---------------------------------------------------------------------
+    fun loadPostComments(postId: String) {
+        if (postId in _state.value.feedCommentsLoading) return
+        viewModelScope.launch {
+            _state.update { it.copy(feedCommentsLoading = it.feedCommentsLoading + postId) }
+            val comments = runCatching { repository.loadPostComments(postId) }.getOrDefault(emptyList())
+            _state.update {
+                it.copy(
+                    feedComments = it.feedComments + (postId to comments),
+                    feedCommentsLoading = it.feedCommentsLoading - postId
+                )
+            }
+        }
+    }
+
+    suspend fun resolveReactorNames(ids: List<String>): List<String> {
+        val profiles = runCatching { repository.resolveProfiles(ids.toSet()) }.getOrDefault(emptyMap())
+        return ids.mapNotNull { profiles[it]?.fullName }
     }
 
     // ---------------------------------------------------------------------

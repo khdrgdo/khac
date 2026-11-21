@@ -102,7 +102,9 @@ fun NexusApp(viewModel: NexusViewModel) {
                 onNotifications = viewModel::showNotifications,
                 onLeaderboard = viewModel::showLeaderboard,
                 onAdmin = viewModel::showAdmin,
-                onSearchPeople = viewModel::searchPeopleForMention
+                onSearchPeople = viewModel::searchPeopleForMention,
+                onLoadComments = viewModel::loadPostComments,
+                onResolveReactors = { ids -> viewModel.resolveReactorNames(ids) }
             )
             AppScreen.COURSES -> CoursesScreen(state, viewModel::openCourse, viewModel::showHome, viewModel::showProfile, viewModel::refreshHome, viewModel::showMessages)
             AppScreen.PROFILE -> ProfileScreen(
