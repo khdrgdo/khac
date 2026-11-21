@@ -44,7 +44,12 @@ fun AdminScreen(
     onDismissMessageReport: (String) -> Unit,
     onDeletePost: (String, String) -> Unit,
     onAddBannedWord: (String) -> Unit,
-    onRemoveBannedWord: (String) -> Unit
+    onRemoveBannedWord: (String) -> Unit,
+    onApproveNameRequest: (NameChangeRequestRow) -> Unit,
+    onRejectNameRequest: (String) -> Unit,
+    onSetSubAdminPermission: (String, String, Boolean) -> Unit,
+    onAddSubAdmin: (String) -> Unit,
+    onRemoveSubAdmin: (String) -> Unit
 ) {
     val admin = state.admin
     Scaffold(topBar = { NexusTopBar("لوحة الإدارة", onBack = onBack) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
@@ -61,6 +66,9 @@ fun AdminScreen(
                 AdminTab.USERS -> AdminUsersTab(admin.users, onSetRole, onBan, onUnban, onSuspend, onSetVerified, onAdjustPoints, onDeleteUser, onSetTeacher)
                 AdminTab.REPORTS -> AdminReportsTab(admin.postReports, admin.messageReports, onDismissPostReport, onDismissMessageReport, onDeletePost)
                 AdminTab.WORDS -> AdminWordsTab(admin.bannedWords, onAddBannedWord, onRemoveBannedWord)
+                AdminTab.COURSES -> AdminCoursesTab(admin.courses)
+                AdminTab.NAME_REQUESTS -> AdminNameRequestsTab(admin.nameRequests, onApproveNameRequest, onRejectNameRequest)
+                AdminTab.SUBADMINS -> AdminSubAdminsTab(admin.subAdmins, onSetSubAdminPermission, onAddSubAdmin, onRemoveSubAdmin)
                 AdminTab.ACTIVITY -> AdminActivityTab(admin.activity)
             }
         }
@@ -276,6 +284,113 @@ private fun AdminActivityTab(activity: List<AdminActivityItem>) {
                 Text("${a.userName ?: ""} · ${a.createdAt}".trim(' ', '·'), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+
+@Composable
+private fun AdminCoursesTab(courses: List<AdminCourseRow>) {
+    if (courses.isEmpty()) {
+        NexusEmptyState(Icons.Outlined.MenuBook, "لا توجد مقررات بعد", "ستظهر هنا كل المقررات المضافة")
+        return
+    }
+    LazyColumn(contentPadding = PaddingValues(16.dp)) {
+        items(courses, key = { it.id }) { c ->
+            Column(Modifier.padding(vertical = 8.dp)) {
+                Text(c.name, fontWeight = FontWeight.Bold)
+                Text(
+                    listOfNotNull(c.teacherName, c.major?.let(::majorLabel), c.year?.let { "السنة $it" }).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+@Composable
+private fun AdminNameRequestsTab(
+    requests: List<NameChangeRequestRow>,
+    onApprove: (NameChangeRequestRow) -> Unit,
+    onReject: (String) -> Unit
+) {
+    val pending = requests.filter { it.status == "pending" }
+    val resolved = requests.filter { it.status != "pending" }
+    if (requests.isEmpty()) {
+        NexusEmptyState(Icons.Outlined.Badge, "لا توجد طلبات تغيير اسم", "ستظهر هنا طلبات الطلاب")
+        return
+    }
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (pending.isNotEmpty()) {
+            item { Text("قيد المراجعة", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+            items(pending, key = { "p-" + it.id }) { r ->
+                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("${r.currentName} ← ${r.requestedName}", fontWeight = FontWeight.SemiBold)
+                        if (!r.reason.isNullOrBlank()) Text(r.reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { onApprove(r) }) { Text("موافقة") }
+                            TextButton(onClick = { onReject(r.id) }) { Text("رفض", color = MaterialTheme.colorScheme.error) }
+                        }
+                    }
+                }
+            }
+        }
+        if (resolved.isNotEmpty()) {
+            item { Text("تمت معالجتها", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+            items(resolved, key = { "r-" + it.id }) { r ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${r.currentName} ← ${r.requestedName}", style = MaterialTheme.typography.bodyMedium)
+                    Text(if (r.status == "approved") "مقبول" else "مرفوض", color = if (r.status == "approved") MaterialTheme.nexus.success else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminSubAdminsTab(
+    subAdmins: List<SubAdminRow>,
+    onSetPermission: (String, String, Boolean) -> Unit,
+    onAdd: (String) -> Unit,
+    onRemove: (String) -> Unit
+) {
+    var newUserId by rememberSaveable { mutableStateOf("") }
+    val permissions = listOf(
+        "can_reports" to "البلاغات", "can_words" to "الكلمات المحظورة", "can_suspend" to "الإيقاف",
+        "can_teachers" to "المعلّمون", "can_courses" to "المقررات", "can_warn" to "التحذيرات"
+    )
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(value = newUserId, onValueChange = { newUserId = it }, modifier = Modifier.weight(1f), placeholder = { Text("معرّف المستخدم (UUID)") }, singleLine = true)
+            IconButton(onClick = { if (newUserId.isNotBlank()) { onAdd(newUserId.trim()); newUserId = "" } }) { Icon(Icons.Outlined.PersonAdd, contentDescription = "إضافة مشرف مساعد") }
+        }
+        if (subAdmins.isEmpty()) {
+            NexusEmptyState(Icons.Outlined.Shield, "لا يوجد مشرفون مساعدون", "أضف مستخدمًا ليصبح مشرفًا مساعدًا")
+        } else {
+            LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp)) {
+                items(subAdmins, key = { it.userId }) { s ->
+                    Column(Modifier.padding(vertical = 10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            InitialsAvatar(s.fullName, s.avatarUrl, 36)
+                            Text(s.fullName, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { onRemove(s.userId) }) { Icon(Icons.Outlined.Delete, contentDescription = "إزالة", tint = MaterialTheme.colorScheme.error) }
+                        }
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                            items(permissions) { (field, label) ->
+                                val enabled = when (field) {
+                                    "can_reports" -> s.canReports; "can_words" -> s.canWords; "can_suspend" -> s.canSuspend
+                                    "can_teachers" -> s.canTeachers; "can_courses" -> s.canCourses; else -> s.canWarn
+                                }
+                                FilterChip(selected = enabled, onClick = { onSetPermission(s.userId, field, !enabled) }, label = { Text(label, style = MaterialTheme.typography.labelSmall) })
+                            }
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
         }
     }
 }

@@ -78,7 +78,7 @@ internal fun NexusEmptyState(icon: androidx.compose.ui.graphics.vector.ImageVect
 @Composable
 fun MessagesListScreen(
     state: NexusUiState,
-    onOpen: (String, String?, String) -> Unit,
+    onOpen: (String, String?, String, Boolean) -> Unit,
     onHome: () -> Unit,
     onCourses: () -> Unit,
     onProfile: () -> Unit
@@ -98,7 +98,7 @@ fun MessagesListScreen(
                 LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
                     items(ms.conversations, key = { it.id }) { c ->
                         Row(
-                            Modifier.fillMaxWidth().clickable { onOpen(c.id, c.otherUserId, c.title) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                            Modifier.fillMaxWidth().clickable { onOpen(c.id, c.otherUserId, c.title, c.blocked) }.padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -137,8 +137,11 @@ fun ConversationScreen(state: NexusUiState, onBack: () -> Unit, onSend: (String)
                 Box {
                     IconButton(onClick = { menuOpen = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = "خيارات") }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(text = { Text("حظر المستخدم") }, onClick = { menuOpen = false; onBlock(true) })
-                        DropdownMenuItem(text = { Text("إلغاء الحظر") }, onClick = { menuOpen = false; onBlock(false) })
+                        if (ms.activeBlocked) {
+                            DropdownMenuItem(text = { Text("إلغاء حظر المستخدم") }, onClick = { menuOpen = false; onBlock(false) })
+                        } else {
+                            DropdownMenuItem(text = { Text("حظر المستخدم") }, onClick = { menuOpen = false; onBlock(true) })
+                        }
                         DropdownMenuItem(text = { Text("إبلاغ") }, onClick = { menuOpen = false; reportOpen = true })
                         DropdownMenuItem(text = { Text("مغادرة المحادثة") }, onClick = { menuOpen = false; onLeave() })
                     }
@@ -170,14 +173,20 @@ fun ConversationScreen(state: NexusUiState, onBack: () -> Unit, onSend: (String)
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = draft, onValueChange = { draft = it }, modifier = Modifier.weight(1f),
-                    placeholder = { Text("اكتب رسالة...") }, shape = RoundedCornerShape(16.dp), maxLines = 4,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send)
-                )
-                IconButton(onClick = { if (draft.isNotBlank()) { onSend(draft.trim()); draft = "" } }, enabled = !ms.sending && draft.isNotBlank()) {
-                    Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "إرسال", tint = MaterialTheme.colorScheme.primary)
+            if (ms.activeBlocked) {
+                Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.Center) {
+                    Text("لقد حظرت هذا المستخدم، ولا يمكنك مراسلته", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            } else {
+                Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = draft, onValueChange = { draft = it }, modifier = Modifier.weight(1f),
+                        placeholder = { Text("اكتب رسالة...") }, shape = RoundedCornerShape(16.dp), minLines = 1, maxLines = 5,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default)
+                    )
+                    IconButton(onClick = { if (draft.isNotBlank()) { onSend(draft.trim()); draft = "" } }, enabled = !ms.sending && draft.isNotBlank()) {
+                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "إرسال", tint = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
         }

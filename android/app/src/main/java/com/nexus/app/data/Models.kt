@@ -359,6 +359,7 @@ data class MessagingState(
     val activeConversationId: String? = null,
     val activeOtherUserId: String? = null,
     val activeTitle: String = "",
+    val activeBlocked: Boolean = false,
     val messages: List<ChatMessage> = emptyList(),
     val unreadTotal: Int = 0,
     val loading: Boolean = false,
@@ -391,8 +392,15 @@ enum class AdminTab(val label: String) {
     USERS("المستخدمون"),
     REPORTS("البلاغات"),
     WORDS("الكلمات المحظورة"),
+    COURSES("المقررات"),
+    NAME_REQUESTS("طلبات الأسماء"),
+    SUBADMINS("المشرفون المساعدون"),
     ACTIVITY("سجل النشاط")
 }
+
+data class AdminCourseRow(val id: String, val name: String, val major: String?, val year: Int?, val semester: Int?, val teacherName: String?)
+data class NameChangeRequestRow(val id: String, val userId: String, val currentName: String, val requestedName: String, val reason: String?, val status: String, val createdAt: String)
+data class SubAdminRow(val userId: String, val fullName: String, val avatarUrl: String?, val canCourses: Boolean, val canReports: Boolean, val canSuspend: Boolean, val canTeachers: Boolean, val canWarn: Boolean, val canWords: Boolean)
 
 data class AdminState(
     val role: AppRole = AppRole.UNKNOWN,
@@ -400,6 +408,9 @@ data class AdminState(
     val postReports: List<PostReport> = emptyList(),
     val messageReports: List<MessageReport> = emptyList(),
     val bannedWords: List<BannedWord> = emptyList(),
+    val courses: List<AdminCourseRow> = emptyList(),
+    val nameRequests: List<NameChangeRequestRow> = emptyList(),
+    val subAdmins: List<SubAdminRow> = emptyList(),
     val activity: List<AdminActivityItem> = emptyList(),
     val stats: AdminStats = AdminStats(),
     val tab: AdminTab = AdminTab.OVERVIEW,

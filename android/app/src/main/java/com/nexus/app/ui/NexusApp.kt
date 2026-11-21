@@ -122,7 +122,7 @@ fun NexusApp(viewModel: NexusViewModel) {
             )
             AppScreen.CHANGE_PASSWORD -> ChangePasswordScreen(state, viewModel::backFromPassword, viewModel::changePassword)
             AppScreen.COURSE_DETAIL -> CourseDetailScreen(state, viewModel::backFromCourse, viewModel::selectCourseTab, viewModel::openMaterial, viewModel::postQuestion, viewModel::addComment)
-            AppScreen.MESSAGES -> MessagesListScreen(state, viewModel::openConversation, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
+            AppScreen.MESSAGES -> MessagesListScreen(state, { id, other, title, blocked -> viewModel.openConversation(id, other, title, blocked) }, viewModel::showHome, viewModel::showCourses, viewModel::showProfile)
             AppScreen.CONVERSATION -> ConversationScreen(state, viewModel::backFromConversation, viewModel::sendMessage, viewModel::setConversationBlocked, viewModel::leaveActiveConversation, viewModel::reportActiveConversation)
             AppScreen.NOTIFICATIONS -> NotificationsScreen(state, viewModel::showFeed, viewModel::openNotification, viewModel::markAllNotificationsRead)
             AppScreen.SEARCH -> SearchScreen(state, viewModel::updateSearchQuery, viewModel::showFeed, { id, name -> viewModel.startConversationWith(id, name) })
@@ -143,7 +143,12 @@ fun NexusApp(viewModel: NexusViewModel) {
                 onDismissMessageReport = viewModel::adminDismissMessageReport,
                 onDeletePost = viewModel::adminDeletePost,
                 onAddBannedWord = viewModel::adminAddBannedWord,
-                onRemoveBannedWord = viewModel::adminRemoveBannedWord
+                onRemoveBannedWord = viewModel::adminRemoveBannedWord,
+                onApproveNameRequest = viewModel::adminApproveNameRequest,
+                onRejectNameRequest = viewModel::adminRejectNameRequest,
+                onSetSubAdminPermission = viewModel::adminSetSubAdminPermission,
+                onAddSubAdmin = viewModel::adminAddSubAdmin,
+                onRemoveSubAdmin = viewModel::adminRemoveSubAdmin
             )
         }
     }

@@ -551,8 +551,12 @@ class NexusRepository(context: Context) {
         }
     }
 
-    suspend fun sendMessage(conversationId: String, content: String) {
+    suspend fun sendMessage(conversationId: String, otherUserId: String?, content: String) {
         val userId = session?.userId?.takeIf { it.isNotBlank() } ?: throw ApiException("انتهت جلسة الدخول")
+        if (otherUserId != null) {
+            val blocked = array(rest("/rest/v1/blocked_users?select=blocked_id&blocker_id=eq." + encode(userId) + "&blocked_id=eq." + encode(otherUserId)))
+            if (blocked.isNotEmpty()) throw ApiException("لا يمكنك إرسال رسالة؛ لقد حظرت هذا المستخدم.")
+        }
         val member = array(rest("/rest/v1/conversation_members?select=conversation_id&conversation_id=eq." + encode(conversationId) + "&user_id=eq." + encode(userId)))
         if (member.isEmpty()) {
             rest("/rest/v1/conversation_members", "POST", JSONObject().put("conversation_id", conversationId).put("user_id", userId))
@@ -821,6 +825,87 @@ class NexusRepository(context: Context) {
         }
 
     /** Counts cap at 2000 rows: enough for an overview card, not a billing-grade total. */
+
+    // ---------------------------------------------------------------------
+    // Admin: courses (read-only, mirrors CoursesManagementTab.tsx on the web)
+    // ---------------------------------------------------------------------
+    suspend fun loadAdminCourses(): List<AdminCourseRow> {
+        val rows = array(rest("/rest/v1/courses?select=id,name,major,year,semester,teacher_id,created_at&order=created_at.desc&limit=200"))
+        val teacherIds = rows.mapNotNull { it.optStringOrNull("teacher_id") }.toSet()
+        val teachers = publicProfiles(teacherIds)
+        return rows.map { row ->
+            val teacherId = row.optStringOrNull("teacher_id")
+            AdminCourseRow(
+                id = row.optString("id"), name = row.optString("name"), major = row.optStringOrNull("major"),
+                year = row.optInt("year").takeIf { row.has("year") }, semester = row.optInt("semester").takeIf { row.has("semester") },
+                teacherName = teachers[teacherId]?.fullName
+            )
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Admin: name-change requests (mirrors src/lib/nameChangeRequests.ts)
+    // ---------------------------------------------------------------------
+    suspend fun loadNameChangeRequests(): List<NameChangeRequestRow> {
+        val rows = runCatching {
+            array(rest("/rest/v1/name_change_requests?select=id,user_id,current_name,requested_name,reason,status,created_at&order=created_at.desc&limit=200"))
+        }.getOrDefault(emptyList())
+        return rows.map { row ->
+            NameChangeRequestRow(
+                id = row.optString("id"), userId = row.optString("user_id"),
+                currentName = row.optString("current_name"), requestedName = row.optString("requested_name"),
+                reason = row.optStringOrNull("reason"), status = row.optString("status", "pending"),
+                createdAt = row.optString("created_at")
+            )
+        }
+    }
+
+    suspend fun approveNameChangeRequest(request: NameChangeRequestRow) {
+        rest("/rest/v1/name_change_requests?id=eq." + encode(request.id), "PATCH",
+            JSONObject().put("status", "approved").put("processed_at", java.time.Instant.now().toString()))
+        rest("/rest/v1/profiles?id=eq." + encode(request.userId), "PATCH",
+            JSONObject().put("full_name", request.requestedName))
+    }
+
+    suspend fun rejectNameChangeRequest(id: String) {
+        rest("/rest/v1/name_change_requests?id=eq." + encode(id), "PATCH",
+            JSONObject().put("status", "rejected").put("processed_at", java.time.Instant.now().toString()))
+    }
+
+    // ---------------------------------------------------------------------
+    // Admin: sub-admin permissions
+    // ---------------------------------------------------------------------
+    suspend fun loadSubAdmins(): List<SubAdminRow> {
+        val rows = array(rest("/rest/v1/subadmin_permissions?select=user_id,can_courses,can_reports,can_suspend,can_teachers,can_warn,can_words"))
+        val ids = rows.mapNotNull { it.optStringOrNull("user_id") }.toSet()
+        val profiles = publicProfiles(ids)
+        return rows.map { row ->
+            val id = row.optString("user_id")
+            SubAdminRow(
+                userId = id, fullName = profiles[id]?.fullName ?: "مستخدم", avatarUrl = profiles[id]?.avatarUrl,
+                canCourses = row.optBoolean("can_courses"), canReports = row.optBoolean("can_reports"),
+                canSuspend = row.optBoolean("can_suspend"), canTeachers = row.optBoolean("can_teachers"),
+                canWarn = row.optBoolean("can_warn"), canWords = row.optBoolean("can_words")
+            )
+        }
+    }
+
+    suspend fun setSubAdminPermission(userId: String, field: String, value: Boolean) {
+        rest("/rest/v1/subadmin_permissions?user_id=eq." + encode(userId), "PATCH", JSONObject().put(field, value))
+    }
+
+    suspend fun addSubAdmin(userId: String) {
+        adminSetRole(userId, "sub_admin")
+        rest("/rest/v1/subadmin_permissions", "POST", JSONObject().put("user_id", userId)
+            .put("can_courses", false).put("can_reports", true).put("can_suspend", false)
+            .put("can_teachers", false).put("can_warn", false).put("can_words", true))
+    }
+
+    suspend fun removeSubAdmin(userId: String) {
+        rest("/rest/v1/subadmin_permissions?user_id=eq." + encode(userId), "DELETE")
+        adminSetRole(userId, "student")
+    }
+
     suspend fun loadAdminStats(): AdminStats = coroutineScope {
         val since = java.time.Instant.now().minusSeconds(14L * 86400).toString()
         val usersTask = async { array(rest("/rest/v1/profiles?select=id&limit=2000")) }

@@ -459,8 +459,8 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun openConversation(conversationId: String, otherUserId: String?, title: String) {
-        _state.update { it.copy(screen = AppScreen.CONVERSATION, messaging = it.messaging.copy(activeConversationId = conversationId, activeOtherUserId = otherUserId, activeTitle = title, messages = emptyList(), loading = true)) }
+    fun openConversation(conversationId: String, otherUserId: String?, title: String, blocked: Boolean = false) {
+        _state.update { it.copy(screen = AppScreen.CONVERSATION, messaging = it.messaging.copy(activeConversationId = conversationId, activeOtherUserId = otherUserId, activeTitle = title, activeBlocked = blocked, messages = emptyList(), loading = true)) }
         viewModelScope.launch {
             try {
                 val messages = repository.loadMessages(conversationId)
@@ -486,11 +486,12 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
 
     fun sendMessage(text: String) {
         val convId = _state.value.messaging.activeConversationId ?: return
+        val otherId = _state.value.messaging.activeOtherUserId
         if (text.isBlank()) return
         viewModelScope.launch {
             _state.update { it.copy(messaging = it.messaging.copy(sending = true)) }
             try {
-                repository.sendMessage(convId, text)
+                repository.sendMessage(convId, otherId, text)
                 val messages = repository.loadMessages(convId)
                 _state.update { it.copy(messaging = it.messaging.copy(messages = messages, sending = false)) }
             } catch (error: Exception) {
@@ -502,8 +503,12 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
     fun setConversationBlocked(blocked: Boolean) {
         val otherId = _state.value.messaging.activeOtherUserId ?: return
         viewModelScope.launch {
-            runCatching { repository.setUserBlocked(otherId, blocked) }
-            _state.update { it.copy(notice = if (blocked) "تم الحظر" else "تم إلغاء الحظر") }
+            try {
+                repository.setUserBlocked(otherId, blocked)
+                _state.update { it.copy(messaging = it.messaging.copy(activeBlocked = blocked), notice = if (blocked) "تم حظر المستخدم" else "تم إلغاء الحظر") }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر تنفيذ الإجراء") }
+            }
         }
     }
 
@@ -616,9 +621,51 @@ class NexusViewModel(application: Application) : AndroidViewModel(application) {
             AdminTab.USERS -> loadAdminUsers()
             AdminTab.REPORTS -> loadAdminReports()
             AdminTab.WORDS -> loadAdminWords()
+            AdminTab.COURSES -> loadAdminCourses()
+            AdminTab.NAME_REQUESTS -> loadAdminNameRequests()
+            AdminTab.SUBADMINS -> loadAdminSubAdmins()
             AdminTab.ACTIVITY -> loadAdminActivity()
         }
     }
+
+    private fun loadAdminCourses() {
+        viewModelScope.launch {
+            try {
+                val courses = repository.loadAdminCourses()
+                _state.update { it.copy(admin = it.admin.copy(courses = courses)) }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر تحميل المقررات") }
+            }
+        }
+    }
+
+    private fun loadAdminNameRequests() {
+        viewModelScope.launch {
+            try {
+                val requests = repository.loadNameChangeRequests()
+                _state.update { it.copy(admin = it.admin.copy(nameRequests = requests)) }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر تحميل طلبات الأسماء") }
+            }
+        }
+    }
+
+    private fun loadAdminSubAdmins() {
+        viewModelScope.launch {
+            try {
+                val list = repository.loadSubAdmins()
+                _state.update { it.copy(admin = it.admin.copy(subAdmins = list)) }
+            } catch (error: Exception) {
+                _state.update { it.copy(error = error.message ?: "تعذّر تحميل المشرفين المساعدين") }
+            }
+        }
+    }
+
+    fun adminApproveNameRequest(request: NameChangeRequestRow) = runAdminAction { repository.approveNameChangeRequest(request) }
+    fun adminRejectNameRequest(id: String) = runAdminAction { repository.rejectNameChangeRequest(id) }
+    fun adminSetSubAdminPermission(userId: String, field: String, value: Boolean) = runAdminAction { repository.setSubAdminPermission(userId, field, value) }
+    fun adminAddSubAdmin(userId: String) = runAdminAction { repository.addSubAdmin(userId) }
+    fun adminRemoveSubAdmin(userId: String) = runAdminAction { repository.removeSubAdmin(userId) }
 
     private fun loadAdminOverview() {
         viewModelScope.launch {
