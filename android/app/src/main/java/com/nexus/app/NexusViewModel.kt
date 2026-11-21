@@ -15,6 +15,7 @@ import com.nexus.app.data.ThemeMode
 import com.nexus.app.data.ProfileThemeRules
 import com.nexus.app.data.AppRole
 import com.nexus.app.data.AdminTab
+import com.nexus.app.data.NameChangeRequestRow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
