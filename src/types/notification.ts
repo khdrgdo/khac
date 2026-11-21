@@ -22,5 +22,6 @@ export interface NotificationItem {
   body: string;
   link?: string;
   read: boolean;
+  activityIds?: string[];
   createdAt: string;
 }

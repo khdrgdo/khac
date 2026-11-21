@@ -24,7 +24,7 @@ export function RichTextEditor({
 }) {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({ link: false }),
       LinkExtension.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -87,6 +87,7 @@ export function RichTextEditor({
       }),
       Markdown,
     ],
+    immediatelyRender: false,
     content,
     onUpdate: ({ editor }) => {
       const storage = editor.storage as unknown as Record<string, { getMarkdown?: () => string }>;

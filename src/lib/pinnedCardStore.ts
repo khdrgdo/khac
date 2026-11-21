@@ -105,7 +105,7 @@ export async function savePinnedCardToDb(config: PinnedCardConfig) {
     theme: config.theme,
     badge_text: config.badgeText,
     title: config.title,
-    description: config.description || null,
+    description: config.description || "",
     image_url: config.imageUrl || null,
     end_date: config.endDate || null,
     action_button_text: config.actionButtonText || null,
@@ -215,13 +215,7 @@ export function usePinnedCard(options?: { initialConfig?: PinnedCardConfig; sync
     });
 
     if (error) {
-      const newVotes = { ...(config.votes || {}), [userId]: optionId };
-      setConfig((prev) => ({ ...prev, votes: newVotes }));
-      await supabase
-        .from("pinned_cards")
-        .update({ votes: newVotes as unknown as Json, updated_at: new Date().toISOString() } as never)
-        .eq("id", config.id);
-      return;
+      throw new Error(error.message || "تعذر حفظ التصويت");
     }
 
     setConfig((prev) => ({
