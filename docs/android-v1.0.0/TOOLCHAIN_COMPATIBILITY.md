@@ -1,16 +1,11 @@
 # Toolchain compatibility note — Android 1.0.0
 
-**قرار CI بعد مراجعة AAR metadata وكتالوج Google Maven (23 نوفمبر 2026):**
+**قرار CI بعد أول AAR metadata check (23 نوفمبر 2026):**
 
-- Compose 1.12.0 وما بعده يتطلب compileSdk 37 بحسب Android Developers. منصة API 37 في runner الحالي ما زالت Preview؛ لا نعتمدها لإصدار الإنتاج.
-- Android Developers توصي حالياً بـ Compose BOM 2026.06.00. نثبتها مع compileSdk 36؛ لا نستخدم BOM 2026.07.00 لأنها غير موجودة في Google Maven وقت التحقق.
-- Navigation 3.1.2 (1.2.2) stable. إصدار 1.2.1 خفّض متطلب compileSdk إلى 36، و1.2.2 إصلاح لاحق؛ لذلك نعتمد 1.2.2 مع API 36.
-- compileSdk = 36 وtargetSdk = 36؛ minSdk = 26.
-- AGP = 9.5.2، Gradle Wrapper = 9.6.0، JDK = 17، Kotlin = 2.4.21.
-- تعطيل Gradle configuration cache مؤقتاً؛ أظهر AGP task processDebugNavigationResources مشكلة serialization في CI، ولم يكن ذلك سبب فشل dependency resolution لكنه يضيف ضجيجاً غير مفيد حتى يُحل.
+- Compose BOM 2026.09.00 يجلب Compose 1.12.1، وهذه المكتبات تتطلب compileSdk 37.
+- إصدار Compose 1.12 وما بعده يرفع compileSdk إلى API 37 بحسب Android Developers. في بيئة GitHub Actions الحالية، API 37 ما زال يطلب ترخيص Android SDK Preview؛ لذلك لن نربط إصدار الإنتاج بمنصة Preview.
+- نثبت مؤقتاً Compose BOM 2026.07.00 (Compose 1.11.4) وNavigation 3.1.6، مع compileSdk/targetSdk 36 المستقرين.
+- لا نخفض targetSdk إلى 35؛ targetSdk يبقى 36.
+- عند صدور Android API 37 كمنصة stable، نرفع compileSdk وCompose BOM وNavigation3 معاً بعد CI وdevice tests.
 
-عند صدور API 37 كمنصة stable وتوافق Compose 1.12+ معها، نرفع compileSdk وBOM بعد CI واختبارات الجهاز.
-
-المراجع الرسمية:
-- Compose setup/dependencies: https://developer.android.com/develop/ui/compose/setup-compose-dependencies-and-compiler
-- Navigation 3 release notes: https://developer.android.com/jetpack/androidx/releases/navigation3
+هذا القرار لا يعني أن Compose 1.12/1.13 غير مستقرة؛ بل إن متطلبات compileSdk الخاصة بها تسبق توفر منصة Android 37 المستقرة في بيئة البناء الحالية. المصدر الرسمي: https://developer.android.com/blog/posts/what-s-new-in-the-jetpack-compose-august-26-release
