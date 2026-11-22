@@ -1,17 +1,18 @@
-# Toolchain compatibility note — Android 1.0.0
+# Toolchain baseline — NEXUS Android 1.0.0
 
-**قرار CI بعد مراجعة AAR metadata وكتالوج Google Maven (23 نوفمبر 2026):**
+**Verified 23 November 2026 against Android Developers and the CI dependency graph.**
 
-- Compose 1.12.0 وما بعده يتطلب compileSdk 37 بحسب Android Developers؛ لذلك نثبت Compose BOM 2026.06.00 مع compileSdk 36.
-- Navigation 3 version 1.2.1 هو خط التوافق المختار مع API 36. الإصدار 1.2.2 جرّ في CI Lifecycle 2.11.0 الذي يطلب compileSdk 37.
-- Lifecycle 2.10.0؛ الإصدار 2.11.x غير مناسب لخط API 36 الحالي.
-- Activity Compose 1.13.0، compileSdk = 36، targetSdk = 36، minSdk = 26.
-- AGP = 9.5.2، Gradle Wrapper = 9.6.0، JDK = 17، Kotlin = 2.4.21.
-- تعطيل Gradle configuration cache مؤقتاً بسبب مشكلة serialization في مهمة processDebugNavigationResources.
+- Android 17 / API 37 is stable (released 16 June 2026). The previous API-36-only assumption was outdated.
+- `compileSdk = 37`; `targetSdk = 36` for the first 1.0.0 rollout so compile-time access to API 37 does not opt the app into API-37 target behavior prematurely; `minSdk = 26`.
+- Android Gradle Plugin 9.5.2 with Gradle 9.6.0 and JDK 17. AGP 9.5 supports API 37.
+- Compose BOM 2026.09.00, the latest version shown by the official Compose setup page at verification time.
+- Activity Compose 1.13.0; Lifecycle 2.11.0; Navigation 3 1.2.2.
+- Supabase Kotlin 3.9.0; Ktor 3.4.3; Kotlin 2.4.21.
+- The CI dependencyInsight run proved Compose BOM 2026.06.00 resolves Compose 1.11.3 and Lifecycle 2.11.0; Lifecycle 2.11.0 requires compileSdk 37. We now compile against the correct stable API instead of forcing older libraries.
 
-هذا اختيار توافق مثبت بالـ AAR metadata، وليس خفضاً عشوائياً للإصدارات. عند اعتماد API 37 stable، نرفع Compose وNavigation3 وLifecycle معاً بعد CI واختبارات الجهاز.
-
-المراجع الرسمية:
-- Compose setup/dependencies: https://developer.android.com/develop/ui/compose/setup-compose-dependencies-and-compiler
-- Navigation 3 release notes: https://developer.android.com/jetpack/androidx/releases/navigation3
-- Lifecycle release notes: https://developer.android.com/jetpack/androidx/releases/lifecycle
+Official references:
+- Android 17 release: https://android-developers.googleblog.com/2026/06/Android-17.html
+- Compose dependency setup and latest BOM: https://developer.android.com/develop/ui/compose/setup-compose-dependencies-and-compiler
+- AGP 9.5 compatibility (API 37): https://developer.android.com/build/releases/agp-9-5-0-release-notes
+- Navigation 3 releases: https://developer.android.com/jetpack/androidx/releases/navigation3
+- Lifecycle releases: https://developer.android.com/jetpack/androidx/releases/lifecycle
