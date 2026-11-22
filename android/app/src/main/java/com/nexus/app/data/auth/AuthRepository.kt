@@ -24,7 +24,6 @@ class AuthRepository(context: Context) {
     suspend fun signIn(identifier: String, password: String) {
         val supabase = client ?: error("اتصال Supabase غير مهيأ لهذا البناء")
         val email = AuthIdentifier.toAuthEmail(identifier)
-
         supabase.auth.signInWith(Email) {
             this.email = email
             this.password = password
@@ -48,8 +47,6 @@ class AuthRepository(context: Context) {
                 put("full_name", fullName.trim())
                 put("major", major)
                 put("year", year)
-                put("role", "student")
-                put("must_change_password", false)
             }
         }
     }
