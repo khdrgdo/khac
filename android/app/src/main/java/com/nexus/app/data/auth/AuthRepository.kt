@@ -16,7 +16,8 @@ class AuthRepository(context: Context) {
     private val client: SupabaseClient? = NexusSupabaseClient.get(context.applicationContext)
 
     val isConfigured: Boolean
-        get() = BuildConfig.SUPABASE_PUBLISHABLE_KEY.isNotBlank()
+        get() = BuildConfig.SUPABASE_URL.isNotBlank() &&
+            BuildConfig.SUPABASE_PUBLISHABLE_KEY.isNotBlank()
 
     val sessionStatus: Flow<SessionStatus>
         get() = client?.auth?.sessionStatus ?: flowOf(SessionStatus.NotAuthenticated())

@@ -12,7 +12,10 @@ object NexusSupabaseClient {
     private var instance: SupabaseClient? = null
 
     fun get(context: Context): SupabaseClient? {
-        if (BuildConfig.SUPABASE_PUBLISHABLE_KEY.isBlank()) return null
+        if (BuildConfig.SUPABASE_URL.isBlank() ||
+            BuildConfig.SUPABASE_PUBLISHABLE_KEY.isBlank()
+        ) return null
+
         instance?.let { return it }
 
         return synchronized(this) {

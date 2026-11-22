@@ -1,10 +1,11 @@
 package com.nexus.app.data.account
 
 import android.content.Context
+import com.nexus.app.data.auth.NexusSupabaseClient
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.currentUserOrNull
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.result.decodeList
 import io.github.jan.supabase.postgrest.result.decodeSingle
 import kotlinx.serialization.json.JsonObject
@@ -70,7 +71,7 @@ data class AccountSnapshot(
 
 class AccountRepository(context: Context) {
     private val client: SupabaseClient? =
-        com.nexus.app.data.auth.NexusSupabaseClient.get(context.applicationContext)
+        NexusSupabaseClient.get(context.applicationContext)
 
     suspend fun loadCurrentAccount(): AccountSnapshot {
         val supabase = client ?: error("اتصال Supabase غير مهيأ")
