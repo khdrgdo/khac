@@ -73,8 +73,7 @@ BEGIN
     IF public.has_role(auth.uid(), 'admin'::public.app_role)
        OR current_setting('app.trusted_profile_update', true) = 'on'
        OR current_setting('app.allow_password_flag_change', true) = 'on'
-       OR current_setting('app.allow_name_change', true) = 'on'
-       OR current_setting('app.allow_profile_completion', true) = 'on' THEN
+       OR current_setting('app.allow_name_change', true) = 'on' THEN
         RETURN NEW;
     END IF;
 
@@ -90,72 +89,6 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
-CREATE OR REPLACE FUNCTION public.complete_profile(
-    _full_name text,
-    _university_number text,
-    _major public.major_code,
-    _year smallint
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    v_profile public.profiles%ROWTYPE;
-    v_full_name text;
-    v_university_number text;
-BEGIN
-    IF auth.uid() IS NULL THEN
-        RAISE EXCEPTION 'Authentication required';
-    END IF;
-
-    IF length(trim(_full_name)) < 2 OR length(trim(_full_name)) > 70 THEN
-        RAISE EXCEPTION 'Name must contain between 2 and 70 characters';
-    END IF;
-    IF length(trim(_university_number)) < 5 OR length(trim(_university_number)) > 40
-       OR trim(_university_number) LIKE 'PENDING-%' THEN
-        RAISE EXCEPTION 'Invalid university number';
-    END IF;
-    IF _year < 1 OR _year > 4 THEN
-        RAISE EXCEPTION 'Invalid academic year';
-    END IF;
-
-    SELECT * INTO v_profile
-    FROM public.profiles
-    WHERE id = auth.uid()
-    FOR UPDATE;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Profile not found';
-    END IF;
-
-    v_full_name := CASE
-        WHEN v_profile.full_name IS NULL OR trim(v_profile.full_name) = '' OR v_profile.full_name = 'مستخدم جديد'
-        THEN trim(_full_name)
-        ELSE v_profile.full_name
-    END;
-
-    v_university_number := CASE
-        WHEN v_profile.university_number IS NULL OR v_profile.university_number LIKE 'PENDING-%'
-        THEN trim(_university_number)
-        ELSE v_profile.university_number
-    END;
-
-    PERFORM set_config('app.allow_profile_completion', 'on', true);
-
-    UPDATE public.profiles
-    SET full_name = v_full_name,
-        university_number = v_university_number,
-        major = COALESCE(v_profile.major, _major),
-        year = COALESCE(v_profile.year, _year)
-    WHERE id = auth.uid();
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.complete_profile(text, text, public.major_code, smallint) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.complete_profile(text, text, public.major_code, smallint) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.direct_name_change(_new_name text)
 RETURNS void
@@ -295,7 +228,6 @@ WITH CHECK (false);
 
 -- Only the main administrator can mutate sub-admin permission records.
 DROP POLICY IF EXISTS subadmin_permissions_admin_all ON public.subadmin_permissions;
-DROP POLICY IF EXISTS "Only main admins can write sub-admin permissions" ON public.subadmin_permissions;
 CREATE POLICY subadmin_permissions_main_admin_manage
 ON public.subadmin_permissions
 FOR ALL TO authenticated
@@ -371,13 +303,8 @@ DROP POLICY IF EXISTS "admin deletes message reports" ON public.message_reports;
 DROP POLICY IF EXISTS "admin updates message reports" ON public.message_reports;
 DROP POLICY IF EXISTS "user creates own message reports" ON public.message_reports;
 DROP POLICY IF EXISTS "user reads own message reports" ON public.message_reports;
-DROP POLICY IF EXISTS message_reports_insert_own ON public.message_reports;
+DROP POLICY IF EXISTS message_reports_admin_all ON public.message_reports;
 DROP POLICY IF EXISTS message_reports_select_own_or_admin ON public.message_reports;
-DROP POLICY IF EXISTS message_reports_update_admin ON public.message_reports;
-DROP POLICY IF EXISTS "admin deletes message reports" ON public.message_reports;
-DROP POLICY IF EXISTS "admin updates message reports" ON public.message_reports;
-DROP POLICY IF EXISTS "user creates own message reports" ON public.message_reports;
-DROP POLICY IF EXISTS "user reads own message reports" ON public.message_reports;
 
 CREATE POLICY message_reports_insert_own
 ON public.message_reports
@@ -453,7 +380,6 @@ WITH CHECK (
 );
 
 -- Pinned-card configuration is admin-only; ordinary participation policies stay.
-DROP POLICY IF EXISTS "Users can update their pinned card interaction" ON public.pinned_cards;
 DROP POLICY IF EXISTS "Admins can insert pinned cards" ON public.pinned_cards;
 DROP POLICY IF EXISTS "Admins can update pinned cards" ON public.pinned_cards;
 DROP POLICY IF EXISTS "Allow admins to update pinned_cards" ON public.pinned_cards;
@@ -494,9 +420,7 @@ DROP POLICY IF EXISTS courses_insert_admin ON public.courses;
 DROP POLICY IF EXISTS courses_insert_admin_or_subadmin ON public.courses;
 DROP POLICY IF EXISTS courses_insert_teacher_admin ON public.courses;
 DROP POLICY IF EXISTS courses_update_own_or_staff ON public.courses;
-DROP POLICY IF EXISTS courses_update_own_or_admin ON public.courses;
 DROP POLICY IF EXISTS courses_delete_own_or_staff ON public.courses;
-DROP POLICY IF EXISTS courses_delete_admin ON public.courses;
 
 CREATE POLICY courses_insert_authorized
 ON public.courses
@@ -544,9 +468,7 @@ USING (
 DROP POLICY IF EXISTS course_links_insert ON public.course_links;
 DROP POLICY IF EXISTS course_links_insert_staff ON public.course_links;
 DROP POLICY IF EXISTS course_links_update_own_or_staff ON public.course_links;
-DROP POLICY IF EXISTS course_links_update ON public.course_links;
 DROP POLICY IF EXISTS course_links_delete_own_or_staff ON public.course_links;
-DROP POLICY IF EXISTS course_links_delete ON public.course_links;
 
 CREATE POLICY course_links_insert_authorized
 ON public.course_links
@@ -630,9 +552,9 @@ ON public.comments
 FOR INSERT TO authenticated
 WITH CHECK (false);
 
-REVOKE ALL ON FUNCTION public.create_post_as(public.post_type, text, text[], boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.create_post_as(text, text[], public.post_type, boolean) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.create_comment_as(uuid, text, uuid, boolean) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.create_post_as(public.post_type, text, text[], boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_post_as(text, text[], public.post_type, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_comment_as(uuid, text, uuid, boolean) TO authenticated;
 
 -- Direct notification inserts are removed. Activity creation and admin
@@ -640,9 +562,6 @@ GRANT EXECUTE ON FUNCTION public.create_comment_as(uuid, text, uuid, boolean) TO
 DROP POLICY IF EXISTS notifications_admin_insert ON public.notifications;
 DROP POLICY IF EXISTS notifications_insert ON public.notifications;
 DROP POLICY IF EXISTS notifications_admin_delete ON public.notifications;
-DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Users can send genuine notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Admins can delete any notification" ON public.notifications;
 
 CREATE POLICY notifications_select_sent_by_admin
 ON public.notifications
