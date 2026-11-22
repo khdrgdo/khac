@@ -10,7 +10,7 @@ import com.nexus.app.data.auth.AuthDeepLinkBus
 import com.nexus.app.data.auth.NexusSupabaseClient
 import com.nexus.app.ui.NexusApp
 import com.nexus.app.ui.theme.NexusTheme
-import io.github.jan.supabase.gotrue.handleDeeplinks
+import io.github.jan.supabase.auth.handleDeeplinks
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
