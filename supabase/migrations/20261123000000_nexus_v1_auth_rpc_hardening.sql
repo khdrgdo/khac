@@ -37,10 +37,12 @@ DECLARE
     v_admin_count integer;
 BEGIN
     SELECT count(*) INTO v_admin_count FROM public.system_admins;
-    IF v_admin_count <> 1 THEN
+    IF v_admin_count > 1 THEN
         RAISE EXCEPTION
-            'Expected exactly one existing main admin while bootstrapping system_admins; found %',
+            'Expected at most one existing main admin while bootstrapping system_admins; found %',
             v_admin_count;
+    ELSIF v_admin_count = 0 THEN
+        RAISE WARNING 'No main admin profile was found during local bootstrap. Production deployment must insert and verify the owner UUID in system_admins before enabling admin operations.';
     END IF;
 END;
 $$;
@@ -600,12 +602,12 @@ BEGIN
     SELECT
         c.id,
         c.name,
-        c.major::text,
+        c.major,
         c.year,
         c.semester,
-        COALESCE(p.full_name, ''),
-        (SELECT count(*) FROM public.course_links cl WHERE cl.course_id = c.id AND cl.link_type = 'file'),
-        (SELECT count(*) FROM public.course_links cl WHERE cl.course_id = c.id AND (cl.link_type IS NULL OR cl.link_type = '')),
+        COALESCE(p.full_name, 'غير محدد'),
+        (SELECT count(*) FROM public.course_files cf WHERE cf.course_id = c.id),
+        (SELECT count(*) FROM public.course_links cl WHERE cl.course_id = c.id),
         c.created_at
     FROM public.courses c
     LEFT JOIN public.profiles p ON p.id = c.teacher_id
