@@ -38,7 +38,9 @@ data class NexusProfile(
 ) {
     val isProfileComplete: Boolean
         get() = fullName.isNotBlank() &&
+            fullName != "مستخدم جديد" &&
             universityNumber.isNotBlank() &&
+            !universityNumber.startsWith("PENDING-") &&
             !major.isNullOrBlank() &&
             year != null
 }
@@ -144,17 +146,17 @@ class AccountRepository(context: Context) {
         year: Int
     ) {
         val supabase = client ?: error("اتصال Supabase غير مهيأ")
-        val userId = supabase.auth.currentUserOrNull()?.id ?: error("انتهت جلسة الدخول")
-        supabase.from("profiles").update(
-            buildJsonObject {
-                put("full_name", fullName.trim())
-                put("university_number", universityNumber.trim())
-                put("major", major)
-                put("year", year)
+        if (supabase.auth.currentUserOrNull() == null) error("انتهت جلسة الدخول")
+
+        supabase.postgrest.rpc(
+            "complete_profile",
+            parameters = buildJsonObject {
+                put("_full_name", fullName.trim())
+                put("_university_number", universityNumber.trim())
+                put("_major", major)
+                put("_year", year)
             }
-        ) {
-            filter { eq("id", userId) }
-        }
+        )
     }
 
     suspend fun completeForcedPasswordChange() {
