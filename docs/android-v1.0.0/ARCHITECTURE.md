@@ -29,8 +29,9 @@
 |---|---|
 | Kotlin | 2.4.21 |
 | Android Gradle Plugin | 9.5.2 |
-| Compose BOM | 2026.09.00 |
-| Navigation 3 | 1.2.2 stable |
+| Gradle Wrapper | 9.6.0 |
+| Compose BOM | 2026.07.00 |
+| Navigation 3 | 1.1.6 stable |
 | Lifecycle | 2.11.1 |
 | Room | 2.8.5 |
 | DataStore | 1.3.0 |
