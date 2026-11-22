@@ -22,11 +22,7 @@ class AuthRepository {
 
     suspend fun signIn(identifier: String, password: String) {
         val supabase = client ?: error("اتصال Supabase غير مهيأ لهذا البناء")
-        val email = if (identifier.contains("@")) {
-            identifier.trim()
-        } else {
-            identifier.trim() + "@college.edu"
-        }
+        val email = AuthIdentifier.toAuthEmail(identifier)
 
         supabase.auth.signInWith(Email) {
             this.email = email
