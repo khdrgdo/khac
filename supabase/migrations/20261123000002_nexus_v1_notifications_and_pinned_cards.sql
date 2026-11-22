@@ -340,6 +340,118 @@ $$;
 REVOKE ALL ON FUNCTION public.admin_broadcast_notifications(uuid[], text, text, text, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_broadcast_notifications(uuid[], text, text, text, text, text) TO authenticated;
 
+-- Course creation/material events notify only students whose major/year match
+-- the course. The client never enumerates the full profile directory.
+CREATE OR REPLACE FUNCTION public.notify_course_event(
+    _course_id uuid,
+    _course_link_id uuid,
+    _type text
+)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_course public.courses%ROWTYPE;
+    v_link public.course_links%ROWTYPE;
+    v_actor_name text;
+    v_actor_avatar text;
+    v_title text;
+    v_body text;
+    v_link_url text;
+    v_count integer := 0;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Authentication required';
+    END IF;
+    IF _type NOT IN ('course_added', 'material_added') THEN
+        RAISE EXCEPTION 'Unsupported course notification type';
+    END IF;
+
+    SELECT * INTO v_course
+    FROM public.courses
+    WHERE id = _course_id;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Course not found';
+    END IF;
+
+    IF NOT (
+        public.is_main_admin(auth.uid())
+        OR public.has_role(auth.uid(), 'admin'::public.app_role)
+        OR public.has_subadmin_permission(auth.uid(), 'can_courses')
+        OR v_course.teacher_id = auth.uid()
+        OR v_course.created_by = auth.uid()
+    ) THEN
+        RAISE EXCEPTION 'Not authorized to notify this course';
+    END IF;
+
+    IF _type = 'material_added' THEN
+        SELECT * INTO v_link
+        FROM public.course_links
+        WHERE id = _course_link_id
+          AND course_id = _course_id
+          AND link_type = 'file';
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Course file not found';
+        END IF;
+        IF v_link.created_by IS DISTINCT FROM auth.uid()
+           AND NOT (
+               public.is_main_admin(auth.uid())
+               OR public.has_role(auth.uid(), 'admin'::public.app_role)
+               OR public.has_subadmin_permission(auth.uid(), 'can_courses')
+           ) THEN
+            RAISE EXCEPTION 'Not authorized to announce this file';
+        END IF;
+        v_title := 'تحديث جديد في المقرر 📄';
+        v_body := 'تم إضافة ملحق/ملخص جديد (' || v_link.title || ') في المقرر الدراسي.';
+        v_link_url := '/courses/' || v_course.id::text;
+    ELSE
+        v_title := 'إضافة مادة جديدة 📚';
+        v_body := 'تم إضافة المقرر الدراسي "' || v_course.name || '" لطلاب قسم '
+            || COALESCE(v_course.major::text, 'كل الأقسام')
+            || ' السنة ' || COALESCE(v_course.year::text, 'كل السنوات') || '.';
+        v_link_url := '/courses';
+    END IF;
+
+    SELECT full_name, avatar_url
+    INTO v_actor_name, v_actor_avatar
+    FROM public.profiles
+    WHERE id = auth.uid();
+
+    INSERT INTO public.notifications (
+        id, recipient_id, actor_id, actor_name, actor_avatar,
+        type, priority, title, body, link, read, created_at
+    )
+    SELECT
+        gen_random_uuid()::text,
+        p.id,
+        auth.uid(),
+        COALESCE(v_actor_name, 'الأستاذ'),
+        v_actor_avatar,
+        _type,
+        'normal',
+        v_title,
+        v_body,
+        v_link_url,
+        false,
+        now()
+    FROM public.profiles p
+    JOIN public.user_roles ur ON ur.user_id = p.id AND ur.role = 'student'::public.app_role
+    WHERE p.id <> auth.uid()
+      AND COALESCE(p.banned, false) = false
+      AND (p.suspended_until IS NULL OR p.suspended_until <= now())
+      AND (v_course.major IS NULL OR p.major = v_course.major)
+      AND (v_course.year IS NULL OR p.year = v_course.year);
+
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+    RETURN v_count;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.notify_course_event(uuid, uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.notify_course_event(uuid, uuid, text) TO authenticated;
+
 -- Pinned-card participation and poll votes are narrow RPCs. They verify the
 -- caller identity and update only their respective JSON fields.
 CREATE OR REPLACE FUNCTION public.toggle_pinned_card_participation(p_user_id uuid)
