@@ -277,7 +277,12 @@ function LoginForm({
       if (!value.includes("@")) {
         const isNumericOnly = /^\d+$/.test(value);
         if (isNumericOnly) {
-          email = universityNumberToEmail(value);
+          const { data: resolvedEmail, error: lookupError } = await supabase.rpc(
+            "resolve_login_email" as never,
+            { _identifier: value } as never,
+          );
+          if (lookupError) throw lookupError;
+          email = (resolvedEmail as string | null) || universityNumberToEmail(value);
         } else {
           let normalized = value.toLowerCase().replace(/\s+/g, "");
           if (normalized.startsWith("sub_")) {
@@ -383,12 +388,30 @@ function ForgotPasswordDialog({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
 
   async function send() {
-    if (!email.includes("@")) {
-      toast.error("أدخل بريدًا إلكترونيًا صحيحًا");
+    const identifier = email.trim();
+    if (!identifier) {
+      toast.error("أدخل بريدك الإلكتروني أو رقمك الجامعي");
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    let targetEmail = identifier;
+    if (!identifier.includes("@") && /^\d+$/.test(identifier)) {
+      const { data: resolvedEmail, error: lookupError } = await supabase.rpc(
+        "resolve_login_email" as never,
+        { _identifier: identifier } as never,
+      );
+      if (lookupError) {
+        setLoading(false);
+        toast.error("تعذر التحقق من الرقم الآن. حاول لاحقًا.");
+        return;
+      }
+      targetEmail = (resolvedEmail as string | null) || universityNumberToEmail(identifier);
+    } else if (!identifier.includes("@")) {
+      setLoading(false);
+      toast.error("أدخل بريدًا إلكترونيًا أو رقمًا جامعيًا صحيحًا");
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);
@@ -414,13 +437,13 @@ function ForgotPasswordDialog({ onClose }: { onClose: () => void }) {
             <Mail className="w-4 h-4 text-primary" /> استعادة كلمة السر
           </CardTitle>
           <CardDescription className="text-xs">
-            أدخل بريدك الإلكتروني ليصلك رابط إعادة الضبط.
+            أدخل بريدك الإلكتروني أو رقمك الجامعي ليصلك رابط إعادة الضبط.
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-3 text-right">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">البريد الإلكتروني</Label>
+            <Label className="text-xs font-semibold">البريد الإلكتروني أو الرقم الجامعي</Label>
             <Input
               dir="ltr"
               value={email}

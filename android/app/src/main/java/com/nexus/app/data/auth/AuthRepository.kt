@@ -7,6 +7,8 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.result.decodeSingle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.serialization.json.buildJsonObject
@@ -24,11 +26,26 @@ class AuthRepository(context: Context) {
 
     suspend fun signIn(identifier: String, password: String) {
         val supabase = client ?: error("اتصال Supabase غير مهيأ لهذا البناء")
-        val email = AuthIdentifier.toAuthEmail(identifier)
+        val value = identifier.trim()
+        val email = when {
+            value.contains("@") -> value
+            value.all { it.isDigit() } -> resolveUniversityEmail(supabase, value)
+                ?: AuthIdentifier.toAuthEmail(value)
+            else -> AuthIdentifier.toAuthEmail(value)
+        }
         supabase.auth.signInWith(Email) {
             this.email = email
             this.password = password
         }
+    }
+
+    private suspend fun resolveUniversityEmail(supabase: SupabaseClient, number: String): String? {
+        return runCatching {
+            supabase.postgrest.rpc(
+                "resolve_login_email",
+                parameters = buildJsonObject { put("_identifier", number) }
+            ).decodeSingle<String>()
+        }.getOrNull()
     }
 
     suspend fun signUp(
@@ -57,10 +74,16 @@ class AuthRepository(context: Context) {
         supabase.auth.signInWith(Google, redirectUrl = "nexus://auth/callback")
     }
 
-    suspend fun requestPasswordReset(email: String) {
+    suspend fun requestPasswordReset(identifier: String) {
         val supabase = client ?: error("اتصال Supabase غير مهيأ لهذا البناء")
+        val value = identifier.trim()
+        val targetEmail = if (!value.contains("@") && value.all { it.isDigit() }) {
+            resolveUniversityEmail(supabase, value) ?: AuthIdentifier.toAuthEmail(value)
+        } else {
+            value
+        }
         supabase.auth.resetPasswordForEmail(
-            email = email.trim(),
+            email = targetEmail,
             redirectUrl = "nexus://auth/reset-password"
         )
     }
