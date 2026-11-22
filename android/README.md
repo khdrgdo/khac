@@ -5,9 +5,11 @@
 ## متطلبات البناء
 
 - JDK 17
-- Gradle 9.6.0
-- Android SDK Platform 37 وBuild Tools 36
+- Gradle Wrapper 9.6.0
+- Android SDK Platform 36 وBuild Tools 36.0.0
 - Android minSdk 26
+
+نستخدم API 36 المستقر. API 37 كان يتطلب ترخيص Android SDK Preview في بيئة CI، لذلك لم نعتمده في بناء إصدار 1.0.0.
 
 ## إعداد Supabase
 
