@@ -575,8 +575,8 @@ RETURNS TABLE(
     id uuid,
     name text,
     major text,
-    year integer,
-    semester integer,
+    year smallint,
+    semester smallint,
     teacher_name text,
     files_count bigint,
     links_count bigint,
@@ -653,13 +653,16 @@ BEGIN
         RAISE EXCEPTION 'Not authorized';
     END IF;
 
-    IF _year < 1 OR _year > 8 THEN
+    IF _year < 1 OR _year > 4 THEN
         RAISE EXCEPTION 'Invalid academic year';
     END IF;
 
     UPDATE public.profiles
     SET year = _year
     WHERE id = _user;
+
+    INSERT INTO public.admin_actions (admin_id, target_user_id, action_type, description)
+    VALUES (auth.uid(), _user, 'year_change', 'تم تغيير السنة الدراسية إلى ' || _year::text);
 END;
 $$;
 
