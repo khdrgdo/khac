@@ -21,8 +21,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nexus.app.data.auth.AuthRepository
+import com.nexus.app.data.auth.AuthScreen
 import com.nexus.app.data.auth.AuthViewModel
+import com.nexus.app.ui.auth.EmailConfirmationScreen
+import com.nexus.app.ui.auth.ForgotPasswordScreen
+import com.nexus.app.ui.auth.ResetPasswordScreen
 import com.nexus.app.ui.auth.SignInScreen
+import com.nexus.app.ui.auth.SignUpScreen
 
 @Composable
 fun NexusApp() {
@@ -39,11 +44,37 @@ fun NexusApp() {
     ) {
         when {
             !repository.isConfigured -> ConfigurationRequiredScreen()
+            state.screen == AuthScreen.RESET_PASSWORD -> ResetPasswordScreen(
+                isLoading = state.isLoading,
+                errorMessage = state.errorMessage,
+                onUpdatePassword = authViewModel::updatePassword
+            )
             state.isAuthenticated -> SignedInScreen(onSignOut = authViewModel::signOut)
+            state.screen == AuthScreen.SIGN_UP -> SignUpScreen(
+                isLoading = state.isLoading,
+                errorMessage = state.errorMessage,
+                onSignUp = authViewModel::signUp,
+                onBackToSignIn = { authViewModel.navigateTo(AuthScreen.SIGN_IN) }
+            )
+            state.screen == AuthScreen.FORGOT_PASSWORD -> ForgotPasswordScreen(
+                isLoading = state.isLoading,
+                errorMessage = state.errorMessage,
+                onRequestReset = authViewModel::requestPasswordReset,
+                onBackToSignIn = { authViewModel.navigateTo(AuthScreen.SIGN_IN) }
+            )
+            state.screen == AuthScreen.EMAIL_CONFIRMATION -> EmailConfirmationScreen(
+                email = state.pendingEmail,
+                message = state.infoMessage,
+                onBackToSignIn = { authViewModel.navigateTo(AuthScreen.SIGN_IN) }
+            )
             else -> SignInScreen(
                 isLoading = state.isLoading,
                 errorMessage = state.errorMessage,
-                onSignIn = authViewModel::signIn
+                infoMessage = state.infoMessage,
+                onSignIn = authViewModel::signIn,
+                onGoogleSignIn = authViewModel::signInWithGoogle,
+                onForgotPassword = { authViewModel.navigateTo(AuthScreen.FORGOT_PASSWORD) },
+                onCreateAccount = { authViewModel.navigateTo(AuthScreen.SIGN_UP) }
             )
         }
     }
@@ -52,9 +83,7 @@ fun NexusApp() {
 @Composable
 private fun ConfigurationRequiredScreen() {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 28.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start
     ) {
@@ -82,9 +111,7 @@ private fun ConfigurationRequiredScreen() {
 @Composable
 private fun SignedInScreen(onSignOut: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(28.dp),
+        modifier = Modifier.fillMaxSize().padding(28.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start
     ) {
