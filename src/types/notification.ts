@@ -5,6 +5,8 @@ export type NotificationType =
   | "post_comment"
   | "post_like"
   | "comment_like"
+  | "message"
+  | "warning"
   | "announcement"
   | "points_awarded";
 
