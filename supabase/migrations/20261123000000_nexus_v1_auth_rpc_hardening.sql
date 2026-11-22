@@ -37,12 +37,10 @@ DECLARE
     v_admin_count integer;
 BEGIN
     SELECT count(*) INTO v_admin_count FROM public.system_admins;
-    IF v_admin_count > 1 THEN
+    IF v_admin_count <> 1 THEN
         RAISE EXCEPTION
-            'Expected at most one existing main admin while bootstrapping system_admins; found %',
+            'Expected exactly one existing main admin while bootstrapping system_admins; found %',
             v_admin_count;
-    ELSIF v_admin_count = 0 THEN
-        RAISE WARNING 'No main admin profile was found during local bootstrap. Production deployment must insert and verify the owner UUID in system_admins before enabling admin operations.';
     END IF;
 END;
 $$;
@@ -560,15 +558,15 @@ BEGIN
 
     RETURN QUERY
     SELECT
-        aa.id,
-        aa.action_type,
-        aa.description,
-        aa.created_at,
-        COALESCE(p.full_name, 'مستخدم محذوف')
-    FROM public.admin_actions aa
-    LEFT JOIN public.profiles p ON p.id = aa.target_user_id
-    ORDER BY aa.created_at DESC
-    LIMIT 20;
+        a.id,
+        'admin_action'::text,
+        a.action || ' - ' || COALESCE(p.full_name, ''),
+        a.created_at,
+        COALESCE(p.full_name, '')
+    FROM public.admin_actions a
+    LEFT JOIN public.profiles p ON a.target_user_id = p.id
+    ORDER BY a.created_at DESC
+    LIMIT 10;
 END;
 $$;
 
