@@ -1,17 +1,15 @@
 # Toolchain baseline — NEXUS Android 1.0.0
 
-**Verified 23 November 2026 against Android Developers and the CI dependency graph.**
+**قرار التوافق بعد اختبارات SDK Manager وAAR metadata — 23 نوفمبر 2026.**
 
-- Compose BOM 2026.09.00 is the latest stable BOM shown by the official Compose setup page. The official setup page states Compose 1.12+ requires compileSdk 37 and AGP 9.
-- Lifecycle 2.11.0 is the stable release line used by the current Compose integration; its AAR metadata requires compileSdk 37.
-- The GitHub runner's default SDK channel does not list `platforms;android-37`. The package is exposed through the SDK preview channel, so CI requests it with `sdkmanager --channel=3`. This is a compile-time platform dependency, not permission to target preview behavior.
-- `compileSdk = 37`; `targetSdk = 36` for the first rollout; `minSdk = 26`. We do not target API 37 until its platform is stable and device behavior is validated.
-- Android Gradle Plugin 9.5.2, Gradle 9.6.0, JDK 17, Kotlin 2.4.21.
-- Compose BOM 2026.09.00, Activity Compose 1.13.0, Lifecycle 2.11.0, Navigation 3 1.2.2.
-- Supabase Kotlin 3.9.0; Ktor 3.4.3.
+- `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26`. نبقى على منصة SDK مستقرة متاحة في GitHub Actions.
+- Compose BOM `2026.05.01`, Activity Compose `1.12.2`, Lifecycle `2.10.0`, Navigation 3 `1.2.1`.
+- Compose BOM 2026.06 وما بعده يرفع Lifecycle إلى 2.11.x، وAAR metadata لذلك الإصدار يطلب compileSdk 37. محاولة تثبيت `platforms;android-37` فشلت حتى مع SDK preview channel 3؛ لذلك لن نستخدم منصة غير متاحة أو نتجاوز فحص AAR قسراً.
+- هذا هو أحدث خط اعتمادية متوافق مع API 36 في هذا البناء، وليس ادعاءً بأنه أحدث إصدار AndroidX مطلقاً. سنرفع إلى API 37 بعد توفر حزمة SDK رسمية قابلة للتثبيت واجتياز CI.
+- Android Gradle Plugin 9.5.2، Gradle 9.6.0، JDK 17، Kotlin 2.4.21.
+- Supabase Kotlin 3.9.0، Ktor 3.4.3.
 
-Official references:
-- Compose setup and compileSdk requirements: https://developer.android.com/develop/ui/compose/setup-compose-dependencies-and-compiler
-- Compose BOM: https://developer.android.com/develop/ui/compose/bom
-- Lifecycle releases: https://developer.android.com/jetpack/androidx/releases/lifecycle
-- Navigation 3 releases: https://developer.android.com/jetpack/androidx/releases/navigation3
+المراجع:
+- [Compose BOM mapping](https://developer.android.com/develop/ui/compose/bom/bom-mapping)
+- [Lifecycle release notes](https://developer.android.com/jetpack/androidx/releases/lifecycle)
+- [Navigation 3 release notes](https://developer.android.com/jetpack/androidx/releases/navigation3)

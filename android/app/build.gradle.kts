@@ -15,7 +15,7 @@ val nexusSupabasePublishableKey = providers.gradleProperty("nexusSupabasePublish
 
 android {
     namespace = "com.nexus.app"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.nexus.app"
