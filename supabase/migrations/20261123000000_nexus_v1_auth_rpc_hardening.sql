@@ -575,8 +575,8 @@ RETURNS TABLE(
     id uuid,
     name text,
     major text,
-    year smallint,
-    semester smallint,
+    year integer,
+    semester integer,
     teacher_name text,
     files_count bigint,
     links_count bigint,
@@ -600,12 +600,12 @@ BEGIN
     SELECT
         c.id,
         c.name,
-        c.major,
+        c.major::text,
         c.year,
         c.semester,
-        COALESCE(p.full_name, 'غير محدد'),
-        (SELECT count(*) FROM public.course_files cf WHERE cf.course_id = c.id),
-        (SELECT count(*) FROM public.course_links cl WHERE cl.course_id = c.id),
+        COALESCE(p.full_name, ''),
+        (SELECT count(*) FROM public.course_links cl WHERE cl.course_id = c.id AND cl.link_type = 'file'),
+        (SELECT count(*) FROM public.course_links cl WHERE cl.course_id = c.id AND (cl.link_type IS NULL OR cl.link_type = '')),
         c.created_at
     FROM public.courses c
     LEFT JOIN public.profiles p ON p.id = c.teacher_id
@@ -653,16 +653,13 @@ BEGIN
         RAISE EXCEPTION 'Not authorized';
     END IF;
 
-    IF _year < 1 OR _year > 4 THEN
+    IF _year < 1 OR _year > 8 THEN
         RAISE EXCEPTION 'Invalid academic year';
     END IF;
 
     UPDATE public.profiles
     SET year = _year
     WHERE id = _user;
-
-    INSERT INTO public.admin_actions (admin_id, target_user_id, action_type, description)
-    VALUES (auth.uid(), _user, 'year_change', 'تم تغيير السنة الدراسية إلى ' || _year::text);
 END;
 $$;
 
