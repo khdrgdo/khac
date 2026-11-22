@@ -3,7 +3,7 @@ package com.nexus.app.data.auth
 import android.content.Context
 import com.nexus.app.BuildConfig
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.Flow
