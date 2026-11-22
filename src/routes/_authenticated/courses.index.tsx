@@ -27,7 +27,6 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { MAJORS, YEARS, SEMESTERS, majorLabel } from "@/lib/college";
 import { parseTitleAndNote, getFileTypeInfo } from "@/lib/courseUtils";
-import { broadcastNotification } from "@/lib/notificationsStore";
 import {
   BookOpen,
   Plus,
@@ -834,27 +833,28 @@ export function NewCourseDialog({
   const mut = useMutation({
     mutationFn: async () => {
       if (!user) return;
-      const { error } = await supabase.from("courses").insert({
-        name,
-        description: desc || null,
-        major: major as "it" | "is" | "se",
-        year: Number(year),
-        semester: Number(semester),
-        created_by: user.id,
-        teacher_id: selectedTeacherId === "none" ? null : selectedTeacherId,
-      });
+      const { data: createdCourse, error } = await supabase
+        .from("courses")
+        .insert({
+          name,
+          description: desc || null,
+          major: major as "it" | "is" | "se",
+          year: Number(year),
+          semester: Number(semester),
+          created_by: user.id,
+          teacher_id: selectedTeacherId === "none" ? null : selectedTeacherId,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      if (!createdCourse) throw new Error("تعذر إنشاء المقرر");
 
-      const { data: allProfiles } = await supabase.from("profiles").select("id");
-      broadcastNotification({
-        actorId: user.id,
-        actorName: user.user_metadata?.full_name || "إدارة الكلية",
-        type: "course_added",
-        title: "إضافة مادة جديدة 📚",
-        body: `تم إضافة المقرر الدراسي "${name}" لطلاب قسم ${major.toUpperCase()} السنة ${year}`,
-        link: "/courses",
-        targetUserIds: (allProfiles ?? []).map((p) => p.id),
-      });
+      const { error: notifyError } = await supabase.rpc("notify_course_event" as never, {
+        _course_id: createdCourse.id,
+        _course_link_id: null,
+        _type: "course_added",
+      } as never);
+      if (notifyError) console.warn("Course notification failed:", notifyError.message);
     },
     onSuccess: () => {
       toast.success("تم إنشاء المقرر وتعيين الأستاذ بنجاح");

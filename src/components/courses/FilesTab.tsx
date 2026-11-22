@@ -29,7 +29,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Upload, Download, Play, Trash2, Loader2, FileText, Video, Image as ImageIcon, MessageSquare, Clock, Pencil, Pin } from "lucide-react";
 import { parseTitleAndNote, formatTitleAndNote, getFileTypeInfo } from "@/lib/courseUtils";
-import { broadcastNotification } from "@/lib/notificationsStore";
 import { signedUrl } from "@/lib/storage";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -91,25 +90,26 @@ export function FilesTab({ courseId, canEdit }: { courseId: string; canEdit: boo
         const baseTitle = customFileName.trim() || f.name;
         const formattedTitle = formatTitleAndNote(baseTitle, selectedFileNote);
 
-        await supabase.from("course_links").insert({
-          course_id: courseId,
-          title: formattedTitle,
-          url: path,
-          link_type: "file",
-          created_by: user.id,
-        });
+        const { data: savedLink, error: linkError } = await supabase
+          .from("course_links")
+          .insert({
+            course_id: courseId,
+            title: formattedTitle,
+            url: path,
+            link_type: "file",
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
+        if (linkError) throw linkError;
 
-        if (user) {
-          const { data: allProfiles } = await supabase.from("profiles").select("id");
-          broadcastNotification({
-            actorId: user.id,
-            actorName: user.user_metadata?.full_name || "الأستاذ",
-            type: "material_added",
-            title: "تحديث جديد في المقرر 📄",
-            body: `تم إضافة ملحق/ملخص جديد (${baseTitle}) في المقرر الدراسي.`,
-            link: `/courses/${courseId}`,
-            targetUserIds: (allProfiles ?? []).map((p) => p.id),
-          });
+        if (user && savedLink) {
+          const { error: notifyError } = await supabase.rpc("notify_course_event" as never, {
+            _course_id: courseId,
+            _course_link_id: savedLink.id,
+            _type: "material_added",
+          } as never);
+          if (notifyError) console.warn("Course notification failed:", notifyError.message);
         }
       }
 
