@@ -34,7 +34,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { REACTIONS, majorLabel, type ReactionType } from "@/lib/college";
-import { createNotification } from "@/lib/notificationsStore";
 import {
   Bookmark,
   Flag,
@@ -136,15 +135,6 @@ export function PostCard({ post }: { post: PostWithMeta }) {
           );
         if (error) throw error;
 
-        const matchedReaction = REACTIONS.find((r) => r.type === type);
-        await createNotification({
-          sourceType: "post",
-          sourceId: post.id,
-          type: "post_like",
-          title: `تفاعل جديد على منشورك ${matchedReaction?.emoji || "❤️"}`,
-          body: `قام أحد زملائك بالتفاعل بـ ${matchedReaction?.label || "إعجاب"} على منشورك.`,
-          link: `/posts/${post.id}`,
-        });
       }
     },
     onMutate: async (type) => {

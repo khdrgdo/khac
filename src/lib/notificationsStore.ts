@@ -29,33 +29,6 @@ async function setActivityState(activityId: string, isRead: boolean, isHidden: b
   if (error) throw new Error(error.message);
 }
 
-/** Persist an activity notification only after the server validates its source. */
-export async function createNotification(params: {
-  sourceType: "post" | "comment" | "accepted_answer";
-  sourceId: string;
-  type: NotificationType;
-  title: string;
-  body: string;
-  link?: string;
-  priority?: NotificationPriority;
-}): Promise<string | null> {
-  const { data, error } = await supabase.rpc("create_activity_notification" as never, {
-    _source_type: params.sourceType,
-    _source_id: params.sourceId,
-    _type: params.type,
-    _title: params.title,
-    _body: params.body,
-    _link: params.link ?? null,
-    _priority: params.priority ?? "normal",
-  } as never);
-
-  if (error) {
-    console.warn("Notification delivery failed:", error.message);
-    return null;
-  }
-  return (data as string | null) ?? null;
-}
-
 /** Broadcasts are an admin RPC; the server derives sender identity and validates recipients. */
 export async function broadcastNotification(params: {
   actorId?: string;

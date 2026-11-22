@@ -1,7 +1,7 @@
 import type { NotificationItem } from "@/types/notification";
 
 export function isActivityNotification(id: string): boolean {
-  return /^(comment_|react_|msg_|warn_)/.test(id);
+  return /^(comment_|react_|msg_|warn_|points_)/.test(id);
 }
 
 /** Prefer the durable row but retain its activity alias for read/dismiss actions. */

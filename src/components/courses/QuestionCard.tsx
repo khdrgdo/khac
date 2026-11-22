@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Clock, Send, Trash2, Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
-import { createNotification } from "@/lib/notificationsStore";
 import { renderMarkdownContent } from "@/lib/markdown";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -70,23 +69,13 @@ export function QuestionCard({
         throw new Error(
           "حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط ولا يملك صلاحية المشاركة أو التعليق.",
         );
-      const { data: createdCommentId, error } = await supabase.rpc("create_comment_as", {
+      const { error } = await supabase.rpc("create_comment_as", {
         _post_id: q.id,
         _content: replyText.trim(),
         _parent_id: null,
         _anonymous: false,
       });
       if (error) throw error;
-      if (!createdCommentId) throw new Error("تعذر حفظ الرد");
-
-      await createNotification({
-        sourceType: "comment",
-        sourceId: createdCommentId,
-        type: "post_comment",
-        title: "رد جديد على سؤالك في المقرر 💬",
-        body: replyText.trim(),
-        link: `/courses/${courseId}?tab=discussions`,
-      });
     },
     onSuccess: () => {
       setReplyText("");

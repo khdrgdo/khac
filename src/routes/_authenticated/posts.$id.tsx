@@ -26,7 +26,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
-import { createNotification } from "@/lib/notificationsStore";
 
 export const Route = createFileRoute("/_authenticated/posts/$id")({
   component: PostDetailPage,
@@ -144,34 +143,14 @@ function PostDetailPage() {
         );
       if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن التعليق");
       const commentContent = text.trim();
-      const { data: createdCommentId, error } = await supabase.rpc("create_comment_as", {
+      const { error } = await supabase.rpc("create_comment_as", {
         _post_id: id,
         _content: commentContent,
         _parent_id: replyTo ?? undefined,
         _anonymous: anonComment,
       });
       if (error) throw error;
-      if (!createdCommentId) throw new Error("تعذر حفظ التعليق");
 
-      if (replyTo) {
-        await createNotification({
-          sourceType: "comment",
-          sourceId: createdCommentId,
-          type: "comment_reply",
-          title: "رد جديد على تعليقك 💬",
-          body: commentContent,
-          link: `/posts/${id}`,
-        });
-      } else {
-        await createNotification({
-          sourceType: "comment",
-          sourceId: createdCommentId,
-          type: "post_comment",
-          title: "تعليق جديد على منشورك 📝",
-          body: commentContent,
-          link: `/posts/${id}`,
-        });
-      }
     },
     onSuccess: () => {
       setText("");
@@ -197,19 +176,7 @@ function PostDetailPage() {
         .eq("id", id);
       if (error) throw error;
 
-      if (commentId && user) {
-        const targetComment = comments?.find((c) => c.id === commentId);
-        if (targetComment) {
-          await createNotification({
-            sourceType: "accepted_answer",
-            sourceId: targetComment.id,
-            type: "points_awarded",
-            title: "تم اختيار إجابتك كحل نموذجي! 🏆",
-            body: "حصلت على +20 نقطة تميز أكاديمي بعد اختيار صاحب السؤال لإجابتك.",
-            link: `/posts/${id}`,
-          });
-        }
-      }
+
     },
     onSuccess: (_, commentId) => {
       toast.success(commentId ? "تم اعتماد الإجابة كحل" : "تم إلغاء اعتماد الحل");
