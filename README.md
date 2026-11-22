@@ -1,59 +1,28 @@
-# سجل التحديثات والمحادثات (History & Changelog)
+# KHAC — Learning Platform
 
-هذا الملف يحتوي على ملخص لأهم الميزات والتعديلات التي قمنا بالعمل عليها وتطويرها في المنصة خلال محادثاتنا:
+An Arabic-first learning-platform project focused on connecting students, teachers, and course content through role-based workflows.
 
-## 1. إدارة المقررات والصلاحيات (Courses & Permissions)
+## Project scope
 
-- **إضافة صلاحيات مخصصة للأساتذة:** تم تعديل صلاحيات التعديل والحذف في صفحة المقررات بحيث يُسمح للأستاذ المعين بتعديل أو حذف المقرر الذي يدرسه، بالإضافة إلى قدرة المشرف (Admin) على التحكم الكامل.
-- **تخصيص صفحة تفاصيل المقرر (`courses.$id.tsx`):** تم التأكد من أن الأستاذ المشرف على المقرر والمشرف العام (Admin) فقط من يمكنهم رؤية خيارات (تعديل المقرر، حذف المقرر، إدارة الملفات).
+- **Courses:** browse courses and access learning materials according to course and role permissions.
+- **Teacher access:** assign teachers to courses and allow course-level management by authorized instructors.
+- **Administration:** manage teacher accounts and course assignments.
+- **Student communication:** feed and messaging experiences for student–teacher interaction.
+- **Engagement:** student activity and leaderboard features.
+- **Authorization:** role-based access for students, teachers, and administrators.
 
-## 2. لوحة تحكم الإدارة (Admin Panel)
+## Engineering notes
 
-- **إضافة وتعيين الأساتذة:** قمنا بتعديل أداة "إضافة أستاذ" في لوحة التحكم (`admin.tsx`).
-- **ربط المقررات بالأساتذة:** أصبح بإمكان المشرف (Admin) أثناء إنشاء حساب الأستاذ الجديد تحديد المقررات التي سيدرسها هذا الأستاذ من خلال قائمة اختيار (Checkboxes)، ليتم ربط الأستاذ مباشرة بالمقرر في قاعدة البيانات.
+The repository is primarily TypeScript. The project has included work on course permissions, admin workflows, UI components, and build fixes.
 
-## 3. إصلاح الأخطاء البرمجية (Bug Fixes)
+## Contributing
 
-- **أخطاء البناء والتجميع (Build Errors):** تم إصلاح مشكلة الخطأ الإملائي البرمجي (Unterminated string) التي ظهرت في ملف `admin.tsx` والتي كانت تمنع التطبيق من العمل.
-- **تحسين واجهة المستخدم:** تمت إضافة مكونات الواجهة الناقصة مثل `Checkbox` و `ScrollArea` وتضمينها بشكل صحيح في صفحة الإدارة لضمان عمل الواجهة بسلاسة.
+Before starting a change, check the open issues and describe the problem you intend to solve. Keep pull requests focused, include relevant screenshots for UI changes, and explain how the change was tested.
 
-## 4. الميزات العامة للمنصة التي تم تطويرها
+## Project status
 
-- **نظام التوثيق وتسجيل الدخول:** إدارة حسابات الطلاب والأساتذة بناءً على أدوار محددة (`role-based access`).
-- **نظام المشاركات (Feed) والمراسلة (Messages):** بناء واجهات للتواصل بين الطلاب والأساتذة.
-- **لوحة الصدارة (Leaderboard):** عرض ترتيب الطلاب وتفاعلهم.
-- **المقررات الدراسية (Courses):** عرض وتصفح المقررات، رفع الملفات والروابط، وتسهيل الوصول لها بناءً على التخصص والفصل الدراسي.
-
----
-
-_تم إنشاء هذا الملف بناءً على طلبك لتوثيق أهم التعديلات والمهام التي أنجزناها معاً._
-
-# سجل التحديثات والمحادثات (History & Changelog)
-
-هذا الملف يحتوي على ملخص لأهم الميزات والتعديلات التي قمنا بالعمل عليها وتطويرها في المنصة خلال محادثاتنا:
-
-## 1. إدارة المقررات والصلاحيات (Courses & Permissions)
-
-- **إضافة صلاحيات مخصصة للأساتذة:** تم تعديل صلاحيات التعديل والحذف في صفحة المقررات بحيث يُسمح للأستاذ المعين بتعديل أو حذف المقرر الذي يدرسه، بالإضافة إلى قدرة المشرف (Admin) على التحكم الكامل.
-- **تخصيص صفحة تفاصيل المقرر (`courses.$id.tsx`):** تم التأكد من أن الأستاذ المشرف على المقرر والمشرف العام (Admin) فقط من يمكنهم رؤية خيارات (تعديل المقرر، حذف المقرر، إدارة الملفات).
-
-## 2. لوحة تحكم الإدارة (Admin Panel)
-
-- **إضافة وتعيين الأساتذة:** قمنا بتعديل أداة "إضافة أستاذ" في لوحة التحكم (`admin.tsx`).
-- **ربط المقررات بالأساتذة:** أصبح بإمكان المشرف (Admin) أثناء إنشاء حساب الأستاذ الجديد تحديد المقررات التي سيدرسها هذا الأستاذ من خلال قائمة اختيار (Checkboxes)، ليتم ربط الأستاذ مباشرة بالمقرر في قاعدة البيانات.
-
-## 3. إصلاح الأخطاء البرمجية (Bug Fixes)
-
-- **أخطاء البناء والتجميع (Build Errors):** تم إصلاح مشكلة الخطأ الإملائي البرمجي (Unterminated string) التي ظهرت في ملف `admin.tsx` والتي كانت تمنع التطبيق من العمل.
-- **تحسين واجهة المستخدم:** تمت إضافة مكونات الواجهة الناقصة مثل `Checkbox` و `ScrollArea` وتضمينها بشكل صحيح في صفحة الإدارة لضمان عمل الواجهة بسلاسة.
-
-## 4. الميزات العامة للمنصة التي تم تطويرها
-
-- **نظام التوثيق وتسجيل الدخول:** إدارة حسابات الطلاب والأساتذة بناءً على أدوار محددة (`role-based access`).
-- **نظام المشاركات (Feed) والمراسلة (Messages):** بناء واجهات للتواصل بين الطلاب والأساتذة.
-- **لوحة الصدارة (Leaderboard):** عرض ترتيب الطلاب وتفاعلهم.
-- **المقررات الدراسية (Courses):** عرض وتصفح المقررات، رفع الملفات والروابط، وتسهيل الوصول لها بناءً على التخصص والفصل الدراسي.
+This is an evolving project. Consult the current source code, issues, and commit history for the implementation status of individual features.
 
 ---
 
-_تم إنشاء هذا الملف بناءً على طلبك لتوثيق أهم التعديلات والمهام التي أنجزناها معاً._
+Maintained by **Khider Mamon**.
