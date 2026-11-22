@@ -15,34 +15,35 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.nexus.app.BuildConfig
 import com.nexus.app.data.auth.AuthRepository
 import com.nexus.app.data.auth.AuthViewModel
 import com.nexus.app.ui.auth.SignInScreen
 
 @Composable
 fun NexusApp() {
-    val repository = remember { AuthRepository() }
-    val viewModel: AuthViewModel = viewModel(
+    val context = LocalContext.current.applicationContext
+    val repository = remember(context) { AuthRepository(context) }
+    val authViewModel: AuthViewModel = viewModel(
         factory = remember(repository) { AuthViewModel.Factory(repository) }
     )
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val state by authViewModel.uiState.collectAsStateWithLifecycle()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         when {
-            BuildConfig.SUPABASE_PUBLISHABLE_KEY.isBlank() -> ConfigurationRequiredScreen()
-            state.isAuthenticated -> SignedInScreen(onSignOut = viewModel::signOut)
+            !repository.isConfigured -> ConfigurationRequiredScreen()
+            state.isAuthenticated -> SignedInScreen(onSignOut = authViewModel::signOut)
             else -> SignInScreen(
                 isLoading = state.isLoading,
                 errorMessage = state.errorMessage,
-                onSignIn = viewModel::signIn
+                onSignIn = authViewModel::signIn
             )
         }
     }
@@ -101,7 +102,7 @@ private fun SignedInScreen(onSignOut: () -> Unit) {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "جلسة المصادقة تعمل. ستظهر أقسام الحساب بعد تحميل الملف الشخصي والصلاحيات من الخادم.",
+            text = "جلسة المصادقة محفوظة بتشفير Android Keystore. ستظهر أقسام الحساب بعد تحميل الملف الشخصي والصلاحيات من الخادم.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
