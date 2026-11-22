@@ -102,6 +102,12 @@ class AuthViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             runCatching { repository.signInWithGoogle() }
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        infoMessage = "أكمل تسجيل الدخول في نافذة Google."
+                    )
+                }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -125,7 +131,7 @@ class AuthViewModel(
             universityNumber.trim().length < 5 -> "الرقم الجامعي يجب أن يتكون من 5 خانات على الأقل"
             !email.contains("@") -> "أدخل بريداً إلكترونياً صحيحاً"
             major !in setOf("it", "is", "se") -> "اختر التخصص"
-            year !in 1..4 -> "اختر السنة الدراسية"
+            year == null || year !in 1..4 -> "اختر السنة الدراسية"
             password.length < 6 -> "كلمة المرور يجب ألا تقل عن 6 أحرف"
             password != confirmation -> "كلمتا المرور غير متطابقتين"
             else -> null

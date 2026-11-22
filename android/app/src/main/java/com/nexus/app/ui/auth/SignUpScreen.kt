@@ -1,6 +1,7 @@
 package com.nexus.app.ui.auth
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,7 +30,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.window.PopupProperties
 
 @Composable
 fun SignUpScreen(
@@ -60,17 +60,33 @@ fun SignUpScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(20.dp))
-        OutlinedTextField(fullName, { fullName = it }, Modifier.fillMaxWidth(), label = { Text("الاسم الكامل") }, singleLine = true)
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(universityNumber, { universityNumber = it }, Modifier.fillMaxWidth(), label = { Text("الرقم الجامعي") }, singleLine = true)
+        OutlinedTextField(
+            value = fullName,
+            onValueChange = { fullName = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("الاسم الكامل") },
+            singleLine = true
+        )
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(
-            email, { email = it }, Modifier.fillMaxWidth(),
-            label = { Text("البريد الإلكتروني") }, singleLine = true,
+            value = universityNumber,
+            onValueChange = { universityNumber = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("الرقم الجامعي") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)
+        )
+        Spacer(Modifier.height(10.dp))
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("البريد الإلكتروني") },
+            singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
         Spacer(Modifier.height(10.dp))
-        androidx.compose.foundation.layout.Box {
+        Box {
             OutlinedTextField(
                 value = when (major) {
                     "it" -> "تقنية المعلومات (IT)"
@@ -82,12 +98,14 @@ fun SignUpScreen(
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = true,
                 label = { Text("التخصص") },
-                placeholder = { Text("اختر التخصص") }
+                placeholder = { Text("اختر التخصص") },
+                trailingIcon = {
+                    TextButton(onClick = { majorMenu = true }) { Text("اختيار") }
+                }
             )
             DropdownMenu(
                 expanded = majorMenu,
-                onDismissRequest = { majorMenu = false },
-                properties = PopupProperties(focusable = true)
+                onDismissRequest = { majorMenu = false }
             ) {
                 listOf(
                     "it" to "تقنية المعلومات (IT)",
@@ -100,25 +118,19 @@ fun SignUpScreen(
                     )
                 }
             }
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier.matchParentSize()
-            ) {
-                androidx.compose.foundation.clickable(
-                    interactionSource = null,
-                    indication = null,
-                    onClick = { majorMenu = true }
-                ).let { }
-            }
         }
         Spacer(Modifier.height(10.dp))
-        androidx.compose.foundation.layout.Box {
+        Box {
             OutlinedTextField(
-                value = year?.toString().orEmpty(),
+                value = year?.let { "السنة $it" }.orEmpty(),
                 onValueChange = {},
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = true,
                 label = { Text("السنة الدراسية") },
-                placeholder = { Text("اختر السنة") }
+                placeholder = { Text("اختر السنة") },
+                trailingIcon = {
+                    TextButton(onClick = { yearMenu = true }) { Text("اختيار") }
+                }
             )
             DropdownMenu(
                 expanded = yearMenu,
@@ -131,26 +143,23 @@ fun SignUpScreen(
                     )
                 }
             }
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier.matchParentSize()
-            ) {
-                androidx.compose.foundation.clickable(
-                    interactionSource = null,
-                    indication = null,
-                    onClick = { yearMenu = true }
-                ).let { }
-            }
         }
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(
-            password, { password = it }, Modifier.fillMaxWidth(),
-            label = { Text("كلمة المرور") }, singleLine = true,
+            value = password,
+            onValueChange = { password = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("كلمة المرور") },
+            singleLine = true,
             visualTransformation = PasswordVisualTransformation()
         )
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(
-            confirmation, { confirmation = it }, Modifier.fillMaxWidth(),
-            label = { Text("تأكيد كلمة المرور") }, singleLine = true,
+            value = confirmation,
+            onValueChange = { confirmation = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("تأكيد كلمة المرور") },
+            singleLine = true,
             visualTransformation = PasswordVisualTransformation()
         )
         if (errorMessage != null) {
