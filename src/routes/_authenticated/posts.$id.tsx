@@ -144,38 +144,30 @@ function PostDetailPage() {
         );
       if (suspended) throw new Error("حسابك موقوف مؤقتًا — لا يمكن التعليق");
       const commentContent = text.trim();
-      const { error } = await supabase.rpc("create_comment_as", {
+      const { data: createdCommentId, error } = await supabase.rpc("create_comment_as", {
         _post_id: id,
         _content: commentContent,
         _parent_id: replyTo ?? undefined,
         _anonymous: anonComment,
       });
       if (error) throw error;
-      if (anonComment) return;
+      if (!createdCommentId) throw new Error("تعذر حفظ التعليق");
 
-      // Trigger notifications
       if (replyTo) {
-        const parentComment = comments?.find((c) => c.id === replyTo);
-        if (parentComment?.author_id && parentComment.author_id !== user.id) {
-          createNotification({
-            recipientId: parentComment.author_id,
-            actorId: user.id,
-            actorName: profile?.full_name,
-            actorAvatar: profile?.avatar_url,
-            type: "comment_reply",
-            title: `${profile?.full_name ?? "زميل"} رد على تعليقك 💬`,
-            body: commentContent,
-            link: `/posts/${id}`,
-          });
-        }
-      } else if (post && post.author_id && post.author_id !== user.id) {
-        createNotification({
-          recipientId: post.author_id,
-          actorId: user.id,
-          actorName: profile?.full_name,
-          actorAvatar: profile?.avatar_url,
+        await createNotification({
+          sourceType: "comment",
+          sourceId: createdCommentId,
+          type: "comment_reply",
+          title: "رد جديد على تعليقك 💬",
+          body: commentContent,
+          link: `/posts/${id}`,
+        });
+      } else {
+        await createNotification({
+          sourceType: "comment",
+          sourceId: createdCommentId,
           type: "post_comment",
-          title: `${profile?.full_name ?? "زميل"} علق على منشورك 📝`,
+          title: "تعليق جديد على منشورك 📝",
           body: commentContent,
           link: `/posts/${id}`,
         });
@@ -207,12 +199,10 @@ function PostDetailPage() {
 
       if (commentId && user) {
         const targetComment = comments?.find((c) => c.id === commentId);
-        if (targetComment?.author_id && targetComment.author_id !== user.id) {
-          createNotification({
-            recipientId: targetComment.author_id,
-            actorId: user.id,
-            actorName: profile?.full_name,
-            actorAvatar: profile?.avatar_url,
+        if (targetComment) {
+          await createNotification({
+            sourceType: "accepted_answer",
+            sourceId: targetComment.id,
             type: "points_awarded",
             title: "تم اختيار إجابتك كحل نموذجي! 🏆",
             body: "حصلت على +20 نقطة تميز أكاديمي بعد اختيار صاحب السؤال لإجابتك.",

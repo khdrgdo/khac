@@ -70,24 +70,23 @@ export function QuestionCard({
         throw new Error(
           "حساب المشرف المساعد (سب أدمن) مخصص للإشراف والمراقبة فقط ولا يملك صلاحية المشاركة أو التعليق.",
         );
-      const { error } = await supabase.from("comments").insert({
-        post_id: q.id,
-        author_id: user.id,
-        content: replyText.trim(),
+      const { data: createdCommentId, error } = await supabase.rpc("create_comment_as", {
+        _post_id: q.id,
+        _content: replyText.trim(),
+        _parent_id: null,
+        _anonymous: false,
       });
       if (error) throw error;
+      if (!createdCommentId) throw new Error("تعذر حفظ الرد");
 
-      if (q.author_id && q.author_id !== user.id) {
-        createNotification({
-          recipientId: q.author_id,
-          actorId: user.id,
-          actorName: user.user_metadata?.full_name || "زميل",
-          type: "post_comment",
-          title: "رد جديد على سؤالك في المقرر 💬",
-          body: replyText.trim(),
-          link: `/courses/${courseId}?tab=discussions`,
-        });
-      }
+      await createNotification({
+        sourceType: "comment",
+        sourceId: createdCommentId,
+        type: "post_comment",
+        title: "رد جديد على سؤالك في المقرر 💬",
+        body: replyText.trim(),
+        link: `/courses/${courseId}?tab=discussions`,
+      });
     },
     onSuccess: () => {
       setReplyText("");
