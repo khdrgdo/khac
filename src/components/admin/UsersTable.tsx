@@ -176,9 +176,14 @@ export function UsersTable() {
         toast.error("غير مسموح للسب أدمن بتعديل رتب الإدارة");
         throw new Error("Unauthorized");
       }
-      if (isAdmin)
-        await supabase.from("user_roles").delete().eq("user_id", uid).eq("role", "admin");
-      else await supabase.from("user_roles").insert({ user_id: uid, role: "admin" });
+      const { error } = await supabase.rpc("admin_set_user_role", {
+        _user: uid,
+        _role: isAdmin ? "student" : "admin",
+      });
+      if (error) {
+        toast.error(error.message);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success("تم التحديث");
