@@ -27,6 +27,7 @@ import { Route as AuthenticatedCoursesMineRouteImport } from './routes/_authenti
 import { Route as AuthenticatedMessagesIdRouteImport } from './routes/_authenticated/messages.$id'
 import { Route as AuthenticatedPostsIdRouteImport } from './routes/_authenticated/posts.$id'
 import { Route as AuthenticatedProfileIdRouteImport } from './routes/_authenticated/profile.$id'
+import { Route as ApiPublicSendPushRouteImport } from './routes/api/public/send-push'
 import { Route as AuthenticatedCoursesIdManageRouteImport } from './routes/_authenticated/courses.$id.manage'
 
 const IndexRoute = IndexRouteImport.update({
@@ -123,6 +124,11 @@ const AuthenticatedProfileIdRoute = AuthenticatedProfileIdRouteImport.update({
   path: '/profile/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicSendPushRoute = ApiPublicSendPushRouteImport.update({
+  id: '/api/public/send-push',
+  path: '/api/public/send-push',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedCoursesIdManageRoute =
   AuthenticatedCoursesIdManageRouteImport.update({
     id: '/manage',
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/posts/$id': typeof AuthenticatedPostsIdRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
+  '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/courses/': typeof AuthenticatedCoursesIndexRoute
   '/courses/$id/manage': typeof AuthenticatedCoursesIdManageRoute
 }
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/posts/$id': typeof AuthenticatedPostsIdRoute
   '/profile/$id': typeof AuthenticatedProfileIdRoute
+  '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/courses': typeof AuthenticatedCoursesIndexRoute
   '/courses/$id/manage': typeof AuthenticatedCoursesIdManageRoute
 }
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/_authenticated/messages/$id': typeof AuthenticatedMessagesIdRoute
   '/_authenticated/posts/$id': typeof AuthenticatedPostsIdRoute
   '/_authenticated/profile/$id': typeof AuthenticatedProfileIdRoute
+  '/api/public/send-push': typeof ApiPublicSendPushRoute
   '/_authenticated/courses/': typeof AuthenticatedCoursesIndexRoute
   '/_authenticated/courses/$id/manage': typeof AuthenticatedCoursesIdManageRoute
 }
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/messages/$id'
     | '/posts/$id'
     | '/profile/$id'
+    | '/api/public/send-push'
     | '/courses/'
     | '/courses/$id/manage'
   fileRoutesByTo: FileRoutesByTo
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/messages/$id'
     | '/posts/$id'
     | '/profile/$id'
+    | '/api/public/send-push'
     | '/courses'
     | '/courses/$id/manage'
   id:
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/_authenticated/messages/$id'
     | '/_authenticated/posts/$id'
     | '/_authenticated/profile/$id'
+    | '/api/public/send-push'
     | '/_authenticated/courses/'
     | '/_authenticated/courses/$id/manage'
   fileRoutesById: FileRoutesById
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicSendPushRoute: typeof ApiPublicSendPushRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -389,6 +402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/send-push': {
+      id: '/api/public/send-push'
+      path: '/api/public/send-push'
+      fullPath: '/api/public/send-push'
+      preLoaderRoute: typeof ApiPublicSendPushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/courses/$id/manage': {
       id: '/_authenticated/courses/$id/manage'
       path: '/manage'
@@ -475,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicSendPushRoute: ApiPublicSendPushRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
