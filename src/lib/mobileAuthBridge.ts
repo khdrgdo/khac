@@ -2,19 +2,23 @@ import type { Session } from "@supabase/supabase-js";
 
 const STORAGE_KEY = "nexus_mobile_auth_redirect";
 const ANDROID_CALLBACK = "com.nexus.app://login-callback";
+const FLUTTER_CALLBACK = "com.nexus.flutter://login-callback";
 
 export function validateMobileRedirect(value: string | null): string | null {
   if (!value) return null;
   try {
     const parsed = new URL(value);
     if (
-      parsed.protocol === "com.nexus.app:" &&
+      (parsed.protocol === "com.nexus.app:" || parsed.protocol === "com.nexus.flutter:") &&
       parsed.hostname === "login-callback" &&
-      !parsed.pathname.replaceAll("/", "") &&
+      !parsed.username &&
+      !parsed.password &&
+      !parsed.port &&
+      !parsed.pathname &&
       !parsed.search &&
       !parsed.hash
     ) {
-      return ANDROID_CALLBACK;
+      return parsed.protocol === "com.nexus.flutter:" ? FLUTTER_CALLBACK : ANDROID_CALLBACK;
     }
   } catch {
     return null;

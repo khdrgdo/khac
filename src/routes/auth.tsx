@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,22 +99,13 @@ function AuthPage() {
   async function googleSignIn() {
     setLoadingGoogle(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/auth`,
-      });
-      if (result && "error" in result && result.error) {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: { redirectTo: `${window.location.origin}/auth` },
-        });
-        if (error) toast.error("تعذّر تسجيل الدخول بغوغل: " + error.message);
-      }
-    } catch {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: `${window.location.origin}/auth` },
       });
-      if (error) toast.error("تعذّر تسجيل الدخول بغوغل");
+      if (error) toast.error("تعذّر تسجيل الدخول بغوغل: " + error.message);
+    } catch {
+      toast.error("تعذّر تسجيل الدخول بغوغل");
     } finally {
       setLoadingGoogle(false);
     }
