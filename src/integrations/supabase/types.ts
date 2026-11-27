@@ -62,6 +62,36 @@ export type Database = {
         }
         Relationships: []
       }
+      app_version: {
+        Row: {
+          apk_url: string
+          id: number
+          latest_version_code: number
+          latest_version_name: string
+          min_supported_version_code: number
+          notes: string
+          updated_at: string
+        }
+        Insert: {
+          apk_url?: string
+          id?: number
+          latest_version_code: number
+          latest_version_name: string
+          min_supported_version_code?: number
+          notes?: string
+          updated_at?: string
+        }
+        Update: {
+          apk_url?: string
+          id?: number
+          latest_version_code?: number
+          latest_version_name?: string
+          min_supported_version_code?: number
+          notes?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       banned_words: {
         Row: {
           created_at: string
@@ -146,18 +176,21 @@ export type Database = {
       conversation_members: {
         Row: {
           conversation_id: string
+          hidden_at: string | null
           joined_at: string
           last_read_at: string | null
           user_id: string
         }
         Insert: {
           conversation_id: string
+          hidden_at?: string | null
           joined_at?: string
           last_read_at?: string | null
           user_id: string
         }
         Update: {
           conversation_id?: string
+          hidden_at?: string | null
           joined_at?: string
           last_read_at?: string | null
           user_id?: string
@@ -317,6 +350,123 @@ export type Database = {
         }
         Relationships: []
       }
+      device_tokens: {
+        Row: {
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          platform?: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_requests: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          recipient_id: string
+          sender_id: string
+          status: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          recipient_id: string
+          sender_id: string
+          status?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          recipient_id?: string
+          sender_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_requests_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: true
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_requests_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dm_requests_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          reaction: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          reaction: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          reaction?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reports: {
         Row: {
           conversation_id: string | null
@@ -364,6 +514,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          reply_to_id: string | null
           sender_id: string
         }
         Insert: {
@@ -371,6 +522,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          reply_to_id?: string | null
           sender_id: string
         }
         Update: {
@@ -378,6 +530,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          reply_to_id?: string | null
           sender_id?: string
         }
         Relationships: [
@@ -386,6 +539,60 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      name_change_requests: {
+        Row: {
+          contact_info: string | null
+          created_at: string
+          current_name: string
+          id: string
+          processed_at: string | null
+          reason: string
+          requested_name: string
+          status: string
+          university_number: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_info?: string | null
+          created_at?: string
+          current_name: string
+          id?: string
+          processed_at?: string | null
+          reason?: string
+          requested_name: string
+          status?: string
+          university_number?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_info?: string | null
+          created_at?: string
+          current_name?: string
+          id?: string
+          processed_at?: string | null
+          reason?: string
+          requested_name?: string
+          status?: string
+          university_number?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "name_change_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -631,6 +838,7 @@ export type Database = {
           bio: string | null
           card_theme_id: string | null
           created_at: string
+          dm_open: boolean
           email: string | null
           full_name: string
           hide_university_number: boolean | null
@@ -652,6 +860,7 @@ export type Database = {
           bio?: string | null
           card_theme_id?: string | null
           created_at?: string
+          dm_open?: boolean
           email?: string | null
           full_name: string
           hide_university_number?: boolean | null
@@ -673,6 +882,7 @@ export type Database = {
           bio?: string | null
           card_theme_id?: string | null
           created_at?: string
+          dm_open?: boolean
           email?: string | null
           full_name?: string
           hide_university_number?: boolean | null
@@ -687,6 +897,21 @@ export type Database = {
           verified?: boolean
           warning_count?: number
           year?: number | null
+        }
+        Relationships: []
+      }
+      push_config: {
+        Row: {
+          id: number
+          secret: string
+        }
+        Insert: {
+          id?: number
+          secret?: string
+        }
+        Update: {
+          id?: number
+          secret?: string
         }
         Relationships: []
       }
@@ -827,10 +1052,12 @@ export type Database = {
       }
       admin_unban: { Args: { _user: string }; Returns: undefined }
       admin_warn: { Args: { _reason: string; _user: string }; Returns: number }
+      assert_not_main_admin: { Args: { _target: string }; Returns: undefined }
       award_points: {
         Args: { _delta: number; _user: string }
         Returns: undefined
       }
+      block_state: { Args: { _other: string }; Returns: Json }
       compute_rank: {
         Args: { _points: number }
         Returns: Database["public"]["Enums"]["rank_tier"]
@@ -948,6 +1175,7 @@ export type Database = {
         }[]
       }
       get_unread_message_count: { Args: { _user_id: string }; Returns: number }
+      guardian_can_act_on: { Args: { _target: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -959,6 +1187,7 @@ export type Database = {
         Args: { _permission: string; _user_id: string }
         Returns: boolean
       }
+      hidden_univ_ids: { Args: { _ids: string[] }; Returns: Json }
       is_anonymous_owner: {
         Args: { _id: string; _type: string; _user: string }
         Returns: boolean
@@ -972,10 +1201,25 @@ export type Database = {
         Args: { _conv_id: string; _user_id: string }
         Returns: undefined
       }
+      main_admin_id: { Args: never; Returns: string }
       mark_conversation_read: {
         Args: { _conv_id: string; _user_id: string }
         Returns: undefined
       }
+      my_staff_caps: { Args: never; Returns: Json }
+      nexus_is_admin: { Args: never; Returns: boolean }
+      public_card_theme: { Args: { _id: string }; Returns: string }
+      reported_users: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          full_name: string
+          message_report_count: number
+          post_report_count: number
+          user_id: string
+        }[]
+      }
+      resolve_login_email: { Args: { _number: string }; Returns: string }
       search_public_profiles: {
         Args: { _q: string }
         Returns: {
@@ -989,6 +1233,8 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      univ_number_exists: { Args: { _q: string }; Returns: boolean }
+      user_has_reports: { Args: { _target: string }; Returns: boolean }
       vote_on_poll: {
         Args: { p_option_id: string; p_user_id: string }
         Returns: Json
