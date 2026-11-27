@@ -239,6 +239,7 @@ export type Database = {
           created_by: string | null
           id: string
           is_important: boolean
+          lecture_id: string | null
           link_type: string | null
           title: string
           url: string
@@ -249,6 +250,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_important?: boolean
+          lecture_id?: string | null
           link_type?: string | null
           title: string
           url: string
@@ -259,6 +261,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_important?: boolean
+          lecture_id?: string | null
           link_type?: string | null
           title?: string
           url?: string
@@ -269,6 +272,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_links_lecture_id_fkey"
+            columns: ["lecture_id"]
+            isOneToOne: false
+            referencedRelation: "lectures"
             referencedColumns: ["id"]
           },
         ]
@@ -428,6 +438,103 @@ export type Database = {
           },
         ]
       }
+      lecture_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          lecture_id: string
+          parent_id: string | null
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          lecture_id: string
+          parent_id?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          lecture_id?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecture_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lecture_comments_lecture_id_fkey"
+            columns: ["lecture_id"]
+            isOneToOne: false
+            referencedRelation: "lectures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lecture_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "lecture_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lectures: {
+        Row: {
+          course_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lectures_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lectures_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reactions: {
         Row: {
           created_at: string
@@ -514,6 +621,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          read_at: string | null
           reply_to_id: string | null
           sender_id: string
         }
@@ -522,6 +630,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          read_at?: string | null
           reply_to_id?: string | null
           sender_id: string
         }
@@ -530,6 +639,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          read_at?: string | null
           reply_to_id?: string | null
           sender_id?: string
         }
@@ -794,6 +904,7 @@ export type Database = {
           image_paths: string[]
           images: string[] | null
           is_anonymous: boolean
+          lecture_id: string | null
           post_type: Database["public"]["Enums"]["post_type"]
           updated_at: string
         }
@@ -806,6 +917,7 @@ export type Database = {
           image_paths?: string[]
           images?: string[] | null
           is_anonymous?: boolean
+          lecture_id?: string | null
           post_type?: Database["public"]["Enums"]["post_type"]
           updated_at?: string
         }
@@ -818,6 +930,7 @@ export type Database = {
           image_paths?: string[]
           images?: string[] | null
           is_anonymous?: boolean
+          lecture_id?: string | null
           post_type?: Database["public"]["Enums"]["post_type"]
           updated_at?: string
         }
@@ -827,6 +940,13 @@ export type Database = {
             columns: ["accepted_answer_id"]
             isOneToOne: false
             referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_lecture_id_fkey"
+            columns: ["lecture_id"]
+            isOneToOne: false
+            referencedRelation: "lectures"
             referencedColumns: ["id"]
           },
         ]
@@ -847,6 +967,7 @@ export type Database = {
           must_change_password: boolean
           points: number
           suspended_until: string | null
+          terms_accepted_at: string | null
           theme: string | null
           university_number: string
           updated_at: string
@@ -869,6 +990,7 @@ export type Database = {
           must_change_password?: boolean
           points?: number
           suspended_until?: string | null
+          terms_accepted_at?: string | null
           theme?: string | null
           university_number: string
           updated_at?: string
@@ -891,6 +1013,7 @@ export type Database = {
           must_change_password?: boolean
           points?: number
           suspended_until?: string | null
+          terms_accepted_at?: string | null
           theme?: string | null
           university_number?: string
           updated_at?: string
@@ -1058,6 +1181,7 @@ export type Database = {
         Returns: undefined
       }
       block_state: { Args: { _other: string }; Returns: Json }
+      can_manage_courses: { Args: { _u: string }; Returns: boolean }
       compute_rank: {
         Args: { _points: number }
         Returns: Database["public"]["Enums"]["rank_tier"]
@@ -1228,6 +1352,11 @@ export type Database = {
           id: string
           university_number: string
         }[]
+      }
+      set_terms_accepted: { Args: never; Returns: undefined }
+      share_lecture_as_post: {
+        Args: { _content: string; _lecture_id: string }
+        Returns: string
       }
       toggle_pinned_card_participation: {
         Args: { p_user_id: string }
