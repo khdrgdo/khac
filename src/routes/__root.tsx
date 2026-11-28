@@ -17,6 +17,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "@/hooks/useAuth";
 import { SplashScreen } from "@/components/SplashScreen";
+import { MobileReturnGate } from "@/components/MobileReturnGate";
 
 function NotFoundComponent() {
   return (
@@ -203,6 +204,7 @@ function RootComponent() {
           <HeadContent />
           <SplashScreen />
           <Outlet />
+          <MobileReturnGate />
           <Toaster position="top-center" richColors />
         </TooltipProvider>
       </AuthProvider>

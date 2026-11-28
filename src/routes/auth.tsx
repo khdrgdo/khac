@@ -91,7 +91,10 @@ function AuthPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    rememberMobileRedirect(params.get("redirect_to"));
+    const requestedRedirect = rememberMobileRedirect(params.get("redirect_to"));
+    if (!requestedRedirect && params.get("app") === "flutter") {
+      rememberMobileRedirect("com.nexus.flutter://login-callback");
+    }
     supabase.auth
       .getSession()
       .then(({ data }) => {
