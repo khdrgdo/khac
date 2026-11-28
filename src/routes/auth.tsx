@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,7 @@ function AuthPage() {
   const [mobileLink, setMobileLink] = useState<string | null>(null);
 
   async function finishAuthentication(session: Session) {
+    sessionStorage.removeItem("nexus_auto_google");
     const redirect = getMobileRedirect();
     if (!redirect) {
       navigate({ to: "/feed", replace: true });
@@ -90,7 +92,15 @@ function AuthPage() {
     supabase.auth
       .getSession()
       .then(({ data }) => {
-        if (data?.session) void finishAuthentication(data.session);
+        if (data?.session) {
+          void finishAuthentication(data.session);
+        } else if (
+          new URLSearchParams(window.location.search).get("provider") === "google" &&
+          !sessionStorage.getItem("nexus_auto_google")
+        ) {
+          sessionStorage.setItem("nexus_auto_google", "1");
+          void googleSignIn();
+        }
       })
       .catch((err) => {
       });
@@ -99,13 +109,22 @@ function AuthPage() {
   async function googleSignIn() {
     setLoadingGoogle(true);
     try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/auth`,
+      });
+      if (result && "error" in result && result.error) {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: `${window.location.origin}/auth` },
+        });
+        if (error) toast.error("تعذّر تسجيل الدخول بغوغل: " + error.message);
+      }
+    } catch {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: `${window.location.origin}/auth` },
       });
-      if (error) toast.error("تعذّر تسجيل الدخول بغوغل: " + error.message);
-    } catch {
-      toast.error("تعذّر تسجيل الدخول بغوغل");
+      if (error) toast.error("تعذّر تسجيل الدخول بغوغل");
     } finally {
       setLoadingGoogle(false);
     }
