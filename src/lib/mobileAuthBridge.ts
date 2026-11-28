@@ -28,25 +28,45 @@ export function validateMobileRedirect(value: string | null): string | null {
 
 export function rememberMobileRedirect(value: string | null): string | null {
   const redirect = validateMobileRedirect(value);
-  if (redirect) sessionStorage.setItem(STORAGE_KEY, redirect);
+  if (redirect) {
+    sessionStorage.setItem(STORAGE_KEY, redirect);
+    localStorage.setItem(STORAGE_KEY, redirect);
+  }
   return redirect;
 }
 
 export function getMobileRedirect(): string | null {
-  return validateMobileRedirect(sessionStorage.getItem(STORAGE_KEY));
+  return (
+    validateMobileRedirect(sessionStorage.getItem(STORAGE_KEY)) ??
+    validateMobileRedirect(localStorage.getItem(STORAGE_KEY))
+  );
 }
 
 export function clearMobileRedirect() {
   sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEY);
 }
 
-export function buildMobileSessionLink(session: Session, redirect = getMobileRedirect()) {
-  if (!redirect) return null;
-  const params = new URLSearchParams({
+function mobileSessionParams(session: Session) {
+  return new URLSearchParams({
     access_token: session.access_token,
     refresh_token: session.refresh_token,
     expires_in: String(session.expires_in ?? 3600),
     token_type: session.token_type || "bearer",
   });
+}
+
+export function buildMobileSessionLink(session: Session, redirect = getMobileRedirect()) {
+  if (!redirect) return null;
+  const params = mobileSessionParams(session);
+  if (redirect === FLUTTER_CALLBACK) {
+    return `intent://login-callback?${params.toString()}#Intent;scheme=com.nexus.flutter;package=com.nexus.flutter;end`;
+  }
+  return `${redirect}#${params.toString()}`;
+}
+
+export function buildMobileFallbackLink(session: Session, redirect = getMobileRedirect()) {
+  if (!redirect) return null;
+  const params = mobileSessionParams(session);
   return `${redirect}#${params.toString()}`;
 }

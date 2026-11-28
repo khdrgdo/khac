@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/select";
 import { MAJORS, YEARS } from "@/lib/college";
 import { toast } from "sonner";
-import { GraduationCap, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
+import { GraduationCap, Loader2, Sparkles, CheckCircle2, ExternalLink } from "lucide-react";
 import {
+  buildMobileFallbackLink,
   buildMobileSessionLink,
   clearMobileRedirect,
   getMobileRedirect,
@@ -44,6 +45,8 @@ function CompleteProfilePage() {
   const [major, setMajor] = useState<string>("");
   const [year, setYear] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [mobileLink, setMobileLink] = useState<string | null>(null);
+  const [mobileFallbackLink, setMobileFallbackLink] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -100,10 +103,12 @@ function CompleteProfilePage() {
       const redirect = getMobileRedirect();
       const { data: sessionData } = await supabase.auth.getSession();
       if (redirect && sessionData.session) {
-        const mobileLink = buildMobileSessionLink(sessionData.session, redirect);
-        if (mobileLink) {
+        const link = buildMobileSessionLink(sessionData.session, redirect);
+        if (link) {
+          setMobileLink(link);
+          setMobileFallbackLink(buildMobileFallbackLink(sessionData.session, redirect));
           clearMobileRedirect();
-          window.location.href = mobileLink;
+          window.location.href = link;
           return;
         }
       }
@@ -112,6 +117,38 @@ function CompleteProfilePage() {
       toast.error((e as Error).message);
       setSaving(false);
     }
+  }
+
+  if (mobileLink) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-5">
+        <Card className="w-full max-w-md border-t-4 border-t-accent text-center shadow-xl">
+          <CardHeader className="items-center gap-3">
+            <CheckCircle2 className="h-12 w-12 text-accent" />
+            <CardTitle>تم تسجيل الدخول بنجاح!</CardTitle>
+            <CardDescription className="leading-7">
+              جاري تحويلك لتطبيق نيكسوس على الهاتف...
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button className="w-full gap-2" asChild>
+              <a href={mobileLink}>
+                <ExternalLink className="h-4 w-4" />
+                فتح تطبيق نيكسوس الآن
+              </a>
+            </Button>
+            {mobileFallbackLink && (
+              <Button variant="outline" className="w-full" asChild>
+                <a href={mobileFallbackLink}>العودة إلى التطبيق</a>
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">
+              إذا لم يفتح التطبيق تلقائياً اضغط الزر أعلاه.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (loading) {

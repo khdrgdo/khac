@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import {
+  buildMobileFallbackLink,
   buildMobileSessionLink,
   clearMobileRedirect,
   getMobileRedirect,
@@ -58,6 +59,7 @@ function AuthPage() {
   const [prefilledEmail, setPrefilledEmail] = useState("");
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [mobileLink, setMobileLink] = useState<string | null>(null);
+  const [mobileFallbackLink, setMobileFallbackLink] = useState<string | null>(null);
 
   async function finishAuthentication(session: Session) {
     sessionStorage.removeItem("nexus_auto_google");
@@ -82,6 +84,7 @@ function AuthPage() {
     const link = buildMobileSessionLink(session, redirect);
     if (!link) return;
     setMobileLink(link);
+    setMobileFallbackLink(buildMobileFallbackLink(session, redirect));
     clearMobileRedirect();
     window.location.href = link;
   }
@@ -141,13 +144,21 @@ function AuthPage() {
               جاري تحويلك لتطبيق نيكسوس على الهاتف...
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Button className="w-full gap-2" asChild>
               <a href={mobileLink}>
                 <ExternalLink className="h-4 w-4" />
                 فتح تطبيق نيكسوس الآن
               </a>
             </Button>
+            {mobileFallbackLink && (
+              <Button variant="outline" className="w-full" asChild>
+                <a href={mobileFallbackLink}>العودة إلى التطبيق</a>
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">
+              إذا لم يفتح التطبيق تلقائياً اضغط الزر أعلاه.
+            </p>
           </CardContent>
         </Card>
       </div>
