@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      _bk_profiles_points_20261128: {
+        Row: {
+          at: string | null
+          id: string | null
+          points: number | null
+          verified: boolean | null
+        }
+        Insert: {
+          at?: string | null
+          id?: string | null
+          points?: number | null
+          verified?: boolean | null
+        }
+        Update: {
+          at?: string | null
+          id?: string | null
+          points?: number | null
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       admin_actions: {
         Row: {
           action: string
@@ -1181,6 +1202,7 @@ export type Database = {
         Returns: undefined
       }
       block_state: { Args: { _other: string }; Returns: Json }
+      calc_points: { Args: { _u: string }; Returns: number }
       can_manage_courses: { Args: { _u: string }; Returns: boolean }
       compute_rank: {
         Args: { _points: number }
@@ -1333,6 +1355,7 @@ export type Database = {
       my_staff_caps: { Args: never; Returns: Json }
       nexus_is_admin: { Args: never; Returns: boolean }
       public_card_theme: { Args: { _id: string }; Returns: string }
+      refresh_points: { Args: { _u: string }; Returns: undefined }
       reported_users: {
         Args: never
         Returns: {
